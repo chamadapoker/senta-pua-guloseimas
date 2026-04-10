@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { montarLinkCobranca } from '../../services/whatsapp';
-import { gerarExtratoPDF } from '../../services/pdf';
+import { gerarExtratoUnificadoPDF } from '../../services/pdf';
 import type { Cliente, Pedido } from '../../types';
 
 interface CafePagamento { id: string; referencia: string; valor: number; status: string; cafe_tipo: string; cafe_plano: string; }
@@ -59,8 +59,13 @@ export function ClienteExtrato() {
   const totalDevido = devidoGuloseimas + devidoLoja + devidoCafe + devidoXimboca;
 
   const handlePdfWhatsapp = async () => {
-    const pendentes = guloseimas.filter(p => p.status !== 'pago');
-    await gerarExtratoPDF(cliente.nome_guerra, pendentes, devidoGuloseimas);
+    const fmt = (d: string) => new Date(d + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    await gerarExtratoUnificadoPDF(cliente.nome_guerra, {
+      guloseimas: guloseimas.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at) })),
+      loja: loja.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at), parcelas: p.parcelas })),
+      cafe: cafe.filter(p => p.status === 'pendente').map(p => ({ referencia: p.referencia, valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
+      ximboca: ximboca.filter(p => p.status !== 'pago').map(p => ({ evento: p.evento_nome, data: new Date(p.evento_data + 'T12:00:00').toLocaleDateString('pt-BR'), valor: p.valor_individual ?? p.valor_por_pessoa })),
+    }, totalDevido);
     window.open(montarLinkCobranca(cliente.nome_guerra, totalDevido), '_blank');
   };
 

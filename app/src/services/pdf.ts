@@ -2,6 +2,162 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Pedido } from '../types';
 
+interface DebitoUnificado {
+  guloseimas: { itens: string; valor: number; data: string }[];
+  loja: { itens: string; valor: number; data: string; parcelas?: number }[];
+  cafe: { referencia: string; valor: number; tipo: string }[];
+  ximboca: { evento: string; data: string; valor: number }[];
+}
+
+export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnificado, totalGeral: number) {
+  const doc = new jsPDF();
+  const azul: [number, number, number] = [26, 58, 107];
+  const vermelho: [number, number, number] = [192, 57, 43];
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, pageWidth, 38, 'F');
+  doc.setFillColor(...vermelho);
+  doc.rect(0, 38, pageWidth, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text('APP RP POKER', pageWidth / 2, 16, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setTextColor(212, 168, 67);
+  doc.text('1/10 GpAv — Esquadrao Poker', pageWidth / 2, 24, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text('EXTRATO UNIFICADO DE DEBITOS', pageWidth / 2, 32, { align: 'center' });
+
+  // Dados do militar
+  const yStart = 50;
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(14, yStart - 4, pageWidth - 28, 22, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...azul);
+  doc.text(`Militar: ${nome}`, 20, yStart + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+
+  let currentY = yStart + 28;
+
+  // Guloseimas
+  if (debitos.guloseimas.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...azul);
+    doc.text('GULOSEIMAS', 14, currentY);
+    currentY += 2;
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Data', 'Itens', 'Valor']],
+      body: debitos.guloseimas.map(d => [d.data, d.itens, `R$ ${d.valor.toFixed(2)}`]),
+      theme: 'grid',
+      headStyles: { fillColor: azul, textColor: [255, 255, 255], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { halign: 'center', cellWidth: 25 }, 2: { halign: 'right', cellWidth: 25 } },
+      margin: { left: 14, right: 14 },
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Loja
+  if (debitos.loja.length > 0) {
+    if (currentY > 250) { doc.addPage(); currentY = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...azul);
+    doc.text('LOJA MILITAR', 14, currentY);
+    currentY += 2;
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Data', 'Itens', 'Parcelas', 'Valor']],
+      body: debitos.loja.map(d => [d.data, d.itens, d.parcelas && d.parcelas > 1 ? `${d.parcelas}x` : '1x', `R$ ${d.valor.toFixed(2)}`]),
+      theme: 'grid',
+      headStyles: { fillColor: azul, textColor: [255, 255, 255], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { halign: 'center', cellWidth: 25 }, 2: { halign: 'center', cellWidth: 20 }, 3: { halign: 'right', cellWidth: 25 } },
+      margin: { left: 14, right: 14 },
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Cafe
+  if (debitos.cafe.length > 0) {
+    if (currentY > 250) { doc.addPage(); currentY = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...azul);
+    doc.text('CAIXINHA DO CAFE', 14, currentY);
+    currentY += 2;
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Referencia', 'Tipo', 'Valor']],
+      body: debitos.cafe.map(d => [d.referencia, d.tipo, `R$ ${d.valor.toFixed(2)}`]),
+      theme: 'grid',
+      headStyles: { fillColor: azul, textColor: [255, 255, 255], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { halign: 'center' }, 1: { halign: 'center' }, 2: { halign: 'right', cellWidth: 25 } },
+      margin: { left: 14, right: 14 },
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Ximboca
+  if (debitos.ximboca.length > 0) {
+    if (currentY > 250) { doc.addPage(); currentY = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...azul);
+    doc.text('XIMBOCA', 14, currentY);
+    currentY += 2;
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Evento', 'Data', 'Valor']],
+      body: debitos.ximboca.map(d => [d.evento, d.data, `R$ ${d.valor.toFixed(2)}`]),
+      theme: 'grid',
+      headStyles: { fillColor: azul, textColor: [255, 255, 255], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 1: { halign: 'center', cellWidth: 25 }, 2: { halign: 'right', cellWidth: 25 } },
+      margin: { left: 14, right: 14 },
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Total geral
+  if (currentY > 260) { doc.addPage(); currentY = 20; }
+  doc.setFillColor(...vermelho);
+  doc.roundedRect(14, currentY + 2, pageWidth - 28, 20, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`TOTAL GERAL PENDENTE: R$ ${totalGeral.toFixed(2)}`, pageWidth / 2, currentY + 15, { align: 'center' });
+
+  // Rodape
+  const footerY = currentY + 34;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Documento gerado automaticamente pelo APP RP POKER.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Chave PIX: sandraobregon12@gmail.com', pageWidth / 2, footerY + 5, { align: 'center' });
+
+  doc.save(`extrato-unificado-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+}
+
 export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: number) {
   const doc = new jsPDF();
   const azul: [number, number, number] = [26, 58, 107];
