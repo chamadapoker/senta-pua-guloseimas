@@ -71,7 +71,15 @@ export function Checkout() {
               <button onClick={() => alterarQuantidade(produto.id, quantidade - 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">-</button>
               <span className="w-6 text-center font-medium text-sm">{quantidade}</span>
               <button onClick={() => alterarQuantidade(produto.id, quantidade + 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">+</button>
-              <button onClick={() => remover(produto.id)} className="ml-1 text-gray-400 hover:text-vermelho text-lg">&times;</button>
+              <button
+                onClick={() => remover(produto.id)}
+                className="ml-1 w-9 h-9 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-vermelho hover:bg-red-100 transition-colors"
+                title="Remover item"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
           </div>
         ))}
