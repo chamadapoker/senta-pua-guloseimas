@@ -44,15 +44,15 @@ export function Pedidos() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-azul">Pedidos</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-display text-2xl text-white tracking-wider">PEDIDOS</h1>
         <div className="flex gap-1">
           {['', 'pendente', 'fiado', 'pago'].map((s) => (
             <button
               key={s}
               onClick={() => setFiltroStatus(s)}
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                filtroStatus === s ? 'bg-azul text-white' : 'bg-gray-100 text-gray-600'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-fundo-elevado text-texto-fraco border border-borda hover:text-texto'
               }`}
             >
               {s || 'Todos'}
@@ -62,59 +62,62 @@ export function Pedidos() {
       </div>
 
       {selecionados.size > 0 && (
-        <div className="bg-azul text-white rounded-lg p-3 mb-3 flex items-center justify-between">
-          <span>{selecionados.size} selecionado(s)</span>
+        <div className="bg-azul rounded-xl p-3 mb-4 flex items-center justify-between border border-azul-claro/30">
+          <span className="text-white text-sm">{selecionados.size} selecionado(s)</span>
           <Button size="sm" variant="danger" onClick={marcarLotePago}>Marcar como pago</Button>
         </div>
       )}
 
-      <div className="bg-white rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 w-8"></th>
-              <th className="px-3 py-2 text-left">Data</th>
-              <th className="px-3 py-2 text-left">Cliente</th>
-              <th className="px-3 py-2 text-left">Itens</th>
-              <th className="px-3 py-2 text-right">Total</th>
-              <th className="px-3 py-2 text-center">Status</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pedidos.map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="px-3 py-3">
-                  {p.status !== 'pago' && (
-                    <input
-                      type="checkbox"
-                      checked={selecionados.has(p.id)}
-                      onChange={() => toggleSelecionado(p.id)}
-                    />
-                  )}
-                </td>
-                <td className="px-3 py-3 text-xs text-gray-500">
-                  {new Date(p.created_at).toLocaleDateString('pt-BR')}
-                </td>
-                <td className="px-3 py-3 font-medium">{p.nome_guerra}</td>
-                <td className="px-3 py-3 text-xs text-gray-500 max-w-[150px] truncate">
-                  {p.itens_resumo}
-                </td>
-                <td className="px-3 py-3 text-right font-bold">R$ {p.total.toFixed(2)}</td>
-                <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
-                <td className="px-3 py-3">
-                  {p.status !== 'pago' && (
-                    <button onClick={() => marcarPago(p.id)} className="text-azul text-xs hover:underline">
-                      Pagar
-                    </button>
-                  )}
-                </td>
+      <div className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-borda">
+                <th className="px-3 py-3 w-8"></th>
+                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Data</th>
+                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Cliente</th>
+                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider hidden sm:table-cell">Itens</th>
+                <th className="px-3 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Total</th>
+                <th className="px-3 py-3 text-center text-xs text-texto-fraco uppercase tracking-wider">Status</th>
+                <th className="px-3 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pedidos.map((p) => (
+                <tr key={p.id} className="border-b border-borda/50 hover:bg-fundo-elevado transition-colors">
+                  <td className="px-3 py-3">
+                    {p.status !== 'pago' && (
+                      <input
+                        type="checkbox"
+                        checked={selecionados.has(p.id)}
+                        onChange={() => toggleSelecionado(p.id)}
+                        className="accent-vermelho"
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">
+                    {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-3 py-3 font-medium text-white">{p.nome_guerra}</td>
+                  <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">
+                    {p.itens_resumo}
+                  </td>
+                  <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
+                  <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
+                  <td className="px-3 py-3">
+                    {p.status !== 'pago' && (
+                      <button onClick={() => marcarPago(p.id)} className="text-emerald-400 text-xs hover:underline">
+                        Pagar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {pedidos.length === 0 && (
-          <div className="text-center py-8 text-gray-400">Nenhum pedido</div>
+          <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>
         )}
       </div>
     </AdminLayout>

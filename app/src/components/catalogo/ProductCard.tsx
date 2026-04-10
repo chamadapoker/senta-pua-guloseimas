@@ -15,7 +15,7 @@ export function ProductCard({ produto }: { produto: Produto }) {
   const imgSrc = resolveImg(produto.imagem_url);
 
   return (
-    <div className="bg-fundo-card rounded-2xl overflow-hidden border border-borda hover:border-borda/80 transition-all group animate-slide-up">
+    <div className="rounded-2xl overflow-hidden border border-borda group animate-slide-up">
       <div className="relative aspect-square bg-fundo-elevado">
         {imgSrc ? (
           <img
@@ -24,7 +24,7 @@ export function ProductCard({ produto }: { produto: Produto }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl">
+          <div className="w-full h-full flex items-center justify-center text-5xl bg-fundo-card">
             {produto.emoji}
           </div>
         )}
@@ -33,14 +33,13 @@ export function ProductCard({ produto }: { produto: Produto }) {
             {quantidade}
           </span>
         )}
-        {/* Gradient overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-fundo-card to-transparent" />
       </div>
 
-      <div className="p-3">
-        <h3 className="font-medium text-texto text-sm leading-tight truncate">{produto.nome}</h3>
+      {/* Info bar azul */}
+      <div className="bg-azul p-3">
+        <h3 className="font-medium text-white text-sm leading-tight truncate">{produto.nome}</h3>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-dourado font-bold text-base font-display tracking-wide">
+          <span className="text-dourado-claro font-bold text-base font-display tracking-wide">
             R$ {produto.preco.toFixed(2).replace('.', ',')}
           </span>
           <button

@@ -22,15 +22,15 @@ export function Clientes() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-azul">Clientes</h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-display text-2xl text-white tracking-wider">CLIENTES</h1>
         <div className="flex gap-1">
           {(['todos', 'divida', 'dia'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFiltro(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                filtro === f ? 'bg-azul text-white' : 'bg-gray-100 text-gray-600'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                filtro === f ? 'bg-vermelho text-white' : 'bg-fundo-elevado text-texto-fraco border border-borda hover:text-texto'
               }`}
             >
               {f === 'todos' ? 'Todos' : f === 'divida' ? 'Com dívida' : 'Em dia'}
@@ -39,14 +39,14 @@ export function Clientes() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl overflow-hidden">
+      <div className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left">Nome</th>
-              <th className="px-4 py-2 text-right">Comprado</th>
-              <th className="px-4 py-2 text-right">Pago</th>
-              <th className="px-4 py-2 text-right">Saldo</th>
+          <thead>
+            <tr className="border-b border-borda">
+              <th className="px-4 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Nome</th>
+              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Comprado</th>
+              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Pago</th>
+              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Saldo</th>
             </tr>
           </thead>
           <tbody>
@@ -54,11 +54,11 @@ export function Clientes() {
               <tr
                 key={c.id}
                 onClick={() => navigate(`/admin/clientes/${c.id}`)}
-                className="border-t cursor-pointer hover:bg-gray-50"
+                className="border-b border-borda/50 cursor-pointer hover:bg-fundo-elevado transition-colors"
               >
-                <td className="px-4 py-3 font-medium">{c.nome_guerra}</td>
-                <td className="px-4 py-3 text-right">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
-                <td className="px-4 py-3 text-right">R$ {(c.total_pago ?? 0).toFixed(2)}</td>
+                <td className="px-4 py-3 font-medium text-white">{c.nome_guerra}</td>
+                <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
+                <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_pago ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right">
                   <Badge variant={(c.saldo_devedor ?? 0) > 0 ? 'danger' : 'success'}>
                     R$ {(c.saldo_devedor ?? 0).toFixed(2)}
@@ -69,7 +69,7 @@ export function Clientes() {
           </tbody>
         </table>
         {filtrados.length === 0 && (
-          <div className="text-center py-8 text-gray-400">Nenhum cliente encontrado</div>
+          <div className="text-center py-10 text-texto-fraco">Nenhum cliente encontrado</div>
         )}
       </div>
     </AdminLayout>

@@ -109,14 +109,14 @@ export function Produtos() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-azul">Produtos</h1>
+        <h1 className="font-display text-2xl text-white tracking-wider">Produtos</h1>
         <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {produtos.map((p) => (
-          <div key={p.id} className="bg-white rounded-xl overflow-hidden border border-gray-100">
-            <div className="aspect-video bg-gray-50 relative">
+          <div key={p.id} className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
+            <div className="aspect-video bg-fundo-elevado relative">
               {resolveImg(p.imagem_url) ? (
                 <img src={resolveImg(p.imagem_url)!} alt={p.nome} className="w-full h-full object-cover" />
               ) : (
@@ -132,12 +132,12 @@ export function Produtos() {
             <div className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-semibold text-sm">{p.emoji} {p.nome}</h3>
-                <span className="text-azul font-bold">R$ {p.preco.toFixed(2)}</span>
+                <span className="text-dourado font-bold">R$ {p.preco.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-gray-400">Ordem: {p.ordem}</span>
+                <span className="text-xs text-texto-fraco">Ordem: {p.ordem}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => abrirEditar(p)} className="text-azul text-xs font-medium hover:underline">Editar</button>
+                  <button onClick={() => abrirEditar(p)} className="text-dourado text-xs font-medium hover:underline">Editar</button>
                   <button onClick={() => excluir(p)} className="text-vermelho text-xs font-medium hover:underline">Excluir</button>
                 </div>
               </div>
@@ -156,16 +156,16 @@ export function Produtos() {
           <div className="flex flex-col items-center gap-2">
             <div
               onClick={() => !uploading && fileRef.current?.click()}
-              className="w-36 h-36 rounded-xl bg-gray-50 border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
+              className="w-36 h-36 rounded-xl bg-fundo-elevado border-2 border-dashed border-borda overflow-hidden flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
             >
               {uploading ? (
-                <div className="text-sm text-gray-400 animate-pulse">Enviando...</div>
+                <div className="text-sm text-texto-fraco animate-pulse">Enviando...</div>
               ) : previewImg ? (
                 <img src={previewImg} alt="Preview" className="w-full h-full object-cover" />
               ) : (
                 <div className="text-center px-2">
                   <div className="text-3xl mb-1">{emoji}</div>
-                  <span className="text-xs text-gray-400">Toque para enviar foto</span>
+                  <span className="text-xs text-texto-fraco">Toque para enviar foto</span>
                 </div>
               )}
             </div>
@@ -178,7 +178,7 @@ export function Produtos() {
             />
             {imagemUrl && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-green-600 font-medium">Foto salva</span>
+                <span className="text-xs text-emerald-400 font-medium">Foto salva</span>
                 <button
                   type="button"
                   onClick={() => { setPreviewImg(''); setImagemUrl(''); }}
@@ -192,31 +192,31 @@ export function Produtos() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full border rounded-lg px-3 py-2" required />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Emoji</label>
-              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full border rounded-lg px-3 py-2" required />
+              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" required />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Ordem</label>
-              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Sala</label>
               <select
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados' | 'geral')}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto"
               >
                 <option value="geral">Geral (ambas)</option>
                 <option value="oficiais">Sala dos Oficiais</option>
