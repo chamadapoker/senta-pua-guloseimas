@@ -1,0 +1,139 @@
+import { useEffect, useState } from 'react';
+import { AdminLayout } from '../../../components/Layout';
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { api } from '../../../services/api';
+
+interface Assinante {
+  id: string;
+  cliente_id: string;
+  nome_guerra: string;
+  tipo: string;
+  plano: string;
+  valor: number;
+  ativo: number;
+  total_pago: number;
+  total_devido: number;
+}
+
+export function CafeAssinantes() {
+  const [assinantes, setAssinantes] = useState<Assinante[]>([]);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [nomeGuerra, setNomeGuerra] = useState('');
+  const [tipo, setTipo] = useState('graduado');
+  const [plano, setPlano] = useState('mensal');
+  const [valor, setValor] = useState('');
+
+  const carregar = () => api.get<Assinante[]>('/api/cafe/admin/assinantes').then(setAssinantes);
+  useEffect(() => { carregar(); }, []);
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/api/cafe/admin/assinantes', {
+        nome_guerra: nomeGuerra.trim().toUpperCase(),
+        tipo,
+        plano,
+        valor: parseFloat(valor),
+      });
+      setModalAberto(false);
+      setNomeGuerra(''); setValor('');
+      carregar();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Erro');
+    }
+  };
+
+  const toggleAtivo = async (a: Assinante) => {
+    if (a.ativo) {
+      if (!confirm(`Desativar ${a.nome_guerra}?`)) return;
+      await api.delete(`/api/cafe/admin/assinantes/${a.id}`);
+    } else {
+      await api.put(`/api/cafe/admin/assinantes/${a.id}`, { ativo: 1 });
+    }
+    carregar();
+  };
+
+  return (
+    <AdminLayout>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="font-display text-2xl text-azul tracking-wider">ASSINANTES</h1>
+        <Button size="sm" onClick={() => setModalAberto(true)}>+ Adicionar</Button>
+      </div>
+
+      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-azul">
+                <th className="px-4 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
+                <th className="px-4 py-3 text-center text-xs text-white uppercase tracking-wider">Tipo</th>
+                <th className="px-4 py-3 text-center text-xs text-white uppercase tracking-wider">Plano</th>
+                <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Valor</th>
+                <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Pago</th>
+                <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Deve</th>
+                <th className="px-4 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assinantes.map((a) => (
+                <tr key={a.id} className={`border-b border-borda/50 hover:bg-fundo transition-colors ${!a.ativo ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-3 font-medium text-texto">{a.nome_guerra}</td>
+                  <td className="px-4 py-3 text-center text-xs capitalize">{a.tipo}</td>
+                  <td className="px-4 py-3 text-center text-xs capitalize">{a.plano}</td>
+                  <td className="px-4 py-3 text-right text-texto-fraco">R$ {a.valor.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-verde font-medium">R$ {a.total_pago.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={() => toggleAtivo(a)}
+                      className={`text-xs font-medium px-3 py-1 rounded-lg ${
+                        a.ativo ? 'text-vermelho bg-red-50 border border-red-200' : 'text-verde bg-green-50 border border-green-200'
+                      }`}>
+                      {a.ativo ? 'Desativar' : 'Ativar'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {assinantes.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhum assinante</div>}
+      </div>
+
+      <Modal open={modalAberto} onClose={() => setModalAberto(false)} title="Novo Assinante">
+        <form onSubmit={salvar} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Trigrama</label>
+            <input value={nomeGuerra} onChange={(e) => setNomeGuerra(e.target.value)}
+              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Tipo</label>
+              <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <option value="oficial">Oficial</option>
+                <option value="graduado">Graduado</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Plano</label>
+              <select value={plano} onChange={(e) => setPlano(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <option value="mensal">Mensal</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Valor (R$)</label>
+            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)}
+              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+          </div>
+          <Button type="submit" className="w-full">Adicionar</Button>
+        </form>
+      </Modal>
+    </AdminLayout>
+  );
+}
