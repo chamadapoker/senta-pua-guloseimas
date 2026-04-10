@@ -35,6 +35,7 @@ export function Produtos() {
   const [emoji, setEmoji] = useState('🍬');
   const [preco, setPreco] = useState('');
   const [ordem, setOrdem] = useState('0');
+  const [categoria, setCategoria] = useState<'oficiais' | 'graduados' | 'geral'>('geral');
   const [imagemUrl, setImagemUrl] = useState('');
   const [previewImg, setPreviewImg] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -45,14 +46,14 @@ export function Produtos() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0');
+    setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0'); setCategoria('geral');
     setImagemUrl(''); setPreviewImg('');
     setModalAberto(true);
   };
 
   const abrirEditar = (p: Produto) => {
     setEditando(p);
-    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem));
+    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral');
     setImagemUrl(p.imagem_url || '');
     setPreviewImg(resolveImg(p.imagem_url) || '');
     setModalAberto(true);
@@ -83,6 +84,7 @@ export function Produtos() {
       preco: parseFloat(preco),
       ordem: parseInt(ordem),
       imagem_url: imagemUrl || null,
+      categoria,
     };
     if (editando) {
       await api.put(`/api/produtos/${editando.id}`, data);
@@ -123,6 +125,9 @@ export function Produtos() {
               <div className="absolute top-2 right-2">
                 <Toggle checked={!!p.disponivel} onChange={() => toggleDisponivel(p)} />
               </div>
+              <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
+                {p.categoria === 'oficiais' ? '🎖️ Oficiais' : p.categoria === 'graduados' ? '⭐ Graduados' : '📋 Geral'}
+              </span>
             </div>
             <div className="p-3">
               <div className="flex items-center justify-between mb-1">
@@ -201,9 +206,23 @@ export function Produtos() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Ordem</label>
-            <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Ordem</label>
+              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Sala</label>
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados' | 'geral')}
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                <option value="geral">Geral (ambas)</option>
+                <option value="oficiais">Sala dos Oficiais</option>
+                <option value="graduados">Sala dos Graduados</option>
+              </select>
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={uploading}>

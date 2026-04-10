@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Home } from './pages/Home';
 import { Catalogo } from './pages/Catalogo';
 import { Checkout } from './pages/Checkout';
 import { PixPage } from './pages/PixPage';
@@ -31,7 +32,8 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Catalogo />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/catalogo/:categoria" element={<Catalogo />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/pix/:pedidoId" element={<PixPage />} />
         <Route path="/obrigado" element={<Obrigado />} />

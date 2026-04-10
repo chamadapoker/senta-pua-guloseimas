@@ -5,11 +5,24 @@ import type { Produto } from '../db/queries';
 
 const produtos = new Hono<AppType>();
 
-// Público: lista produtos disponíveis
+// Público: lista produtos disponíveis (filtro opcional por categoria)
 produtos.get('/', async (c) => {
-  const { results } = await c.env.DB.prepare(
-    'SELECT * FROM produtos WHERE disponivel = 1 ORDER BY ordem ASC'
-  ).all<Produto>();
+  const cat = c.req.query('categoria');
+  let sql = 'SELECT * FROM produtos WHERE disponivel = 1';
+  const params: string[] = [];
+
+  if (cat && cat !== 'geral') {
+    sql += " AND (categoria = ? OR categoria = 'geral')";
+    params.push(cat);
+  }
+
+  sql += ' ORDER BY ordem ASC';
+
+  const stmt = params.length
+    ? c.env.DB.prepare(sql).bind(...params)
+    : c.env.DB.prepare(sql);
+
+  const { results } = await stmt.all<Produto>();
   return c.json(results);
 });
 
@@ -23,15 +36,15 @@ produtos.get('/todos', authMiddleware, async (c) => {
 
 // Admin: criar produto
 produtos.post('/', authMiddleware, async (c) => {
-  const { nome, emoji, preco, disponivel, ordem, imagem_url } = await c.req.json();
+  const { nome, emoji, preco, disponivel, ordem, imagem_url, categoria } = await c.req.json();
 
   if (!nome || preco == null) {
     return c.json({ error: 'Nome e preço obrigatórios' }, 400);
   }
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO produtos (nome, emoji, preco, disponivel, ordem, imagem_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).bind(nome, emoji || '🍬', preco, disponivel ?? 1, ordem ?? 0, imagem_url || null).all<Produto>();
+    'INSERT INTO produtos (nome, emoji, preco, disponivel, ordem, imagem_url, categoria) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, emoji || '🍬', preco, disponivel ?? 1, ordem ?? 0, imagem_url || null, categoria || 'geral').all<Produto>();
 
   return c.json(results[0], 201);
 });
@@ -51,6 +64,7 @@ produtos.put('/:id', authMiddleware, async (c) => {
   if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
   if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
   if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
+  if ('categoria' in body) { fields.push('categoria = ?'); values.push(body.categoria); }
 
   if (!fields.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
 
