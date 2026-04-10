@@ -7,11 +7,13 @@ const pedidos = new Hono<AppType>();
 
 // Público: criar pedido
 pedidos.post('/', async (c) => {
-  const { nome_guerra, itens, metodo, whatsapp } = await c.req.json<{
+  const { nome_guerra, itens, metodo, whatsapp, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; quantidade: number }[];
     metodo: 'pix' | 'fiado';
     whatsapp?: string;
+    visitante?: boolean;
+    esquadrao_origem?: string;
   }>();
 
   if (!nome_guerra || !itens?.length || !metodo) {
@@ -29,11 +31,15 @@ pedidos.post('/', async (c) => {
 
   if (!cliente) {
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?) RETURNING id'
-    ).bind(nome_guerra, whatsapp || null).all<{ id: string }>();
+      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, ?) RETURNING id'
+    ).bind(nome_guerra, whatsapp || null, visitante ? 1 : 0, esquadrao_origem || null).all<{ id: string }>();
     cliente = { ...results[0], ativo: 1 };
   } else if (whatsapp) {
     await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE id = ?').bind(whatsapp, cliente.id).run();
+  }
+
+  if (cliente && visitante) {
+    await c.env.DB.prepare('UPDATE clientes SET visitante = 1, esquadrao_origem = ? WHERE id = ?').bind(esquadrao_origem || null, cliente.id).run();
   }
 
   // Buscar produtos e calcular total

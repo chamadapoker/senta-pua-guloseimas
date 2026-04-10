@@ -70,6 +70,9 @@ export function Clientes() {
                 <td className="px-4 py-3 font-medium text-texto">
                   {c.nome_guerra}
                   {!c.ativo && <span className="ml-2 text-[10px] text-vermelho font-medium">BLOQUEADO</span>}
+                  {c.visitante ? (
+                    <span className="ml-2 text-[10px] text-azul font-medium bg-azul/10 px-1.5 py-0.5 rounded">VISITANTE{c.esquadrao_origem ? ` - ${c.esquadrao_origem}` : ''}</span>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_pago ?? 0).toFixed(2)}</td>

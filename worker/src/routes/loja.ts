@@ -34,12 +34,14 @@ loja.get('/produtos', async (c) => {
 
 // PUBLIC: create order (same trigrama flow as guloseimas)
 loja.post('/pedidos', async (c) => {
-  const { nome_guerra, itens, metodo, whatsapp, parcelas } = await c.req.json<{
+  const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; variacao_id?: string; quantidade: number }[];
     metodo: 'pix' | 'fiado';
     whatsapp?: string;
     parcelas?: number;
+    visitante?: boolean;
+    esquadrao_origem?: string;
   }>();
 
   if (!nome_guerra || !itens?.length || !metodo) {
@@ -57,9 +59,11 @@ loja.post('/pedidos', async (c) => {
 
   if (!cliente) {
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?) RETURNING id'
-    ).bind(nome_guerra, whatsapp || null).all<{ id: string }>();
+      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, ?) RETURNING id'
+    ).bind(nome_guerra, whatsapp || null, visitante ? 1 : 0, esquadrao_origem || null).all<{ id: string }>();
     cliente = { ...results[0], ativo: 1 };
+  } else if (visitante) {
+    await c.env.DB.prepare('UPDATE clientes SET visitante = 1, esquadrao_origem = ? WHERE id = ?').bind(esquadrao_origem || null, cliente.id).run();
   }
 
   // Calculate total

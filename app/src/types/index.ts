@@ -13,6 +13,8 @@ export interface Produto {
 export interface Cliente {
   id: string;
   nome_guerra: string;
+  visitante?: number;
+  esquadrao_origem?: string;
   ativo: number;
   created_at: string;
   total_comprado?: number;

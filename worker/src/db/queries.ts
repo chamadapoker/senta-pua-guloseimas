@@ -14,6 +14,8 @@ export interface Produto {
 export interface Cliente {
   id: string;
   nome_guerra: string;
+  visitante: number;
+  esquadrao_origem: string | null;
   ativo: number;
   created_at: string;
 }

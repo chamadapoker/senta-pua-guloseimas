@@ -53,8 +53,9 @@ cafe.get('/admin/assinantes', authMiddleware, async (c) => {
 
 // ADMIN: add subscriber
 cafe.post('/admin/assinantes', authMiddleware, async (c) => {
-  const { nome_guerra, tipo, plano, valor } = await c.req.json<{
+  const { nome_guerra, tipo, plano, valor, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string; tipo: string; plano: string; valor: number;
+    visitante?: boolean; esquadrao_origem?: string;
   }>();
 
   if (!nome_guerra || !tipo || !valor) return c.json({ error: 'Dados obrigatórios' }, 400);
@@ -66,9 +67,11 @@ cafe.post('/admin/assinantes', authMiddleware, async (c) => {
 
   if (!cliente) {
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra) VALUES (?) RETURNING id'
-    ).bind(nome_guerra).all<{ id: string }>();
+      'INSERT INTO clientes (nome_guerra, visitante, esquadrao_origem) VALUES (?, ?, ?) RETURNING id'
+    ).bind(nome_guerra, visitante ? 1 : 0, esquadrao_origem || null).all<{ id: string }>();
     cliente = results[0];
+  } else if (visitante) {
+    await c.env.DB.prepare('UPDATE clientes SET visitante = 1, esquadrao_origem = ? WHERE id = ?').bind(esquadrao_origem || null, cliente.id).run();
   }
 
   // Check if already subscribed

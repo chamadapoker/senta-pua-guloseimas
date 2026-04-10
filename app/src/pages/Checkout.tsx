@@ -16,6 +16,8 @@ export function Checkout() {
   const { itens, total, alterarQuantidade, remover, limpar } = useCart();
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [visitante, setVisitante] = useState(false);
+  const [esquadraoOrigem, setEsquadraoOrigem] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const navigate = useNavigate();
@@ -33,6 +35,8 @@ export function Checkout() {
     const erroTrigrama = validarTrigrama(nomeGuerra);
     if (erroTrigrama) { setErro(erroTrigrama); return; }
     if (metodo === 'fiado' && !whatsapp.trim()) { setErro('Informe seu WhatsApp para pagamento posterior'); return; }
+    if (visitante && !esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
+    if (visitante && !whatsapp.trim()) { setErro('WhatsApp obrigatório para visitantes'); return; }
 
     setLoading(true); setErro('');
     try {
@@ -42,6 +46,10 @@ export function Checkout() {
         metodo,
       };
       if (metodo === 'fiado' && whatsapp.trim()) body.whatsapp = whatsapp.trim();
+      if (visitante) {
+        body.visitante = true;
+        body.esquadrao_origem = esquadraoOrigem.trim().toUpperCase();
+      }
       const data = await api.post<{ pedido_id: string }>('/api/pedidos', body);
       limpar();
       if (metodo === 'pix') navigate(`/pix/${data.pedido_id}`);
@@ -107,6 +115,29 @@ export function Checkout() {
             className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
           />
         </div>
+      </div>
+
+      {/* Militar Visitante */}
+      <div className="bg-white rounded-xl border border-borda p-4 mb-6">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" checked={visitante} onChange={(e) => setVisitante(e.target.checked)}
+            className="w-5 h-5 accent-azul rounded" />
+          <div>
+            <span className="text-sm font-medium">Militar visitante / Em missão</span>
+            <p className="text-xs text-texto-fraco">Marque se você é de outro esquadrão</p>
+          </div>
+        </label>
+        {visitante && (
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Esquadrão de origem</label>
+            <input
+              type="text" value={esquadraoOrigem}
+              onChange={(e) => setEsquadraoOrigem(e.target.value.toUpperCase())}
+              placeholder="Ex: 2/5 GAV, 1/14 GAV..."
+              className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+            />
+          </div>
+        )}
       </div>
 
       {erro && <p className="text-vermelho text-sm mb-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}

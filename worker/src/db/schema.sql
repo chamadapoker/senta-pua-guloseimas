@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS clientes (
   id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   nome_guerra TEXT NOT NULL UNIQUE COLLATE NOCASE,
   whatsapp    TEXT DEFAULT NULL,
+  visitante   INTEGER NOT NULL DEFAULT 0,
+  esquadrao_origem TEXT DEFAULT NULL,
   ativo       INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
