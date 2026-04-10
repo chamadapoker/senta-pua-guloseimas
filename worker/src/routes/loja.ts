@@ -207,9 +207,10 @@ loja.post('/admin/produtos', authMiddleware, async (c) => {
   // Insert variations
   if (variacoes?.length) {
     for (const v of variacoes) {
+      const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
       batch.push(c.env.DB.prepare(
         'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
-      ).bind(produto.id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0));
+      ).bind(produto.id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0));
     }
   }
 
@@ -254,11 +255,12 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     // Delete old variations and insert new ones
     await c.env.DB.prepare('DELETE FROM loja_variacoes WHERE produto_id = ?').bind(id).run();
     if (body.variacoes.length) {
-      const batch = body.variacoes.map((v: any) =>
-        c.env.DB.prepare(
+      const batch = body.variacoes.map((v: any) => {
+        const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
+        return c.env.DB.prepare(
           'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
-        ).bind(id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0)
-      );
+        ).bind(id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0);
+      });
       await c.env.DB.batch(batch);
     }
   }

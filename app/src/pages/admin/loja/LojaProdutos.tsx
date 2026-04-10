@@ -150,15 +150,19 @@ export function LojaProdutos() {
       disponivel: disponivel ? 1 : 0,
       imagem_url: imagens[0]?.url || null,
       imagens: imagens.map((img, i) => ({ url: img.url, ordem: i })),
-      variacoes: variacoes.map(v => ({ nome: v.nome, tamanho: v.tamanho || null, cor: v.cor || null, estoque: v.estoque })),
+      variacoes: variacoes.map(v => ({ nome: v.nome || `${v.tamanho || ''}${v.cor ? ' - ' + v.cor : ''}`.trim(), tamanho: v.tamanho || null, cor: v.cor || null, estoque: v.estoque ?? 0 })),
     };
-    if (editando) {
-      await api.put(`/api/loja/admin/produtos/${editando.id}`, data);
-    } else {
-      await api.post('/api/loja/admin/produtos', data);
+    try {
+      if (editando) {
+        await api.put(`/api/loja/admin/produtos/${editando.id}`, data);
+      } else {
+        await api.post('/api/loja/admin/produtos', data);
+      }
+      setModalAberto(false);
+      carregar();
+    } catch (err) {
+      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'));
     }
-    setModalAberto(false);
-    carregar();
   };
 
   const toggleDisponivel = async (p: LojaProduto) => {
