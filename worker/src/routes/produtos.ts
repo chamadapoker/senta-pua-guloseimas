@@ -81,6 +81,8 @@ produtos.put('/:id', authMiddleware, async (c) => {
 // Admin: remover produto
 produtos.delete('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  // Desvincular itens de pedido antes de excluir
+  await c.env.DB.prepare('UPDATE itens_pedido SET produto_id = NULL WHERE produto_id = ?').bind(id).run();
   const result = await c.env.DB.prepare('DELETE FROM produtos WHERE id = ?').bind(id).run();
 
   if (!result.meta.changes) return c.json({ error: 'Produto não encontrado' }, 404);
