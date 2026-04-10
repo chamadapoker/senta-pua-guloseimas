@@ -7,5 +7,9 @@ binding  = "DB"
 database_name = "senta-pua-db"
 database_id   = "e469b470-8e61-4eeb-966d-20eafc0a2ac5"
 
+[[r2_buckets]]
+binding      = "IMAGES"
+bucket_name  = "senta-pua-images"
+
 [vars]
 AMBIENTE = "production"

@@ -6,9 +6,11 @@ import clientes from './routes/clientes';
 import pedidos from './routes/pedidos';
 import pix from './routes/pix';
 import dashboard from './routes/dashboard';
+import images from './routes/images';
 
 export type Env = {
   DB: D1Database;
+  IMAGES: R2Bucket;
   JWT_SECRET: string;
   ADMIN_EMAIL: string;
   ADMIN_SENHA: string;
@@ -35,6 +37,7 @@ app.route('/api/clientes', clientes);
 app.route('/api/pedidos', pedidos);
 app.route('/api/pix', pix);
 app.route('/api/admin', dashboard);
+app.route('/api/images', images);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 

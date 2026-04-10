@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS produtos (
   preco       REAL NOT NULL,
   disponivel  INTEGER NOT NULL DEFAULT 1,
   ordem       INTEGER NOT NULL DEFAULT 0,
+  imagem_url  TEXT DEFAULT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

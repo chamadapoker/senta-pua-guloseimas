@@ -17,9 +17,23 @@ export function Catalogo() {
 
   return (
     <PublicLayout>
-      <h1 className="text-xl font-bold text-azul mb-4">Cardápio</h1>
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-azul">Cardápio</h1>
+        <p className="text-sm text-gray-500">Escolha seus itens e feche o pedido</p>
+      </div>
+
       {loading ? (
-        <div className="text-center py-10 text-gray-400">Carregando...</div>
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-5 bg-gray-200 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 pb-24">
           {produtos.map((p) => (
@@ -27,6 +41,7 @@ export function Catalogo() {
           ))}
         </div>
       )}
+
       <CartBar />
     </PublicLayout>
   );

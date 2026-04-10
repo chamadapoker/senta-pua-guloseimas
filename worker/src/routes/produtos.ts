@@ -23,15 +23,15 @@ produtos.get('/todos', authMiddleware, async (c) => {
 
 // Admin: criar produto
 produtos.post('/', authMiddleware, async (c) => {
-  const { nome, emoji, preco, disponivel, ordem } = await c.req.json();
+  const { nome, emoji, preco, disponivel, ordem, imagem_url } = await c.req.json();
 
   if (!nome || preco == null) {
     return c.json({ error: 'Nome e preço obrigatórios' }, 400);
   }
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO produtos (nome, emoji, preco, disponivel, ordem) VALUES (?, ?, ?, ?, ?) RETURNING *'
-  ).bind(nome, emoji || '🍬', preco, disponivel ?? 1, ordem ?? 0).all<Produto>();
+    'INSERT INTO produtos (nome, emoji, preco, disponivel, ordem, imagem_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, emoji || '🍬', preco, disponivel ?? 1, ordem ?? 0, imagem_url || null).all<Produto>();
 
   return c.json(results[0], 201);
 });
@@ -39,13 +39,13 @@ produtos.post('/', authMiddleware, async (c) => {
 // Admin: editar produto
 produtos.put('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { nome, emoji, preco, disponivel, ordem } = await c.req.json();
+  const { nome, emoji, preco, disponivel, ordem, imagem_url } = await c.req.json();
 
   const { results } = await c.env.DB.prepare(
     `UPDATE produtos SET nome = COALESCE(?, nome), emoji = COALESCE(?, emoji),
      preco = COALESCE(?, preco), disponivel = COALESCE(?, disponivel),
-     ordem = COALESCE(?, ordem) WHERE id = ? RETURNING *`
-  ).bind(nome, emoji, preco, disponivel, ordem, id).all<Produto>();
+     ordem = COALESCE(?, ordem), imagem_url = COALESCE(?, imagem_url) WHERE id = ? RETURNING *`
+  ).bind(nome, emoji, preco, disponivel, ordem, imagem_url, id).all<Produto>();
 
   if (!results.length) return c.json({ error: 'Produto não encontrado' }, 404);
   return c.json(results[0]);

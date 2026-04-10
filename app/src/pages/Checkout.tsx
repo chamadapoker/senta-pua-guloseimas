@@ -6,6 +6,12 @@ import { NomeGuerraInput } from '../components/checkout/NomeGuerraInput';
 import { useCart } from '../hooks/useCart';
 import { api } from '../services/api';
 
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+function resolveImg(url: string | null): string | null {
+  if (!url) return null;
+  return url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
+}
+
 export function Checkout() {
   const { itens, total, alterarQuantidade, remover, limpar } = useCart();
   const [nomeGuerra, setNomeGuerra] = useState('');
@@ -48,7 +54,11 @@ export function Checkout() {
       <div className="space-y-3 mb-6">
         {itens.map(({ produto, quantidade }) => (
           <div key={produto.id} className="bg-white rounded-lg p-3 flex items-center gap-3">
-            <span className="text-2xl">{produto.emoji}</span>
+            {resolveImg(produto.imagem_url) ? (
+              <img src={resolveImg(produto.imagem_url)!} alt={produto.nome} className="w-12 h-12 rounded-lg object-cover" />
+            ) : (
+              <span className="text-2xl">{produto.emoji}</span>
+            )}
             <div className="flex-1">
               <div className="font-medium text-sm">{produto.nome}</div>
               <div className="text-azul text-sm font-bold">R$ {(produto.preco * quantidade).toFixed(2)}</div>

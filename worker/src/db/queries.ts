@@ -5,6 +5,7 @@ export interface Produto {
   preco: number;
   disponivel: number;
   ordem: number;
+  imagem_url: string | null;
   created_at: string;
 }
 
