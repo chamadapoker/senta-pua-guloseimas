@@ -1,14 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-azul flex items-center justify-center border-2 border-dourado">
-        <span className="text-dourado font-bold text-sm">PK</span>
-      </div>
+      <img src="/logo.png" alt="1/10 GpAv" className="w-10 h-10 object-contain" />
       <div className="leading-tight">
         <div className="font-bold text-white text-sm">Senta Pua</div>
-        <div className="text-gray-300 text-xs">Guloseimas</div>
+        <div className="text-red-300 text-xs font-medium">Guloseimas</div>
       </div>
     </div>
   );
@@ -17,10 +16,10 @@ function Logo() {
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-bg">
-      <header className="bg-azul border-b-[3px] border-vermelho">
+      <header className="bg-gradient-to-r from-gray-900 to-azul border-b-[3px] border-vermelho">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/"><Logo /></Link>
-          <span className="text-dourado text-xs font-medium">Esquadrão Poker</span>
+          <span className="text-red-300 text-xs font-medium">1/10 GpAv</span>
         </div>
       </header>
       <main className="max-w-lg mx-auto px-4 py-4">{children}</main>
@@ -30,6 +29,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { logout } = useAuth();
 
   const navLinks = [
     { to: '/admin', label: 'Dashboard' },
@@ -40,10 +40,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="bg-azul border-b-[3px] border-vermelho">
+      <header className="bg-gradient-to-r from-gray-900 to-azul border-b-[3px] border-vermelho">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/admin"><Logo /></Link>
-          <Link to="/" className="text-gray-300 text-xs hover:text-white">Ver catálogo</Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="text-gray-300 text-xs hover:text-white">Catálogo</Link>
+            <button onClick={logout} className="text-red-300 text-xs hover:text-white">Sair</button>
+          </div>
         </div>
       </header>
       <nav className="bg-white border-b">
