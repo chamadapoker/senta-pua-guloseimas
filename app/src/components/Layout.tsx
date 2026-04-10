@@ -48,7 +48,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Logo />
           <div className="flex items-center gap-4">
-            <Link to="/" className="text-azul text-sm font-medium px-3 py-2 rounded-lg bg-azul/10 hover:bg-azul/20 transition-colors">Catálogo</Link>
             <button onClick={logout} className="text-vermelho text-sm font-medium px-3 py-2 rounded-lg bg-vermelho/10 hover:bg-vermelho/20 transition-colors">Sair</button>
           </div>
         </div>
