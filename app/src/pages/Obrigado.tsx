@@ -9,7 +9,7 @@ const FRASES_PIX = [
 ];
 
 const FRASES_FIADO = [
-  'Um Leão sempre paga suas dívidas. Já um Sentauro... não sabemos!',
+  'Um Leão sempre paga suas dívidas. Já um Centauro... não sabemos!',
   'Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.',
   'Dívida registrada, piloto. Um Senta Pua sempre paga o que deve!',
   'Anotado no fiado! Mas lembre-se: aqui não tem anistia.',
