@@ -7,10 +7,11 @@ const pedidos = new Hono<AppType>();
 
 // Público: criar pedido
 pedidos.post('/', async (c) => {
-  const { nome_guerra, itens, metodo } = await c.req.json<{
+  const { nome_guerra, itens, metodo, whatsapp } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; quantidade: number }[];
     metodo: 'pix' | 'fiado';
+    whatsapp?: string;
   }>();
 
   if (!nome_guerra || !itens?.length || !metodo) {
@@ -24,9 +25,11 @@ pedidos.post('/', async (c) => {
 
   if (!cliente) {
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra) VALUES (?) RETURNING id'
-    ).bind(nome_guerra).all<{ id: string }>();
+      'INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?) RETURNING id'
+    ).bind(nome_guerra, whatsapp || null).all<{ id: string }>();
     cliente = results[0];
+  } else if (whatsapp) {
+    await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE id = ?').bind(whatsapp, cliente.id).run();
   }
 
   // Buscar produtos e calcular total

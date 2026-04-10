@@ -15,6 +15,7 @@ function resolveImg(url: string | null): string | null {
 export function Checkout() {
   const { itens, total, alterarQuantidade, remover, limpar } = useCart();
   const [nomeGuerra, setNomeGuerra] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const navigate = useNavigate();
@@ -24,21 +25,40 @@ export function Checkout() {
     return null;
   }
 
+  const validarTrigrama = (nome: string) => {
+    const limpo = nome.trim();
+    if (limpo.length < 3) return 'Trigrama deve ter no mínimo 3 letras';
+    if (!/^[A-Za-zÀ-ú\s]+$/.test(limpo)) return 'Trigrama deve conter apenas letras';
+    return null;
+  };
+
   const enviarPedido = async (metodo: 'pix' | 'fiado') => {
-    if (!nomeGuerra.trim()) { setErro('Informe seu nome de guerra'); return; }
+    const erroTrigrama = validarTrigrama(nomeGuerra);
+    if (erroTrigrama) { setErro(erroTrigrama); return; }
+
+    if (metodo === 'fiado' && !whatsapp.trim()) {
+      setErro('Informe seu WhatsApp para pagamento posterior');
+      return;
+    }
+
     setLoading(true);
     setErro('');
     try {
-      const data = await api.post<{ pedido_id: string; total: number; status: string }>('/api/pedidos', {
-        nome_guerra: nomeGuerra.trim(),
+      const body: Record<string, unknown> = {
+        nome_guerra: nomeGuerra.trim().toUpperCase(),
         itens: itens.map((i) => ({ produto_id: i.produto.id, quantidade: i.quantidade })),
         metodo,
-      });
+      };
+      if (metodo === 'fiado' && whatsapp.trim()) {
+        body.whatsapp = whatsapp.trim();
+      }
+
+      const data = await api.post<{ pedido_id: string; total: number; status: string }>('/api/pedidos', body);
       limpar();
       if (metodo === 'pix') {
         navigate(`/pix/${data.pedido_id}`);
       } else {
-        navigate('/obrigado', { state: { nome: nomeGuerra } });
+        navigate('/obrigado', { state: { nome: nomeGuerra.toUpperCase() } });
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao enviar pedido');
@@ -88,8 +108,24 @@ export function Checkout() {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nome de guerra</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Trigrama (nome de guerra)
+        </label>
         <NomeGuerraInput value={nomeGuerra} onChange={setNomeGuerra} />
+        <p className="text-xs text-gray-400 mt-1">Mínimo 3 letras — seu trigrama militar</p>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          WhatsApp <span className="text-gray-400">(obrigatório para fiado)</span>
+        </label>
+        <input
+          type="tel"
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
+          placeholder="Ex: 62999998888"
+          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-azul"
+        />
       </div>
 
       {erro && <p className="text-vermelho text-sm mb-3">{erro}</p>}
