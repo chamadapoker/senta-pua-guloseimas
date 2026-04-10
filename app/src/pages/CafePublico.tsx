@@ -16,9 +16,10 @@ interface Devedor {
   pagamento_ids?: string[];
 }
 
-const PIX_EMAIL_CAFE = 'lucas.gabriel.s.vilela@gmail.com';
-const PIX_NOME_CAFE = 'LUCAS GABRIEL S VILELA';
-const WHATSAPP_CAFE = '5512981302277';
+const PIX_POR_SALA = {
+  oficial: { chave: 'sandraobregon12@gmail.com', nome: 'SENTA PUA GULOSE', whatsapp: '5532998352670' },
+  graduado: { chave: 'lucas.gabriel.s.vilela@gmail.com', nome: 'LUCAS GABRIEL S VILELA', whatsapp: '5512981302277' },
+};
 
 type Sala = null | 'oficial' | 'graduado';
 
@@ -37,22 +38,25 @@ export function CafePublico() {
 
   useEffect(() => { carregar(); }, []);
 
+  const pixInfo = sala ? PIX_POR_SALA[sala] : null;
+
   const copiarPix = async (valor: number, id: string) => {
-    const payload = gerarPayloadPix(valor, { chave: PIX_EMAIL_CAFE, nome: PIX_NOME_CAFE });
+    if (!pixInfo) return;
+    const payload = gerarPayloadPix(valor, { chave: pixInfo.chave, nome: pixInfo.nome });
     await navigator.clipboard.writeText(payload);
     setCopiadoCodigo(id);
     setTimeout(() => setCopiadoCodigo(null), 3000);
   };
 
   const copiarChave = async () => {
-    await navigator.clipboard.writeText(PIX_EMAIL_CAFE);
+    if (!pixInfo) return;
+    await navigator.clipboard.writeText(pixInfo.chave);
     setCopiadoChave(true);
     setTimeout(() => setCopiadoChave(false), 3000);
   };
 
   const jaPaguei = async (d: Devedor) => {
     setConfirmando(d.id);
-    // Confirmar pagamentos pendentes desse assinante
     if (d.pagamento_ids?.length) {
       for (const pid of d.pagamento_ids) {
         try {
@@ -65,8 +69,9 @@ export function CafePublico() {
   };
 
   const enviarComprovante = (d: Devedor) => {
+    if (!pixInfo) return;
     const msg = `Comprovante Caixinha do Cafe\nMilitar: ${d.nome_guerra}\nValor: R$ ${d.total_devido.toFixed(2)}\n\n_Anexe o comprovante do banco abaixo_`;
-    window.open(`https://wa.me/${WHATSAPP_CAFE}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${pixInfo.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const filtrados = devedores.filter(d => d.tipo === sala);
@@ -133,9 +138,9 @@ export function CafePublico() {
       {/* PIX info */}
       <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
         <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX para pagamento (e-mail)</p>
-        <p className="text-[10px] text-texto-fraco mb-3 text-center">{PIX_NOME_CAFE}</p>
+        <p className="text-[10px] text-texto-fraco mb-3 text-center">{pixInfo?.nome}</p>
         <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-          <span className="text-sm text-azul font-medium truncate">{PIX_EMAIL_CAFE}</span>
+          <span className="text-sm text-azul font-medium truncate">{pixInfo?.chave}</span>
           <button onClick={copiarChave} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors">
             {copiadoChave ? (
               <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
