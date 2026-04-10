@@ -52,7 +52,7 @@ export function Pedidos() {
               key={s}
               onClick={() => setFiltroStatus(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-fundo-elevado text-texto-fraco border border-borda hover:text-texto'
+                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
               }`}
             >
               {s || 'Todos'}
@@ -68,7 +68,7 @@ export function Pedidos() {
         </div>
       )}
 
-      <div className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
+      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -84,7 +84,7 @@ export function Pedidos() {
             </thead>
             <tbody>
               {pedidos.map((p) => (
-                <tr key={p.id} className="border-b border-borda/50 hover:bg-fundo-elevado transition-colors">
+                <tr key={p.id} className="border-b border-borda/50 hover:bg-fundo transition-colors">
                   <td className="px-3 py-3">
                     {p.status !== 'pago' && (
                       <input
@@ -98,7 +98,7 @@ export function Pedidos() {
                   <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">
                     {new Date(p.created_at).toLocaleDateString('pt-BR')}
                   </td>
-                  <td className="px-3 py-3 font-medium text-white">{p.nome_guerra}</td>
+                  <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
                   <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">
                     {p.itens_resumo}
                   </td>
@@ -106,7 +106,7 @@ export function Pedidos() {
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
                   <td className="px-3 py-3">
                     {p.status !== 'pago' && (
-                      <button onClick={() => marcarPago(p.id)} className="text-emerald-400 text-xs hover:underline">
+                      <button onClick={() => marcarPago(p.id)} className="text-verde text-xs hover:underline">
                         Pagar
                       </button>
                     )}

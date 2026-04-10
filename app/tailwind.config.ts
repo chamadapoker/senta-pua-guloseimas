@@ -5,18 +5,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        azul: '#1a3a6b',
-        'azul-claro': '#2456a4',
-        vermelho: '#c0392b',
-        'vermelho-escuro': '#922020',
+        azul: '#1d3fa0',
+        'azul-claro': '#2b52c4',
+        vermelho: '#d42b2b',
         dourado: '#d4a843',
-        'dourado-claro': '#f0d68a',
-        fundo: '#0f1117',
-        'fundo-card': '#1a1d28',
-        'fundo-elevado': '#242837',
-        texto: '#e8e8ed',
-        'texto-fraco': '#8a8d9b',
-        borda: '#2a2e3d',
+        verde: '#16a34a',
+        'verde-escuro': '#15803d',
+        fundo: '#eef1f5',
+        'fundo-card': '#ffffff',
+        'fundo-elevado': '#f5f7fa',
+        texto: '#1a1a1a',
+        'texto-fraco': '#6b7280',
+        borda: '#e2e5eb',
       },
       fontFamily: {
         display: ['"Bebas Neue"', 'Impact', 'sans-serif'],
@@ -25,12 +25,10 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
-        'glow': 'glow 2s ease-in-out infinite alternate',
       },
       keyframes: {
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
         slideUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-        glow: { '0%': { boxShadow: '0 0 5px rgba(192,57,43,0.3)' }, '100%': { boxShadow: '0 0 20px rgba(192,57,43,0.6)' } },
       },
     },
   },

@@ -53,7 +53,7 @@ export function ClienteExtrato() {
           {cliente.nome_guerra.slice(0, 2).toUpperCase()}
         </div>
         <div>
-          <h1 className="font-display text-xl text-white tracking-wider">{cliente.nome_guerra}</h1>
+          <h1 className="font-display text-xl text-texto tracking-wider">{cliente.nome_guerra}</h1>
           {saldoDevedor > 0 && (
             <span className="text-vermelho font-bold font-display tracking-wide">Deve R$ {saldoDevedor.toFixed(2)}</span>
           )}
@@ -68,7 +68,7 @@ export function ClienteExtrato() {
 
       <div className="space-y-3">
         {pedidos.map((p) => (
-          <div key={p.id} className="bg-fundo-card rounded-xl p-4 border border-borda">
+          <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-texto-fraco">
                 {new Date(p.created_at).toLocaleDateString('pt-BR')}

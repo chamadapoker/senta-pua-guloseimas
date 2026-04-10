@@ -13,14 +13,10 @@ export function Toggle({ checked, onChange, disabled }: ToggleProps) {
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        checked ? 'bg-emerald-500' : 'bg-fundo-elevado border border-borda'
+        checked ? 'bg-verde' : 'bg-gray-300'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
-      <span
-        className={`inline-block h-4 w-4 rounded-full bg-white transition-transform shadow ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
+      <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform shadow ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
 }

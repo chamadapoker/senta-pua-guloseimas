@@ -29,18 +29,18 @@ export function Catalogo() {
   return (
     <PublicLayout>
       <div className="mb-5">
-        <h1 className="font-display text-2xl text-white tracking-wider">{titulo}</h1>
+        <h1 className="font-display text-2xl text-azul tracking-wider">{titulo}</h1>
         <p className="text-sm text-texto-fraco mt-1">Toque no + para adicionar ao pedido</p>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-fundo-card rounded-2xl overflow-hidden border border-borda animate-pulse">
-              <div className="aspect-square bg-fundo-elevado" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 bg-fundo-elevado rounded w-3/4" />
-                <div className="h-5 bg-fundo-elevado rounded w-1/2" />
+            <div key={i} className="bg-white rounded-2xl overflow-hidden border border-borda animate-pulse">
+              <div className="aspect-square bg-gray-100" />
+              <div className="bg-azul/30 p-3 space-y-2">
+                <div className="h-4 bg-white/20 rounded w-3/4" />
+                <div className="h-5 bg-white/20 rounded w-1/2" />
               </div>
             </div>
           ))}

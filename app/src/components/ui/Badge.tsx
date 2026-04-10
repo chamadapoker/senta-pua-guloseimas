@@ -4,10 +4,10 @@ interface BadgeProps {
 }
 
 const variants = {
-  success: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  danger: 'bg-vermelho/15 text-red-400 border border-vermelho/20',
-  warning: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-  neutral: 'bg-fundo-elevado text-texto-fraco border border-borda',
+  success: 'bg-green-50 text-green-700 border border-green-200',
+  danger: 'bg-red-50 text-red-700 border border-red-200',
+  warning: 'bg-amber-50 text-amber-700 border border-amber-200',
+  neutral: 'bg-gray-50 text-gray-600 border border-gray-200',
 };
 
 export function Badge({ variant, children }: BadgeProps) {

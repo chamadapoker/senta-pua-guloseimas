@@ -116,7 +116,7 @@ export function Produtos() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {produtos.map((p) => (
           <div key={p.id} className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
-            <div className="aspect-video bg-fundo-elevado relative">
+            <div className="aspect-video bg-fundo relative">
               {resolveImg(p.imagem_url) ? (
                 <img src={resolveImg(p.imagem_url)!} alt={p.nome} className="w-full h-full object-cover" />
               ) : (
@@ -156,7 +156,7 @@ export function Produtos() {
           <div className="flex flex-col items-center gap-2">
             <div
               onClick={() => !uploading && fileRef.current?.click()}
-              className="w-36 h-36 rounded-xl bg-fundo-elevado border-2 border-dashed border-borda overflow-hidden flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
+              className="w-36 h-36 rounded-xl bg-fundo border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
             >
               {uploading ? (
                 <div className="text-sm text-texto-fraco animate-pulse">Enviando...</div>
@@ -192,31 +192,31 @@ export function Produtos() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Emoji</label>
-              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" required />
+              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Ordem</label>
-              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Sala</label>
               <select
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados' | 'geral')}
-                className="w-full bg-fundo-elevado border border-borda rounded-lg px-3 py-2 text-texto"
+                className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
               >
                 <option value="geral">Geral (ambas)</option>
                 <option value="oficiais">Sala dos Oficiais</option>

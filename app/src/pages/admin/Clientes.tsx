@@ -30,7 +30,7 @@ export function Clientes() {
               key={f}
               onClick={() => setFiltro(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtro === f ? 'bg-vermelho text-white' : 'bg-fundo-elevado text-texto-fraco border border-borda hover:text-texto'
+                filtro === f ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
               }`}
             >
               {f === 'todos' ? 'Todos' : f === 'divida' ? 'Com dívida' : 'Em dia'}
@@ -39,7 +39,7 @@ export function Clientes() {
         </div>
       </div>
 
-      <div className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
+      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-borda">
@@ -54,9 +54,9 @@ export function Clientes() {
               <tr
                 key={c.id}
                 onClick={() => navigate(`/admin/clientes/${c.id}`)}
-                className="border-b border-borda/50 cursor-pointer hover:bg-fundo-elevado transition-colors"
+                className="border-b border-borda/50 cursor-pointer hover:bg-fundo transition-colors"
               >
-                <td className="px-4 py-3 font-medium text-white">{c.nome_guerra}</td>
+                <td className="px-4 py-3 font-medium text-texto">{c.nome_guerra}</td>
                 <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_pago ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right">
