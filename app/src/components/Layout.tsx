@@ -80,12 +80,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-white border-b border-borda sticky top-0 z-30 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Logo adminMode />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
             {SISTEMAS_ADMIN.map((s) => (
               <Link
                 key={s.id}
                 to={s.id === 'guloseimas' ? '/admin' : `/admin/${s.id}`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`flex items-center px-2 py-1 rounded-lg text-[10px] sm:text-xs sm:px-3 sm:py-1.5 font-medium transition-all ${
                   sistemaAtual === s.id
                     ? 'bg-azul text-white shadow-sm'
                     : 'bg-fundo text-texto-fraco hover:bg-gray-200'

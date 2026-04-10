@@ -111,7 +111,7 @@ export function CafeMensalidades() {
 
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="bg-azul">
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>

@@ -127,13 +127,13 @@ export function XimbocaEvento() {
         </div>
         <div className="divide-y divide-borda/50">
           {participantes.map(p => (
-            <div key={p.id} className="px-4 py-3 flex items-center justify-between">
+            <div key={p.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
               <div>
                 <span className="font-medium text-texto text-sm">{p.nome}</span>
                 <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-fundo text-texto-fraco">{p.categoria_consumo}</span>
                 <span className="text-xs text-texto-fraco ml-2">R$ {valorEfetivo(p).toFixed(2)}</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 flex-wrap justify-end">
                 {p.status === 'pago' ? (
                   <Badge variant="success">Pago</Badge>
                 ) : (
