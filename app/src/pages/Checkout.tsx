@@ -146,9 +146,11 @@ export function Checkout() {
         <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={loading}>
           Pagar via PIX
         </Button>
-        <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
-          Anotar no Fiado
-        </Button>
+        {!visitante && (
+          <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
+            Anotar no Fiado
+          </Button>
+        )}
       </div>
     </PublicLayout>
   );
