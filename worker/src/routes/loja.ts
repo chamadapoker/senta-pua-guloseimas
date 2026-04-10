@@ -172,8 +172,8 @@ loja.post('/admin/produtos', authMiddleware, async (c) => {
   if (variacoes?.length) {
     const batch = variacoes.map((v: any) =>
       c.env.DB.prepare(
-        'INSERT INTO loja_variacoes (produto_id, nome, estoque) VALUES (?, ?, ?)'
-      ).bind(produto.id, v.nome, v.estoque ?? 0)
+        'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
+      ).bind(produto.id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0)
     );
     await c.env.DB.batch(batch);
   }
@@ -210,8 +210,8 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     if (body.variacoes.length) {
       const batch = body.variacoes.map((v: any) =>
         c.env.DB.prepare(
-          'INSERT INTO loja_variacoes (produto_id, nome, estoque) VALUES (?, ?, ?)'
-        ).bind(id, v.nome, v.estoque ?? 0)
+          'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
+        ).bind(id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0)
       );
       await c.env.DB.batch(batch);
     }

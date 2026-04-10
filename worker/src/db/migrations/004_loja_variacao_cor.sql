@@ -1,0 +1,2 @@
+ALTER TABLE loja_variacoes ADD COLUMN tamanho TEXT DEFAULT NULL;
+ALTER TABLE loja_variacoes ADD COLUMN cor TEXT DEFAULT NULL;
