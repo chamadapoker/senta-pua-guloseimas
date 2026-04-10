@@ -19,9 +19,14 @@ loja.get('/produtos', async (c) => {
     `SELECT * FROM loja_variacoes WHERE produto_id IN (${placeholders})`
   ).bind(...produtoIds).all();
 
+  const { results: imagens } = await c.env.DB.prepare(
+    `SELECT * FROM loja_produto_imagens WHERE produto_id IN (${placeholders}) ORDER BY ordem ASC`
+  ).bind(...produtoIds).all();
+
   const produtosComVariacoes = produtos.map((p: any) => ({
     ...p,
     variacoes: variacoes.filter((v: any) => v.produto_id === p.id),
+    imagens: imagens.filter((i: any) => i.produto_id === p.id),
   }));
 
   return c.json(produtosComVariacoes);
@@ -151,15 +156,20 @@ loja.get('/admin/produtos', authMiddleware, async (c) => {
     `SELECT * FROM loja_variacoes WHERE produto_id IN (${placeholders})`
   ).bind(...produtoIds).all();
 
+  const { results: imagens } = await c.env.DB.prepare(
+    `SELECT * FROM loja_produto_imagens WHERE produto_id IN (${placeholders}) ORDER BY ordem ASC`
+  ).bind(...produtoIds).all();
+
   return c.json(produtos.map((p: any) => ({
     ...p,
     variacoes: variacoes.filter((v: any) => v.produto_id === p.id),
+    imagens: imagens.filter((i: any) => i.produto_id === p.id),
   })));
 });
 
 // ADMIN: create product
 loja.post('/admin/produtos', authMiddleware, async (c) => {
-  const { nome, descricao, preco, imagem_url, ordem, variacoes } = await c.req.json();
+  const { nome, descricao, preco, imagem_url, ordem, variacoes, imagens } = await c.req.json();
   if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
 
   const { results } = await c.env.DB.prepare(
@@ -168,15 +178,27 @@ loja.post('/admin/produtos', authMiddleware, async (c) => {
 
   const produto = results[0] as any;
 
+  const batch = [];
+
   // Insert variations
   if (variacoes?.length) {
-    const batch = variacoes.map((v: any) =>
-      c.env.DB.prepare(
+    for (const v of variacoes) {
+      batch.push(c.env.DB.prepare(
         'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
-      ).bind(produto.id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0)
-    );
-    await c.env.DB.batch(batch);
+      ).bind(produto.id, v.nome, v.tamanho || null, v.cor || null, v.estoque ?? 0));
+    }
   }
+
+  // Insert images (max 3)
+  if (imagens?.length) {
+    for (let i = 0; i < Math.min(imagens.length, 3); i++) {
+      batch.push(c.env.DB.prepare(
+        'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
+      ).bind(produto.id, imagens[i].url, i));
+    }
+  }
+
+  if (batch.length) await c.env.DB.batch(batch);
 
   return c.json(produto, 201);
 });
@@ -217,6 +239,19 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     }
   }
 
+  // Update images if provided
+  if (body.imagens) {
+    await c.env.DB.prepare('DELETE FROM loja_produto_imagens WHERE produto_id = ?').bind(id).run();
+    if (body.imagens.length) {
+      const batch = body.imagens.slice(0, 3).map((img: any, i: number) =>
+        c.env.DB.prepare(
+          'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
+        ).bind(id, img.url, i)
+      );
+      await c.env.DB.batch(batch);
+    }
+  }
+
   const produto = await c.env.DB.prepare('SELECT * FROM loja_produtos WHERE id = ?').bind(id).first();
   return c.json(produto);
 });
@@ -225,6 +260,7 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
 loja.delete('/admin/produtos/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   await c.env.DB.prepare('DELETE FROM loja_variacoes WHERE produto_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM loja_produto_imagens WHERE produto_id = ?').bind(id).run();
   const result = await c.env.DB.prepare('DELETE FROM loja_produtos WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Produto não encontrado' }, 404);
   return c.json({ ok: true });

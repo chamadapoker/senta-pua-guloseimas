@@ -47,6 +47,12 @@ interface Variacao {
   estoque: number;
 }
 
+interface Imagem {
+  id?: string;
+  url: string;
+  ordem: number;
+}
+
 interface LojaProduto {
   id: string;
   nome: string;
@@ -56,6 +62,7 @@ interface LojaProduto {
   disponivel: number;
   ordem: number;
   variacoes: Variacao[];
+  imagens: Imagem[];
 }
 
 export function LojaProdutos() {
@@ -67,8 +74,7 @@ export function LojaProdutos() {
   const [preco, setPreco] = useState('');
   const [ordem, setOrdem] = useState('0');
   const [disponivel, setDisponivel] = useState(true);
-  const [imagemUrl, setImagemUrl] = useState('');
-  const [previewImg, setPreviewImg] = useState('');
+  const [imagens, setImagens] = useState<{ url: string; preview: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
@@ -81,7 +87,7 @@ export function LojaProdutos() {
   const abrirNovo = () => {
     setEditando(null);
     setNome(''); setDescricao(''); setPreco(''); setOrdem('0'); setDisponivel(true);
-    setImagemUrl(''); setPreviewImg('');
+    setImagens([]);
     setVariacoes([]); setNovaTamanho(''); setNovaCor('');
     setModalAberto(true);
   };
@@ -89,8 +95,7 @@ export function LojaProdutos() {
   const abrirEditar = (p: LojaProduto) => {
     setEditando(p);
     setNome(p.nome); setDescricao(p.descricao); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setDisponivel(!!p.disponivel);
-    setImagemUrl(p.imagem_url || '');
-    setPreviewImg(resolveImg(p.imagem_url) || '');
+    setImagens((p.imagens || []).map(i => ({ url: i.url, preview: resolveImg(i.url) || i.url })));
     setVariacoes(p.variacoes || []);
     setNovaTamanho(''); setNovaCor('');
     setModalAberto(true);
@@ -98,19 +103,22 @@ export function LojaProdutos() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setPreviewImg(URL.createObjectURL(file));
+    if (!file || imagens.length >= 3) return;
+    const preview = URL.createObjectURL(file);
     setUploading(true);
     try {
       const url = await uploadImagem(file);
-      setImagemUrl(url);
+      setImagens(prev => [...prev, { url, preview }]);
     } catch {
       alert('Erro ao enviar imagem. Tente novamente.');
-      setPreviewImg(resolveImg(imagemUrl) || '');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
     }
+  };
+
+  const removerImagem = (index: number) => {
+    setImagens(prev => prev.filter((_, i) => i !== index));
   };
 
   const adicionarVariacao = () => {
@@ -140,7 +148,8 @@ export function LojaProdutos() {
       preco: parseFloat(preco),
       ordem: parseInt(ordem),
       disponivel: disponivel ? 1 : 0,
-      imagem_url: imagemUrl || null,
+      imagem_url: imagens[0]?.url || null,
+      imagens: imagens.map((img, i) => ({ url: img.url, ordem: i })),
       variacoes: variacoes.map(v => ({ nome: v.nome, tamanho: v.tamanho || null, cor: v.cor || null, estoque: v.estoque })),
     };
     if (editando) {
@@ -176,16 +185,23 @@ export function LojaProdutos() {
         {produtos.map((p) => (
           <div key={p.id} className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
             <div className="aspect-video bg-fundo relative">
-              {resolveImg(p.imagem_url) ? (
+              {p.imagens?.length > 0 ? (
+                <img src={resolveImg(p.imagens[0].url)!} alt={p.nome} className="w-full h-full object-cover" />
+              ) : resolveImg(p.imagem_url) ? (
                 <img src={resolveImg(p.imagem_url)!} alt={p.nome} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-5xl text-texto-fraco/30">
+                <div className="w-full h-full flex items-center justify-center text-texto-fraco/30">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
               )}
               <div className="absolute top-2 right-2">
                 <Toggle checked={!!p.disponivel} onChange={() => toggleDisponivel(p)} />
               </div>
+              {p.imagens?.length > 1 && (
+                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
+                  {p.imagens.length} fotos
+                </div>
+              )}
             </div>
             <div className="bg-azul p-3">
               <div className="flex items-center justify-between mb-1">
@@ -231,30 +247,36 @@ export function LojaProdutos() {
 
       <Modal open={modalAberto} onClose={() => setModalAberto(false)} title={editando ? 'Editar Produto' : 'Novo Produto'}>
         <form onSubmit={salvar} className="space-y-4">
-          {/* Upload de imagem */}
-          <div className="flex flex-col items-center gap-2">
-            <div
-              onClick={() => !uploading && fileRef.current?.click()}
-              className="w-36 h-36 rounded-xl bg-fundo border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
-            >
-              {uploading ? (
-                <div className="text-sm text-texto-fraco animate-pulse">Enviando...</div>
-              ) : previewImg ? (
-                <img src={previewImg} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center px-2">
-                  <svg className="w-8 h-8 mx-auto text-texto-fraco/50 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  <span className="text-xs text-texto-fraco">Toque para enviar foto</span>
+          {/* Upload de imagens (até 3) */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Fotos do produto (até 3)</label>
+            <div className="flex gap-2 flex-wrap">
+              {imagens.map((img, i) => (
+                <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-borda">
+                  <img src={img.preview} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removerImagem(i)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-vermelho text-white rounded-full flex items-center justify-center text-xs">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              ))}
+              {imagens.length < 3 && (
+                <div
+                  onClick={() => !uploading && fileRef.current?.click()}
+                  className="w-24 h-24 rounded-xl bg-fundo border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
+                >
+                  {uploading ? (
+                    <div className="text-[10px] text-texto-fraco animate-pulse">Enviando...</div>
+                  ) : (
+                    <div className="text-center">
+                      <svg className="w-6 h-6 mx-auto text-texto-fraco/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>
+                      <span className="text-[10px] text-texto-fraco">Foto</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            {imagemUrl && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-emerald-400 font-medium">Foto salva</span>
-                <button type="button" onClick={() => { setPreviewImg(''); setImagemUrl(''); }} className="text-xs text-vermelho hover:underline">Remover</button>
-              </div>
-            )}
           </div>
 
           <div>
