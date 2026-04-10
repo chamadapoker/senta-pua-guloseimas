@@ -72,13 +72,13 @@ export function Pedidos() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-borda">
+              <tr className="bg-azul">
                 <th className="px-3 py-3 w-8"></th>
-                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Data</th>
-                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Cliente</th>
-                <th className="px-3 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider hidden sm:table-cell">Itens</th>
-                <th className="px-3 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Total</th>
-                <th className="px-3 py-3 text-center text-xs text-texto-fraco uppercase tracking-wider">Status</th>
+                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Data</th>
+                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
+                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider hidden sm:table-cell">Itens</th>
+                <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Total</th>
+                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
                 <th className="px-3 py-3"></th>
               </tr>
             </thead>

@@ -35,7 +35,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { to: '/admin', label: 'Dashboard' },
     { to: '/admin/pedidos', label: 'Pedidos' },
     { to: '/admin/produtos', label: 'Produtos' },
-    { to: '/admin/clientes', label: 'Clientes' },
+    { to: '/admin/clientes', label: 'Militares' },
   ];
 
   return (

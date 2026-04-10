@@ -23,7 +23,7 @@ export function Clientes() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-2xl text-white tracking-wider">CLIENTES</h1>
+        <h1 className="font-display text-2xl text-white tracking-wider">MILITARES</h1>
         <div className="flex gap-1">
           {(['todos', 'divida', 'dia'] as const).map((f) => (
             <button
@@ -42,11 +42,11 @@ export function Clientes() {
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-borda">
-              <th className="px-4 py-3 text-left text-xs text-texto-fraco uppercase tracking-wider">Nome</th>
-              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Comprado</th>
-              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Pago</th>
-              <th className="px-4 py-3 text-right text-xs text-texto-fraco uppercase tracking-wider">Saldo</th>
+            <tr className="bg-azul">
+              <th className="px-4 py-3 text-left text-xs text-white uppercase tracking-wider">Trigrama</th>
+              <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Comprado</th>
+              <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Pago</th>
+              <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Saldo</th>
             </tr>
           </thead>
           <tbody>

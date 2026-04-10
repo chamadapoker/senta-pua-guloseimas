@@ -4,7 +4,7 @@ import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import type { DashboardStats } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -13,7 +13,10 @@ export function Dashboard() {
 
   if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
 
-  const chartData = stats.ultimos_7_dias.map((d) => ({ data: d.data.slice(5), total: d.total }));
+  const chartData = stats.ultimos_7_dias.map((d) => ({
+    data: new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
+    total: d.total,
+  }));
 
   return (
     <AdminLayout>
@@ -28,30 +31,53 @@ export function Dashboard() {
 
       {chartData.length > 0 && (
         <div className="bg-white rounded-xl p-5 mb-6 border border-borda shadow-sm">
-          <h2 className="text-sm font-medium text-texto-fraco uppercase tracking-wider mb-4">Últimos 7 dias</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData}>
-              <XAxis dataKey="data" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                formatter={(v: number) => [`R$ ${v.toFixed(2)}`, 'Total']}
-                contentStyle={{ background: '#fff', border: '1px solid #e2e5eb', borderRadius: '8px' }}
-                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+          <h2 className="text-sm font-medium text-texto-fraco uppercase tracking-wider mb-4">Vendas — Últimos 7 dias</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e5eb" vertical={false} />
+              <XAxis
+                dataKey="data"
+                tick={{ fontSize: 11, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
               />
-              <Bar dataKey="total" radius={[6, 6, 0, 0]}>
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={i === chartData.length - 1 ? '#16a34a' : '#1d3fa0'} />
-                ))}
-              </Bar>
+              <YAxis
+                tick={{ fontSize: 11, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `R$${v}`}
+              />
+              <Tooltip
+                formatter={(v: number) => [`R$ ${v.toFixed(2)}`, 'Vendas']}
+                contentStyle={{
+                  background: '#1d3fa0',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: '#fff',
+                  fontSize: '13px',
+                  padding: '8px 14px',
+                }}
+                labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}
+                itemStyle={{ color: '#fff' }}
+                cursor={{ fill: 'rgba(29,63,160,0.06)' }}
+              />
+              <Bar
+                dataKey="total"
+                fill="#1d3fa0"
+                radius={[8, 8, 0, 0]}
+                maxBarSize={40}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {stats.devedores.length > 0 && (
-        <div className="bg-white rounded-xl p-5 border border-borda shadow-sm">
-          <h2 className="text-sm font-medium text-texto-fraco uppercase tracking-wider mb-4">Devedores</h2>
-          <div className="space-y-1">
+        <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
+          <div className="bg-azul px-5 py-3">
+            <h2 className="text-sm font-medium text-white uppercase tracking-wider">Devedores</h2>
+          </div>
+          <div className="p-4 space-y-1">
             {stats.devedores.map((d) => (
               <div key={d.cliente_id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-fundo transition-colors border-b border-borda last:border-0">
                 <div>

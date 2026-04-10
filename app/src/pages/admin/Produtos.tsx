@@ -129,16 +129,16 @@ export function Produtos() {
                 {p.categoria === 'oficiais' ? '🎖️ Oficiais' : p.categoria === 'graduados' ? '⭐ Graduados' : '📋 Geral'}
               </span>
             </div>
-            <div className="p-3">
+            <div className="bg-azul p-3">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-sm">{p.emoji} {p.nome}</h3>
-                <span className="text-dourado font-bold">R$ {p.preco.toFixed(2)}</span>
+                <h3 className="font-semibold text-sm text-white">{p.emoji} {p.nome}</h3>
+                <span className="text-white/90 font-bold">R$ {p.preco.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-texto-fraco">Ordem: {p.ordem}</span>
+                <span className="text-xs text-white/60">Ordem: {p.ordem}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => abrirEditar(p)} className="text-dourado text-xs font-medium hover:underline">Editar</button>
-                  <button onClick={() => excluir(p)} className="text-vermelho text-xs font-medium hover:underline">Excluir</button>
+                  <button onClick={() => abrirEditar(p)} className="text-white/80 text-xs font-medium hover:underline">Editar</button>
+                  <button onClick={() => excluir(p)} className="text-red-300 text-xs font-medium hover:underline">Excluir</button>
                 </div>
               </div>
             </div>
