@@ -17,7 +17,7 @@ export function Obrigado() {
         </div>
         <h1 className="font-display text-3xl text-white tracking-wider mb-2">PEDIDO REGISTRADO</h1>
         <p className="text-dourado font-display text-xl tracking-wide">{nome}</p>
-        <div className="w-12 h-[2px] bg-gradient-to-r from-transparent via-dourado to-transparent mx-auto mt-4 mb-8" />
+        <div className="w-12 h-[2px] bg-dourado mx-auto mt-4 mb-8" />
         <p className="text-texto-fraco mb-8">Valeu pela preferência, piloto!</p>
         <Button size="lg" onClick={() => navigate('/')}>Novo pedido</Button>
       </div>

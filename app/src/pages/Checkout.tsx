@@ -90,7 +90,7 @@ export function Checkout() {
         ))}
       </div>
 
-      <div className="bg-gradient-to-r from-azul to-azul-claro rounded-2xl p-5 mb-6 text-center border border-azul-claro/30">
+      <div className="bg-azul rounded-2xl p-5 mb-6 text-center border border-azul-claro/30">
         <div className="text-xs text-white/60 uppercase tracking-widest">Total</div>
         <div className="font-display text-3xl text-white tracking-wider mt-1">R$ {total().toFixed(2)}</div>
       </div>

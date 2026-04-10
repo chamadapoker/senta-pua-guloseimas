@@ -9,7 +9,7 @@ export function Home() {
           <img src="/logo.png" alt="1/10 GpAv" className="w-28 h-28 mx-auto mb-5 object-contain drop-shadow-2xl" />
           <h1 className="font-display text-4xl text-white tracking-wider">SENTA PUA</h1>
           <p className="font-display text-xl text-dourado tracking-[0.15em] mt-1">GULOSEIMAS</p>
-          <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-vermelho to-transparent mx-auto mt-4" />
+          <div className="w-16 h-[2px] bg-vermelho mx-auto mt-4" />
           <p className="text-texto-fraco text-sm mt-4">Escolha sua sala para acessar o cardápio</p>
         </div>
 

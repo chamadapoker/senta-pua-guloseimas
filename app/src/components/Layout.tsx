@@ -17,7 +17,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-fundo">
       <header className="bg-fundo-card/80 backdrop-blur-md border-b border-borda sticky top-0 z-30">
-        <div className="h-[2px] bg-gradient-to-r from-vermelho via-dourado to-vermelho" />
+        <div className="h-[2px] bg-vermelho" />
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <Logo />
           <span className="text-[10px] text-texto-fraco tracking-widest uppercase">1/10 GpAv</span>
@@ -42,7 +42,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-fundo">
       <header className="bg-fundo-card/80 backdrop-blur-md border-b border-borda sticky top-0 z-30">
-        <div className="h-[2px] bg-gradient-to-r from-vermelho via-dourado to-vermelho" />
+        <div className="h-[2px] bg-vermelho" />
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Logo />
           <div className="flex items-center gap-4">
