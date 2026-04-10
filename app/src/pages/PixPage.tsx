@@ -20,7 +20,7 @@ export function PixPage() {
   }, [pedido]);
 
   useEffect(() => {
-    if (pago) { const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'PILOTO' } }), 2000); return () => clearTimeout(t); }
+    if (pago) { const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } }), 2000); return () => clearTimeout(t); }
   }, [pago, navigate]);
 
   const copiarCodigo = async () => { if (!pixPayload) return; await navigator.clipboard.writeText(pixPayload); setCopiadoCodigo(true); setTimeout(() => setCopiadoCodigo(false), 3000); };

@@ -45,7 +45,7 @@ export function Checkout() {
       const data = await api.post<{ pedido_id: string }>('/api/pedidos', body);
       limpar();
       if (metodo === 'pix') navigate(`/pix/${data.pedido_id}`);
-      else navigate('/obrigado', { state: { nome: nomeGuerra.toUpperCase() } });
+      else navigate('/obrigado', { state: { nome: nomeGuerra.toUpperCase(), metodo } });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao enviar pedido');
     } finally { setLoading(false); }
