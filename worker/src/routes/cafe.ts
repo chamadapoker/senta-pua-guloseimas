@@ -150,6 +150,8 @@ cafe.get('/admin/assinantes/:id/pagamentos', authMiddleware, async (c) => {
 });
 
 // ADMIN: generate monthly charges for all active subscribers
+// Mensal: referência = "2026-04" (mês)
+// Anual: referência = "2026" (ano) — gera só 1x por ano
 cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
   const { referencia, tipo } = await c.req.json<{ referencia: string; tipo?: string }>();
   if (!referencia) return c.json({ error: 'Referência (ex: 2026-04) obrigatória' }, 400);
@@ -157,22 +159,43 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
   let assinantesQuery = 'SELECT * FROM cafe_assinantes WHERE ativo = 1';
   if (tipo) assinantesQuery += ` AND tipo = '${tipo}'`;
 
-  const { results: assinantes } = await c.env.DB.prepare(assinantesQuery).all<{ id: string; valor: number }>();
+  const { results: assinantes } = await c.env.DB.prepare(assinantesQuery).all<{ id: string; valor: number; plano: string }>();
 
-  // Get all existing payments for this reference in one query
-  const { results: existentes } = await c.env.DB.prepare(
+  // Para cada assinante, determinar a referência correta
+  const refMensal = referencia; // ex: "2026-04"
+  const refAnual = referencia.substring(0, 4); // ex: "2026"
+
+  // Get existing payments for both references
+  const { results: existentesMensal } = await c.env.DB.prepare(
     'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
-  ).bind(referencia).all<{ assinante_id: string }>();
-  const jaGerados = new Set(existentes.map(e => e.assinante_id));
+  ).bind(refMensal).all<{ assinante_id: string }>();
+  const { results: existentesAnual } = await c.env.DB.prepare(
+    'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
+  ).bind(refAnual).all<{ assinante_id: string }>();
+
+  const jaGeradosMensal = new Set(existentesMensal.map(e => e.assinante_id));
+  const jaGeradosAnual = new Set(existentesAnual.map(e => e.assinante_id));
 
   const batch = [];
   for (const a of assinantes) {
-    if (!jaGerados.has(a.id)) {
-      batch.push(
-        c.env.DB.prepare(
-          'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
-        ).bind(a.id, referencia, a.valor)
-      );
+    if (a.plano === 'anual') {
+      // Anual: gera 1 cobrança por ano
+      if (!jaGeradosAnual.has(a.id)) {
+        batch.push(
+          c.env.DB.prepare(
+            'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
+          ).bind(a.id, refAnual, a.valor)
+        );
+      }
+    } else {
+      // Mensal: gera 1 cobrança por mês
+      if (!jaGeradosMensal.has(a.id)) {
+        batch.push(
+          c.env.DB.prepare(
+            'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
+          ).bind(a.id, refMensal, a.valor)
+        );
+      }
     }
   }
 

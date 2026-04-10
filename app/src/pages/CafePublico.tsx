@@ -234,10 +234,13 @@ export function CafePublico() {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium text-texto">{d.nome_guerra}</span>
-                        {d.plano === 'anual' && <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>}
-                        <span className="text-xs text-texto-fraco ml-2 capitalize">{d.tipo} - {d.plano}</span>
+                          {d.plano === 'anual' ? (
+                            <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>
+                          ) : (
+                            <span className="text-xs text-texto-fraco ml-2 capitalize">{d.tipo}</span>
+                          )}
                       </div>
-                      <Badge variant="success">Em dia</Badge>
+                      <Badge variant="success">{d.plano === 'anual' ? `Pago ate Dez/${new Date().getFullYear()}` : 'Em dia'}</Badge>
                     </div>
                   </div>
                 ))}

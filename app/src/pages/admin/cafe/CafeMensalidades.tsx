@@ -143,7 +143,7 @@ export function CafeMensalidades() {
             <label className="block text-sm font-medium mb-1">Referencia (mes)</label>
             <input type="month" value={referencia} onChange={(e) => setReferencia(e.target.value)}
               className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
-            <p className="text-xs text-texto-fraco mt-1">Gera uma cobranca para cada assinante ativo</p>
+            <p className="text-xs text-texto-fraco mt-1">Mensal: cobra o mes selecionado. Anual: cobra 1x por ano automaticamente.</p>
           </div>
           <Button className="w-full" onClick={gerarMensalidades} disabled={gerando}>
             {gerando ? 'Gerando...' : 'Gerar'}
