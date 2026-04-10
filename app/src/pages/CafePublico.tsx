@@ -20,7 +20,10 @@ const PIX_EMAIL_CAFE = 'lucas.gabriel.s.vilela@gmail.com';
 const PIX_NOME_CAFE = 'LUCAS GABRIEL S VILELA';
 const WHATSAPP_CAFE = '5512981302277';
 
+type Sala = null | 'oficial' | 'graduado';
+
 export function CafePublico() {
+  const [sala, setSala] = useState<Sala>(null);
   const [devedores, setDevedores] = useState<Devedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiadoCodigo, setCopiadoCodigo] = useState<string | null>(null);
@@ -66,13 +69,66 @@ export function CafePublico() {
     window.open(`https://wa.me/${WHATSAPP_CAFE}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const emDia = devedores.filter(d => d.total_devido === 0);
-  const devendo = devedores.filter(d => d.total_devido > 0);
+  const filtrados = devedores.filter(d => d.tipo === sala);
+  const emDia = filtrados.filter(d => d.total_devido === 0);
+  const devendo = filtrados.filter(d => d.total_devido > 0);
+
+  if (!sala) {
+    return (
+      <PublicLayout>
+        <div className="py-6 animate-fade-in">
+          <div className="text-center mb-8">
+            <h1 className="font-display text-2xl text-azul tracking-wider mb-2">CAIXINHA DO CAFE</h1>
+            <p className="text-sm text-texto-fraco">Escolha sua sala</p>
+          </div>
+
+          <div className="space-y-4 max-w-sm mx-auto">
+            <button
+              onClick={() => setSala('oficial')}
+              className="group w-full bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all duration-300 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7 text-azul" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg text-azul tracking-wide">SALA DOS OFICIAIS</h2>
+                </div>
+                <span className="text-texto-fraco group-hover:text-azul group-hover:translate-x-1 transition-all">&rarr;</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSala('graduado')}
+              className="group w-full bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all duration-300 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-vermelho/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7 text-vermelho" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg text-vermelho tracking-wide">SALA SO LANGE</h2>
+                </div>
+                <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-2">CAIXINHA DO CAFE</h1>
-      <p className="text-sm text-texto-fraco mb-6">Controle de mensalidade do cafe</p>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => setSala(null)} className="text-texto-fraco hover:text-texto transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <h1 className="font-display text-2xl text-azul tracking-wider">
+          {sala === 'oficial' ? 'OFICIAIS' : 'SO LANGE'}
+        </h1>
+      </div>
+      <p className="text-sm text-texto-fraco mb-6">Caixinha do cafe - {sala === 'oficial' ? 'Oficiais' : 'Graduados'}</p>
 
       {/* PIX info */}
       <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
