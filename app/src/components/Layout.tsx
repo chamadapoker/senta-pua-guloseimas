@@ -17,10 +17,10 @@ function getSistemaFromPath(pathname: string): SistemaAdmin {
   return 'guloseimas';
 }
 
-function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
+function Logo({ size = 'md', adminMode = false }: { size?: 'md' | 'lg'; adminMode?: boolean }) {
   const isMd = size === 'md';
   return (
-    <Link to="/" className="flex items-center gap-3 justify-center">
+    <Link to={adminMode ? '/admin' : '/'} className="flex items-center gap-3 justify-center">
       <img src="/logo.png" alt="1/10 GpAv" className={`${isMd ? 'w-10 h-10' : 'w-11 h-11'} object-contain`} />
       <div className={`font-display text-azul tracking-wider ${isMd ? 'text-xl' : 'text-2xl'}`}>APP RP POKER</div>
     </Link>
@@ -79,7 +79,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-fundo">
       <header className="bg-white border-b border-borda sticky top-0 z-30 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Logo />
+          <Logo adminMode />
           <div className="flex items-center gap-2">
             {SISTEMAS_ADMIN.map((s) => (
               <Link

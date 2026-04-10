@@ -363,22 +363,32 @@ export function LojaPublica() {
       <Modal open={!!produtoAberto} onClose={() => setProdutoAberto(null)} title={produtoAberto?.nome || ''}>
         {produtoAberto && (
           <div className="space-y-4">
-            {/* Image carousel */}
+            {/* Image carousel - swipe on mobile */}
             {(produtoAberto.imagens?.length > 0 || produtoAberto.imagem_url) && (
               <div className="relative">
-                <div className="aspect-square rounded-xl overflow-hidden bg-fundo">
-                  {produtoAberto.imagens?.length > 0 ? (
-                    <img src={resolveImg(produtoAberto.imagens[imgIndex]?.url)!} alt={produtoAberto.nome} className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={resolveImg(produtoAberto.imagem_url)!} alt={produtoAberto.nome} className="w-full h-full object-cover" />
-                  )}
-                </div>
-                {produtoAberto.imagens?.length > 1 && (
-                  <div className="flex justify-center gap-1.5 mt-2">
-                    {produtoAberto.imagens.map((_, i) => (
-                      <button key={i} onClick={() => setImgIndex(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${i === imgIndex ? 'bg-azul w-4' : 'bg-gray-300'}`} />
-                    ))}
+                {produtoAberto.imagens?.length > 1 ? (
+                  <>
+                    <div className="flex overflow-x-auto snap-x snap-mandatory rounded-xl gap-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const idx = Math.round(el.scrollLeft / el.offsetWidth);
+                        setImgIndex(idx);
+                      }}>
+                      {produtoAberto.imagens.map((img, i) => (
+                        <div key={i} className="aspect-square flex-shrink-0 w-full snap-center bg-fundo">
+                          <img src={resolveImg(img.url)!} alt={`${produtoAberto.nome} ${i + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-center gap-1.5 mt-2">
+                      {produtoAberto.imagens.map((_, i) => (
+                        <div key={i} className={`h-2 rounded-full transition-all ${i === imgIndex ? 'bg-azul w-4' : 'bg-gray-300 w-2'}`} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="aspect-square rounded-xl overflow-hidden bg-fundo">
+                    <img src={resolveImg(produtoAberto.imagens?.[0]?.url || produtoAberto.imagem_url)!} alt={produtoAberto.nome} className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
