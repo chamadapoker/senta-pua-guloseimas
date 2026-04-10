@@ -104,12 +104,12 @@ ximboca.delete('/eventos/:id', async (c) => {
 // Add participant
 ximboca.post('/eventos/:id/participantes', async (c) => {
   const evento_id = c.req.param('id');
-  const { nome, whatsapp } = await c.req.json();
+  const { nome, whatsapp, valor_individual, categoria_consumo } = await c.req.json();
   if (!nome) return c.json({ error: 'Nome obrigatório' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_participantes (evento_id, nome, whatsapp) VALUES (?, ?, ?) RETURNING *'
-  ).bind(evento_id, nome.trim().toUpperCase(), whatsapp || null).all();
+    'INSERT INTO ximboca_participantes (evento_id, nome, whatsapp, valor_individual, categoria_consumo) VALUES (?, ?, ?, ?, ?) RETURNING *'
+  ).bind(evento_id, nome.trim().toUpperCase(), whatsapp || null, valor_individual || null, categoria_consumo || 'padrao').all();
 
   return c.json(results[0], 201);
 });
@@ -135,12 +135,12 @@ ximboca.delete('/participantes/:id', async (c) => {
 // Add expense
 ximboca.post('/eventos/:id/despesas', async (c) => {
   const evento_id = c.req.param('id');
-  const { descricao, valor, categoria } = await c.req.json();
+  const { descricao, valor, categoria, quantidade, unidade } = await c.req.json();
   if (!descricao || valor == null) return c.json({ error: 'Descrição e valor obrigatórios' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_despesas (evento_id, descricao, valor, categoria) VALUES (?, ?, ?, ?) RETURNING *'
-  ).bind(evento_id, descricao, valor, categoria || 'geral').all();
+    'INSERT INTO ximboca_despesas (evento_id, descricao, valor, categoria, quantidade, unidade) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(evento_id, descricao, valor, categoria || 'geral', quantidade || null, unidade || null).all();
 
   return c.json(results[0], 201);
 });
@@ -150,6 +150,48 @@ ximboca.delete('/despesas/:id', async (c) => {
   const id = c.req.param('id');
   const result = await c.env.DB.prepare('DELETE FROM ximboca_despesas WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Despesa não encontrada' }, 404);
+  return c.json({ ok: true });
+});
+
+// Estoque CRUD
+ximboca.get('/estoque', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM ximboca_estoque ORDER BY nome ASC'
+  ).all();
+  return c.json(results);
+});
+
+ximboca.post('/estoque', async (c) => {
+  const { nome, quantidade, unidade, origem_evento } = await c.req.json();
+  if (!nome) return c.json({ error: 'Nome obrigatório' }, 400);
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO ximboca_estoque (nome, quantidade, unidade, origem_evento) VALUES (?, ?, ?, ?) RETURNING *'
+  ).bind(nome, quantidade ?? 0, unidade || 'un', origem_evento || null).all();
+  return c.json(results[0], 201);
+});
+
+ximboca.put('/estoque/:id', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
+  if ('quantidade' in body) { fields.push('quantidade = ?'); values.push(body.quantidade); }
+  if ('unidade' in body) { fields.push('unidade = ?'); values.push(body.unidade); }
+  if ('origem_evento' in body) { fields.push('origem_evento = ?'); values.push(body.origem_evento); }
+  if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
+  values.push(id);
+  const { results } = await c.env.DB.prepare(
+    `UPDATE ximboca_estoque SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+  ).bind(...values).all();
+  if (!results.length) return c.json({ error: 'Item não encontrado' }, 404);
+  return c.json(results[0]);
+});
+
+ximboca.delete('/estoque/:id', async (c) => {
+  const id = c.req.param('id');
+  const result = await c.env.DB.prepare('DELETE FROM ximboca_estoque WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return c.json({ error: 'Item não encontrado' }, 404);
   return c.json({ ok: true });
 });
 

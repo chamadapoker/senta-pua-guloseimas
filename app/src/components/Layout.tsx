@@ -65,6 +65,7 @@ const NAV_LINKS: Record<SistemaAdmin, { to: string; label: string }[]> = {
   ximboca: [
     { to: '/admin/ximboca', label: 'Dashboard' },
     { to: '/admin/ximboca/eventos', label: 'Eventos' },
+    { to: '/admin/ximboca/estoque', label: 'Estoque' },
   ],
 };
 

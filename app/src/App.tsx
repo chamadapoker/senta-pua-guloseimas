@@ -22,6 +22,7 @@ import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
 import { XimbocaDashboard } from './pages/admin/ximboca/XimbocaDashboard';
 import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
 import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
+import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { useAuth } from './hooks/useAuth';
@@ -71,6 +72,7 @@ export function App() {
         <Route path="/admin/ximboca" element={<AdminGuard><XimbocaDashboard /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos" element={<AdminGuard><XimbocaEventos /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
+        <Route path="/admin/ximboca/estoque" element={<AdminGuard><XimbocaEstoque /></AdminGuard>} />
         {/* Cafe Publico */}
         <Route path="/cafe" element={<CafePublico />} />
       </Routes>

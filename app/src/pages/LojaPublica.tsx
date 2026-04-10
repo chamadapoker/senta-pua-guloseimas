@@ -107,9 +107,9 @@ export function LojaPublica() {
 
   const totalCarrinho = carrinho.reduce((acc, i) => acc + i.produto.preco * i.quantidade, 0);
 
-  const enviarPedido = async (metodo: 'pix' | 'fiado') => {
+  const enviarPedido = async () => {
+    const metodo = 'pix' as const;
     if (nomeGuerra.trim().length < 3) { setErro('Trigrama deve ter no minimo 3 letras'); return; }
-    if (metodo === 'fiado' && !whatsapp.trim()) { setErro('Informe seu WhatsApp para fiado'); return; }
     if (visitante && !esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
     if (visitante && !whatsapp.trim()) { setErro('WhatsApp obrigatório para visitantes'); return; }
 
@@ -240,7 +240,7 @@ export function LojaPublica() {
             <NomeGuerraInput value={nomeGuerra} onChange={setNomeGuerra} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">WhatsApp <span className="text-texto-fraco/60">(obrigatorio para fiado)</span></label>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">WhatsApp <span className="text-texto-fraco/60">(opcional)</span></label>
             <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
               placeholder="Ex: 62999998888"
               className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul" />
@@ -286,14 +286,10 @@ export function LojaPublica() {
                 ))}
               </div>
             )}
-            <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={enviando}>
+            <Button variant="success" size="lg" className="w-full" onClick={enviarPedido} disabled={enviando}>
               {enviando ? 'Enviando...' : `Pagar PIX ${maxParcelas > 1 ? `${parcelas}x` : ''}`}
             </Button>
           </div>
-
-          <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={enviando}>
-            Anotar no Fiado
-          </Button>
         </div>
       </PublicLayout>
     );

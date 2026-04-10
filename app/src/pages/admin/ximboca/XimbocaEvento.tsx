@@ -6,8 +6,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
-interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; }
-interface Despesa { id: string; descricao: string; valor: number; categoria: string; created_at: string; }
+interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
+interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
 interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; descricao: string; status: string; }
 
 export function XimbocaEvento() {
@@ -20,12 +20,16 @@ export function XimbocaEvento() {
   const [modalPart, setModalPart] = useState(false);
   const [partNome, setPartNome] = useState('');
   const [partWhats, setPartWhats] = useState('');
+  const [partCategoria, setPartCategoria] = useState('padrao');
+  const [partValor, setPartValor] = useState('');
 
   // Add expense
   const [modalDesp, setModalDesp] = useState(false);
   const [despDescricao, setDespDescricao] = useState('');
   const [despValor, setDespValor] = useState('');
   const [despCategoria, setDespCategoria] = useState('geral');
+  const [despQtd, setDespQtd] = useState('');
+  const [despUnidade, setDespUnidade] = useState('');
 
   const carregar = () => {
     api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[] }>(`/api/ximboca/eventos/${id}`).then(d => {
@@ -39,8 +43,8 @@ export function XimbocaEvento() {
 
   const adicionarParticipante = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post(`/api/ximboca/eventos/${id}/participantes`, { nome: partNome, whatsapp: partWhats || null });
-    setModalPart(false); setPartNome(''); setPartWhats('');
+    await api.post(`/api/ximboca/eventos/${id}/participantes`, { nome: partNome, whatsapp: partWhats || null, valor_individual: parseFloat(partValor) || null, categoria_consumo: partCategoria });
+    setModalPart(false); setPartNome(''); setPartWhats(''); setPartCategoria('padrao'); setPartValor('');
     carregar();
   };
 
@@ -57,8 +61,8 @@ export function XimbocaEvento() {
 
   const adicionarDespesa = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post(`/api/ximboca/eventos/${id}/despesas`, { descricao: despDescricao, valor: parseFloat(despValor), categoria: despCategoria });
-    setModalDesp(false); setDespDescricao(''); setDespValor(''); setDespCategoria('geral');
+    await api.post(`/api/ximboca/eventos/${id}/despesas`, { descricao: despDescricao, valor: parseFloat(despValor), categoria: despCategoria, quantidade: parseFloat(despQtd) || null, unidade: despUnidade || null });
+    setModalDesp(false); setDespDescricao(''); setDespValor(''); setDespCategoria('geral'); setDespQtd(''); setDespUnidade('');
     carregar();
   };
 
@@ -70,8 +74,9 @@ export function XimbocaEvento() {
 
   if (!evento) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
 
+  const valorEfetivo = (p: Participante) => p.valor_individual ?? evento.valor_por_pessoa;
   const totalPagos = participantes.filter(p => p.status === 'pago').length;
-  const totalArrecadado = totalPagos * evento.valor_por_pessoa;
+  const totalArrecadado = participantes.filter(p => p.status === 'pago').reduce((a, p) => a + valorEfetivo(p), 0);
   const totalDespesas = despesas.reduce((a, d) => a + d.valor, 0);
   const saldo = totalArrecadado - totalDespesas;
 
@@ -117,15 +122,23 @@ export function XimbocaEvento() {
             <div key={p.id} className="px-4 py-3 flex items-center justify-between">
               <div>
                 <span className="font-medium text-texto text-sm">{p.nome}</span>
-                {p.whatsapp && <span className="text-xs text-texto-fraco ml-2">{p.whatsapp}</span>}
+                <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-fundo text-texto-fraco">{p.categoria_consumo}</span>
+                <span className="text-xs text-texto-fraco ml-2">R$ {valorEfetivo(p).toFixed(2)}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {p.status === 'pago' ? (
                   <Badge variant="success">Pago</Badge>
                 ) : (
-                  <button onClick={() => marcarPago(p.id)} className="text-xs font-medium px-2.5 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100">Pagar</button>
+                  <>
+                    <a href={`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className={`text-xs font-medium px-2 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100 ${!p.whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
+                      Cobrar
+                    </a>
+                    <button onClick={() => marcarPago(p.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">Pagar</button>
+                  </>
                 )}
-                <button onClick={() => removerParticipante(p.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                <button onClick={() => removerParticipante(p.id)} className="text-xs font-medium px-1.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
               </div>
             </div>
           ))}
@@ -144,6 +157,7 @@ export function XimbocaEvento() {
             <div key={d.id} className="px-4 py-3 flex items-center justify-between">
               <div>
                 <span className="text-sm text-texto">{d.descricao}</span>
+                {d.quantidade && <span className="text-xs text-texto-fraco ml-1">({d.quantidade} {d.unidade || 'un'})</span>}
                 <span className="text-[10px] text-texto-fraco ml-2 bg-fundo px-1.5 py-0.5 rounded">{d.categoria}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -166,6 +180,22 @@ export function XimbocaEvento() {
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp (opcional)</label>
             <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Consumo</label>
+              <select value={partCategoria} onChange={e => setPartCategoria(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <option value="padrao">Padrao (R$ {evento?.valor_por_pessoa.toFixed(2)})</option>
+                <option value="refri">So refri</option>
+                <option value="cerveja">Cerveja</option>
+                <option value="chopp">Chopp</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Valor (R$)</label>
+              <input type="number" step="0.01" value={partValor} onChange={e => setPartValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder={evento?.valor_por_pessoa.toFixed(2)} />
+              <p className="text-xs text-texto-fraco mt-0.5">Deixe vazio para valor padrao</p>
+            </div>
           </div>
           <Button type="submit" className="w-full">Adicionar</Button>
         </form>
@@ -192,6 +222,25 @@ export function XimbocaEvento() {
                 <option value="descartavel">Descartavel</option>
                 <option value="tempero">Tempero</option>
                 <option value="geral">Geral</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Quantidade</label>
+              <input type="number" step="0.01" value={despQtd} onChange={e => setDespQtd(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 10" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Unidade</label>
+              <select value={despUnidade} onChange={e => setDespUnidade(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <option value="">-</option>
+                <option value="kg">kg</option>
+                <option value="un">un</option>
+                <option value="L">L</option>
+                <option value="fardo">fardo</option>
+                <option value="pct">pct</option>
+                <option value="cx">cx</option>
+                <option value="saco">saco</option>
               </select>
             </div>
           </div>
