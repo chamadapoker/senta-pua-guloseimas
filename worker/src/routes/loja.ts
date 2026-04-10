@@ -245,8 +245,8 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     ).bind(...values).run();
   }
 
-  // Update variations if provided
-  if (body.variacoes) {
+  // Update variations if provided (only if array is explicitly sent with items or intentionally empty)
+  if (body.variacoes !== undefined && body.variacoes !== null) {
     // Delete old variations and insert new ones
     await c.env.DB.prepare('DELETE FROM loja_variacoes WHERE produto_id = ?').bind(id).run();
     if (body.variacoes.length) {
@@ -260,7 +260,7 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
   }
 
   // Update images if provided
-  if (body.imagens) {
+  if (body.imagens !== undefined && body.imagens !== null) {
     await c.env.DB.prepare('DELETE FROM loja_produto_imagens WHERE produto_id = ?').bind(id).run();
     if (body.imagens.length) {
       const batch = body.imagens.slice(0, 3).map((img: any, i: number) =>
