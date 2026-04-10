@@ -50,7 +50,7 @@ export function ProductCard({ produto }: { produto: Produto }) {
           ) : (
             <button
               onClick={() => adicionar(produto)}
-              className="w-9 h-9 rounded-xl bg-verde text-white flex items-center justify-center text-lg font-bold active:scale-90 transition-all hover:bg-verde-escuro shadow"
+              className="w-11 h-11 rounded-xl bg-verde text-white flex items-center justify-center text-xl font-bold active:scale-90 transition-all hover:bg-verde-escuro shadow"
             >
               +
             </button>

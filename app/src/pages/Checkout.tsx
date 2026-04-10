@@ -68,9 +68,9 @@ export function Checkout() {
               <div className="text-azul text-sm font-bold">R$ {(produto.preco * quantidade).toFixed(2)}</div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => alterarQuantidade(produto.id, quantidade - 1)} className="w-7 h-7 rounded-lg bg-fundo text-sm font-bold border border-borda">-</button>
+              <button onClick={() => alterarQuantidade(produto.id, quantidade - 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">-</button>
               <span className="w-6 text-center font-medium text-sm">{quantidade}</span>
-              <button onClick={() => alterarQuantidade(produto.id, quantidade + 1)} className="w-7 h-7 rounded-lg bg-fundo text-sm font-bold border border-borda">+</button>
+              <button onClick={() => alterarQuantidade(produto.id, quantidade + 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">+</button>
               <button onClick={() => remover(produto.id)} className="ml-1 text-gray-400 hover:text-vermelho text-lg">&times;</button>
             </div>
           </div>
@@ -79,7 +79,7 @@ export function Checkout() {
 
       <div className="bg-azul rounded-2xl p-5 mb-6 text-center shadow-sm">
         <div className="text-xs text-white/70 uppercase tracking-widest">Total</div>
-        <div className="font-display text-3xl text-white tracking-wider mt-1">R$ {total().toFixed(2)}</div>
+        <div className="font-display text-2xl sm:text-3xl text-white tracking-wider mt-1">R$ {total().toFixed(2)}</div>
       </div>
 
       <div className="space-y-4 mb-6">

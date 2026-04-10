@@ -40,7 +40,8 @@ export function Clientes() {
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
             <tr className="bg-azul">
               <th className="px-4 py-3 text-left text-xs text-white uppercase tracking-wider">Trigrama</th>
@@ -68,8 +69,9 @@ export function Clientes() {
             ))}
           </tbody>
         </table>
+        </div>
         {filtrados.length === 0 && (
-          <div className="text-center py-10 text-texto-fraco">Nenhum cliente encontrado</div>
+          <div className="text-center py-10 text-texto-fraco">Nenhum militar encontrado</div>
         )}
       </div>
     </AdminLayout>

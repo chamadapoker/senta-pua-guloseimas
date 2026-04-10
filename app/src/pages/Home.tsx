@@ -7,8 +7,8 @@ export function Home() {
       <div className="py-6 animate-fade-in">
         <div className="text-center mb-10">
           <img src="/logo.png" alt="1/10 GpAv" className="w-28 h-28 mx-auto mb-5 object-contain" />
-          <h1 className="font-display text-4xl text-azul tracking-wider">SENTA PUA</h1>
-          <p className="font-display text-xl text-vermelho tracking-[0.15em] mt-1">GULOSEIMAS</p>
+          <h1 className="font-display text-3xl sm:text-4xl text-azul tracking-wider">SENTA PUA</h1>
+          <p className="font-display text-lg sm:text-xl text-vermelho tracking-[0.15em] mt-1">GULOSEIMAS</p>
           <div className="w-16 h-[2px] bg-azul mx-auto mt-4" />
           <p className="text-texto-fraco text-sm mt-4">Escolha sua sala para acessar o cardápio</p>
         </div>

@@ -8,7 +8,7 @@ export function CartBar() {
   if (itens.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 p-4 animate-slide-up">
+    <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] animate-slide-up">
       <div className="max-w-lg mx-auto">
         <button
           onClick={() => navigate('/checkout')}
