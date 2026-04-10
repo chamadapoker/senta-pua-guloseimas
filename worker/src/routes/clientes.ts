@@ -69,4 +69,32 @@ clientes.put('/:id/bloquear', authMiddleware, async (c) => {
   return c.json(results[0]);
 });
 
+// Admin: excluir militar permanentemente
+clientes.delete('/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  // Excluir pedidos e itens relacionados
+  const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(id).all();
+  for (const p of pedidos) {
+    await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind((p as any).id).run();
+  }
+  await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(id).run();
+  // Excluir assinante café se existir
+  const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(id).all();
+  for (const a of assinantes) {
+    await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind((a as any).id).run();
+  }
+  await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(id).run();
+  // Excluir pedidos loja
+  const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(id).all();
+  for (const p of lojaPedidos) {
+    await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind((p as any).id).run();
+    await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind((p as any).id).run();
+  }
+  await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(id).run();
+  // Excluir o cliente
+  const result = await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return c.json({ error: 'Militar não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
 export default clientes;

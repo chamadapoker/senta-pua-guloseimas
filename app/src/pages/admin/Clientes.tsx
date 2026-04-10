@@ -22,6 +22,13 @@ export function Clientes() {
     carregar();
   };
 
+  const excluirMilitar = async (e: React.MouseEvent, c: Cliente) => {
+    e.stopPropagation();
+    if (!window.confirm(`Excluir ${c.nome_guerra} permanentemente? Todos os pedidos, pagamentos e dados desse militar serao apagados.`)) return;
+    await api.delete(`/api/clientes/${c.id}`);
+    carregar();
+  };
+
   const filtrados = clientes.filter((c) => {
     if (filtro === 'divida') return (c.saldo_devedor ?? 0) > 0;
     if (filtro === 'dia') return (c.saldo_devedor ?? 0) === 0;
@@ -81,17 +88,25 @@ export function Clientes() {
                     R$ {(c.saldo_devedor ?? 0).toFixed(2)}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <button
-                    onClick={(e) => toggleBloqueio(e, c)}
-                    className={`text-xs font-medium px-3 py-1 rounded-lg ${
-                      c.ativo
-                        ? 'text-vermelho bg-red-50 border border-red-200 hover:bg-red-100'
-                        : 'text-verde bg-green-50 border border-green-200 hover:bg-green-100'
-                    }`}
-                  >
-                    {c.ativo ? 'Bloquear' : 'Desbloquear'}
-                  </button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button
+                      onClick={(e) => toggleBloqueio(e, c)}
+                      className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
+                        c.ativo
+                          ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                          : 'text-verde bg-green-50 border border-green-200 hover:bg-green-100'
+                      }`}
+                    >
+                      {c.ativo ? 'Bloquear' : 'Desbloquear'}
+                    </button>
+                    <button
+                      onClick={(e) => excluirMilitar(e, c)}
+                      className="text-xs font-medium px-2.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100"
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
