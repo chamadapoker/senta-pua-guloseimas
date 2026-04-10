@@ -1,32 +1,107 @@
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { Pedido } from '../types';
 
 export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: number) {
-  const linhas = pedidos.map((p) =>
-    `${new Date(p.created_at).toLocaleDateString('pt-BR')} | ${p.itens_resumo || '-'} | R$ ${p.total.toFixed(2)} | ${p.status}`
-  ).join('\n');
+  const doc = new jsPDF();
+  const azul: [number, number, number] = [26, 58, 107];
+  const vermelho: [number, number, number] = [192, 57, 43];
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-  const conteudo = `
-SENTA PUA GULOSEIMAS — ESQUADRÃO POKER
-========================================
-Extrato de Débitos
-Cliente: ${nome}
-Data: ${new Date().toLocaleDateString('pt-BR')}
-========================================
+  // ===== HEADER =====
+  // Barra azul topo
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, pageWidth, 38, 'F');
 
-Data       | Itens                | Valor     | Status
--------------------------------------------------------
-${linhas}
+  // Linha vermelha
+  doc.setFillColor(...vermelho);
+  doc.rect(0, 38, pageWidth, 2, 'F');
 
-========================================
-TOTAL PENDENTE: R$ ${total.toFixed(2)}
-========================================
-  `.trim();
+  // Título no header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text('SENTA PUA GULOSEIMAS', pageWidth / 2, 16, { align: 'center' });
 
-  const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `extrato-${nome.toLowerCase().replace(/\s+/g, '-')}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+  doc.setFontSize(10);
+  doc.setTextColor(212, 168, 67); // dourado
+  doc.text('1/10 GpAv — Esquadrão Poker', pageWidth / 2, 24, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text('EXTRATO DE DÉBITOS', pageWidth / 2, 32, { align: 'center' });
+
+  // ===== DADOS DO CLIENTE =====
+  const yStart = 50;
+
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(14, yStart - 4, pageWidth - 28, 22, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(26, 58, 107);
+  doc.text(`Cliente: ${nome}`, 20, yStart + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+
+  // ===== TABELA DE PEDIDOS =====
+  const tableData = pedidos.map((p) => [
+    new Date(p.created_at).toLocaleDateString('pt-BR'),
+    p.itens_resumo || '-',
+    `R$ ${p.total.toFixed(2)}`,
+    p.status.toUpperCase(),
+  ]);
+
+  autoTable(doc, {
+    startY: yStart + 26,
+    head: [['Data', 'Itens', 'Valor', 'Status']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: azul,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 9,
+      halign: 'center',
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: [50, 50, 50],
+    },
+    alternateRowStyles: {
+      fillColor: [248, 248, 248],
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 25 },
+      1: { cellWidth: 'auto' },
+      2: { halign: 'right', cellWidth: 28 },
+      3: { halign: 'center', cellWidth: 25 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  // ===== TOTAL =====
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+
+  doc.setFillColor(...vermelho);
+  doc.roundedRect(14, finalY, pageWidth - 28, 18, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`TOTAL PENDENTE: R$ ${total.toFixed(2)}`, pageWidth / 2, finalY + 12, { align: 'center' });
+
+  // ===== RODAPÉ =====
+  const footerY = finalY + 32;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Documento gerado automaticamente pelo sistema Senta Pua Guloseimas.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Chave PIX: sandraobregon12@gmail.com', pageWidth / 2, footerY + 5, { align: 'center' });
+
+  // ===== DOWNLOAD =====
+  doc.save(`extrato-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }
