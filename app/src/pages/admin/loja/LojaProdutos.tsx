@@ -153,13 +153,11 @@ export function LojaProdutos() {
       variacoes: variacoes.map(v => ({ nome: v.nome || `${v.tamanho || ''}${v.cor ? ' - ' + v.cor : ''}`.trim(), tamanho: v.tamanho || null, cor: v.cor || null, estoque: v.estoque ?? 0 })),
     };
     try {
-      let resp;
       if (editando) {
-        resp = await api.put<Record<string, unknown>>(`/api/loja/admin/produtos/${editando.id}`, data);
+        await api.put(`/api/loja/admin/produtos/${editando.id}`, data);
       } else {
-        resp = await api.post<Record<string, unknown>>('/api/loja/admin/produtos', data);
+        await api.post('/api/loja/admin/produtos', data);
       }
-      console.log('Salvar produto response:', resp);
       setModalAberto(false);
       carregar();
     } catch (err) {

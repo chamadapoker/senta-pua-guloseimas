@@ -227,7 +227,7 @@ loja.post('/admin/produtos', authMiddleware, async (c) => {
 
     if (batch.length) await c.env.DB.batch(batch);
 
-    return c.json({ ...produto, _debug: { variacoes_recebidas: variacoes?.length ?? 0, imagens_recebidas: imagens?.length ?? 0, batch_executado: batch.length } }, 201);
+    return c.json(produto, 201);
   } catch (err: any) {
     return c.json({ error: 'Erro interno: ' + (err?.message || String(err)) }, 500);
   }
@@ -284,7 +284,7 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     }
 
     const produto = await c.env.DB.prepare('SELECT * FROM loja_produtos WHERE id = ?').bind(id).first();
-    return c.json({ ...produto as any, _debug: { variacoes_enviadas: body.variacoes?.length ?? 'não enviado', imagens_enviadas: body.imagens?.length ?? 'não enviado' } });
+    return c.json(produto);
   } catch (err: any) {
     return c.json({ error: 'Erro interno: ' + (err?.message || String(err)) }, 500);
   }

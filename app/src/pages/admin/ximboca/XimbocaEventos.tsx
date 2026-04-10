@@ -15,6 +15,7 @@ interface Evento {
   status: string;
   total_participantes: number;
   total_pagos: number;
+  total_arrecadado: number;
   total_despesas: number;
 }
 
@@ -59,7 +60,7 @@ export function XimbocaEventos() {
 
       <div className="space-y-3">
         {eventos.map(ev => {
-          const arrecadado = ev.total_pagos * ev.valor_por_pessoa;
+          const arrecadado = ev.total_arrecadado;
           const saldo = arrecadado - ev.total_despesas;
           return (
             <div key={ev.id} className="bg-white rounded-xl border border-borda shadow-sm overflow-hidden">

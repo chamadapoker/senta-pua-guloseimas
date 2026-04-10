@@ -11,7 +11,7 @@ ximboca.use('*', authMiddleware);
 ximboca.get('/stats', async (c) => {
   const [totalEventos, totalArrecadado, totalGasto, eventosAbertos] = await Promise.all([
     c.env.DB.prepare("SELECT COUNT(*) as v FROM ximboca_eventos").first<{ v: number }>(),
-    c.env.DB.prepare("SELECT COALESCE(SUM(e.valor_por_pessoa), 0) as v FROM ximboca_participantes p JOIN ximboca_eventos e ON e.id = p.evento_id WHERE p.status = 'pago'").first<{ v: number }>(),
+    c.env.DB.prepare("SELECT COALESCE(SUM(COALESCE(p.valor_individual, e.valor_por_pessoa)), 0) as v FROM ximboca_participantes p JOIN ximboca_eventos e ON e.id = p.evento_id WHERE p.status = 'pago'").first<{ v: number }>(),
     c.env.DB.prepare("SELECT COALESCE(SUM(valor), 0) as v FROM ximboca_despesas").first<{ v: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) as v FROM ximboca_eventos WHERE status = 'aberto'").first<{ v: number }>(),
   ]);
@@ -31,6 +31,7 @@ ximboca.get('/eventos', async (c) => {
     SELECT e.*,
       (SELECT COUNT(*) FROM ximboca_participantes p WHERE p.evento_id = e.id) as total_participantes,
       (SELECT COUNT(*) FROM ximboca_participantes p WHERE p.evento_id = e.id AND p.status = 'pago') as total_pagos,
+      (SELECT COALESCE(SUM(COALESCE(p.valor_individual, e.valor_por_pessoa)), 0) FROM ximboca_participantes p WHERE p.evento_id = e.id AND p.status = 'pago') as total_arrecadado,
       (SELECT COALESCE(SUM(d.valor), 0) FROM ximboca_despesas d WHERE d.evento_id = e.id) as total_despesas
     FROM ximboca_eventos e
     ORDER BY e.data DESC

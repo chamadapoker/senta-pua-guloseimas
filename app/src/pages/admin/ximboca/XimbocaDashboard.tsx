@@ -20,6 +20,7 @@ interface Evento {
   status: string;
   total_participantes: number;
   total_pagos: number;
+  total_arrecadado: number;
   total_despesas: number;
 }
 
@@ -53,7 +54,7 @@ export function XimbocaDashboard() {
           </div>
           <div className="divide-y divide-borda/50">
             {eventos.slice(0, 5).map(e => {
-              const arrecadado = e.total_pagos * e.valor_por_pessoa;
+              const arrecadado = e.total_arrecadado;
               return (
                 <Link key={e.id} to={`/admin/ximboca/eventos/${e.id}`} className="block p-4 hover:bg-fundo transition-colors">
                   <div className="flex items-center justify-between mb-1">

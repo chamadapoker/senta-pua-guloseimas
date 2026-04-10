@@ -156,10 +156,10 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
   const { referencia, tipo } = await c.req.json<{ referencia: string; tipo?: string }>();
   if (!referencia) return c.json({ error: 'Referência (ex: 2026-04) obrigatória' }, 400);
 
-  let assinantesQuery = 'SELECT * FROM cafe_assinantes WHERE ativo = 1';
-  if (tipo) assinantesQuery += ` AND tipo = '${tipo}'`;
-
-  const { results: assinantes } = await c.env.DB.prepare(assinantesQuery).all<{ id: string; valor: number; plano: string }>();
+  const assinantesStmt = tipo
+    ? c.env.DB.prepare('SELECT * FROM cafe_assinantes WHERE ativo = 1 AND tipo = ?').bind(tipo)
+    : c.env.DB.prepare('SELECT * FROM cafe_assinantes WHERE ativo = 1');
+  const { results: assinantes } = await assinantesStmt.all<{ id: string; valor: number; plano: string }>();
 
   // Para cada assinante, determinar a referência correta
   const refMensal = referencia; // ex: "2026-04"
@@ -297,6 +297,10 @@ cafe.delete('/admin/insumos/:id', authMiddleware, async (c) => {
 // ADMIN: dashboard stats (filtro por tipo: ?tipo=oficial ou ?tipo=graduado)
 cafe.get('/admin/stats', authMiddleware, async (c) => {
   const tipo = c.req.query('tipo');
+  // Validate tipo to prevent SQL injection
+  if (tipo && tipo !== 'oficial' && tipo !== 'graduado') {
+    return c.json({ error: 'Tipo inválido' }, 400);
+  }
   const now = new Date();
   const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
