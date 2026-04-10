@@ -17,6 +17,9 @@ interface Mensalidade {
 }
 
 export function CafeMensalidades() {
+  const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
+    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
+  );
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroRef, setFiltroRef] = useState('');
@@ -24,15 +27,17 @@ export function CafeMensalidades() {
   const [referencia, setReferencia] = useState('');
   const [gerando, setGerando] = useState(false);
 
+  useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
+
   const carregar = () => {
     const params = new URLSearchParams();
+    params.set('tipo', tipo);
     if (filtroStatus) params.set('status', filtroStatus);
     if (filtroRef) params.set('referencia', filtroRef);
-    const query = params.toString() ? `?${params}` : '';
-    api.get<Mensalidade[]>(`/api/cafe/admin/mensalidades${query}`).then(setMensalidades);
+    api.get<Mensalidade[]>(`/api/cafe/admin/mensalidades?${params}`).then(setMensalidades);
   };
 
-  useEffect(() => { carregar(); }, [filtroStatus, filtroRef]);
+  useEffect(() => { carregar(); }, [tipo, filtroStatus, filtroRef]);
 
   useEffect(() => {
     const now = new Date();
@@ -42,7 +47,7 @@ export function CafeMensalidades() {
   const gerarMensalidades = async () => {
     setGerando(true);
     try {
-      const res = await api.post<{ criados: number; total: number }>('/api/cafe/admin/gerar-mensalidades', { referencia });
+      const res = await api.post<{ criados: number; total: number }>('/api/cafe/admin/gerar-mensalidades', { referencia, tipo });
       alert(`${res.criados} mensalidades geradas de ${res.total} assinantes`);
       setModalGerar(false);
       carregar();
@@ -61,9 +66,19 @@ export function CafeMensalidades() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">MENSALIDADES</h1>
         <Button size="sm" onClick={() => setModalGerar(true)}>Gerar Mensalidades</Button>
+      </div>
+      <div className="flex gap-1 mb-5">
+        <button onClick={() => setTipo('oficial')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Oficiais
+        </button>
+        <button onClick={() => setTipo('graduado')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'graduado' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Graduados
+        </button>
       </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">

@@ -39,14 +39,24 @@ cafe.put('/pagamentos/:id/confirmar', async (c) => {
 
 // ADMIN: list all subscribers with payment status
 cafe.get('/admin/assinantes', authMiddleware, async (c) => {
-  const { results } = await c.env.DB.prepare(`
+  const tipo = c.req.query('tipo');
+
+  let sql = `
     SELECT ca.*, cl.nome_guerra,
       (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pago') as total_pago,
       (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as total_devido
     FROM cafe_assinantes ca
     JOIN clientes cl ON cl.id = ca.cliente_id
-    ORDER BY cl.nome_guerra ASC
-  `).all();
+    WHERE 1=1
+  `;
+  const params: unknown[] = [];
+
+  if (tipo) { sql += ' AND ca.tipo = ?'; params.push(tipo); }
+
+  sql += ' ORDER BY cl.nome_guerra ASC';
+
+  const stmt = params.length ? c.env.DB.prepare(sql).bind(...params) : c.env.DB.prepare(sql);
+  const { results } = await stmt.all();
 
   return c.json(results);
 });
@@ -141,12 +151,13 @@ cafe.get('/admin/assinantes/:id/pagamentos', authMiddleware, async (c) => {
 
 // ADMIN: generate monthly charges for all active subscribers
 cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
-  const { referencia } = await c.req.json<{ referencia: string }>();
+  const { referencia, tipo } = await c.req.json<{ referencia: string; tipo?: string }>();
   if (!referencia) return c.json({ error: 'Referência (ex: 2026-04) obrigatória' }, 400);
 
-  const { results: assinantes } = await c.env.DB.prepare(
-    'SELECT * FROM cafe_assinantes WHERE ativo = 1'
-  ).all<{ id: string; valor: number }>();
+  let assinantesQuery = 'SELECT * FROM cafe_assinantes WHERE ativo = 1';
+  if (tipo) assinantesQuery += ` AND tipo = '${tipo}'`;
+
+  const { results: assinantes } = await c.env.DB.prepare(assinantesQuery).all<{ id: string; valor: number }>();
 
   // Get all existing payments for this reference in one query
   const { results: existentes } = await c.env.DB.prepare(
@@ -173,6 +184,7 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
 cafe.get('/admin/mensalidades', authMiddleware, async (c) => {
   const referencia = c.req.query('referencia');
   const status = c.req.query('status');
+  const tipo = c.req.query('tipo');
 
   let sql = `
     SELECT cp.*, cl.nome_guerra, ca.tipo
@@ -185,6 +197,7 @@ cafe.get('/admin/mensalidades', authMiddleware, async (c) => {
 
   if (referencia) { sql += ' AND cp.referencia = ?'; params.push(referencia); }
   if (status) { sql += ' AND cp.status = ?'; params.push(status); }
+  if (tipo) { sql += ' AND ca.tipo = ?'; params.push(tipo); }
 
   sql += ' ORDER BY cp.referencia DESC, cl.nome_guerra ASC';
 
@@ -205,19 +218,24 @@ cafe.put('/admin/mensalidades/:id/pagar', authMiddleware, async (c) => {
 
 // ADMIN: insumos CRUD
 cafe.get('/admin/insumos', authMiddleware, async (c) => {
-  const { results } = await c.env.DB.prepare(
-    'SELECT * FROM cafe_insumos ORDER BY nome ASC'
-  ).all();
+  const tipo = c.req.query('tipo');
+  let sql = 'SELECT * FROM cafe_insumos';
+  const params: unknown[] = [];
+  if (tipo) { sql += ' WHERE tipo = ?'; params.push(tipo); }
+  sql += ' ORDER BY nome ASC';
+
+  const stmt = params.length ? c.env.DB.prepare(sql).bind(...params) : c.env.DB.prepare(sql);
+  const { results } = await stmt.all();
   return c.json(results);
 });
 
 cafe.post('/admin/insumos', authMiddleware, async (c) => {
-  const { nome, unidade, estoque, estoque_min } = await c.req.json();
+  const { nome, unidade, estoque, estoque_min, tipo } = await c.req.json();
   if (!nome) return c.json({ error: 'Nome obrigatório' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO cafe_insumos (nome, unidade, estoque, estoque_min) VALUES (?, ?, ?, ?) RETURNING *'
-  ).bind(nome, unidade || 'un', estoque ?? 0, estoque_min ?? 0).all();
+    'INSERT INTO cafe_insumos (nome, unidade, estoque, estoque_min, tipo) VALUES (?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, unidade || 'un', estoque ?? 0, estoque_min ?? 0, tipo || 'graduado').all();
 
   return c.json(results[0], 201);
 });
@@ -233,6 +251,7 @@ cafe.put('/admin/insumos/:id', authMiddleware, async (c) => {
   if ('unidade' in body) { fields.push('unidade = ?'); values.push(body.unidade); }
   if ('estoque' in body) { fields.push('estoque = ?'); values.push(body.estoque); }
   if ('estoque_min' in body) { fields.push('estoque_min = ?'); values.push(body.estoque_min); }
+  if ('tipo' in body) { fields.push('tipo = ?'); values.push(body.tipo); }
 
   if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
 

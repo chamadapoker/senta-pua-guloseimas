@@ -18,6 +18,9 @@ interface Assinante {
 }
 
 export function CafeAssinantes() {
+  const [sala, setSala] = useState<'oficial' | 'graduado'>(() =>
+    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
+  );
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Assinante | null>(null);
@@ -26,13 +29,14 @@ export function CafeAssinantes() {
   const [plano, setPlano] = useState('mensal');
   const [valor, setValor] = useState('');
 
-  const carregar = () => api.get<Assinante[]>('/api/cafe/admin/assinantes').then(setAssinantes);
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { localStorage.setItem('cafe_tipo', sala); }, [sala]);
+  const carregar = () => api.get<Assinante[]>(`/api/cafe/admin/assinantes?tipo=${sala}`).then(setAssinantes);
+  useEffect(() => { carregar(); }, [sala]);
 
   const fecharModal = () => {
     setModalAberto(false);
     setEditando(null);
-    setNomeGuerra(''); setTipo('graduado'); setPlano('mensal'); setValor('');
+    setNomeGuerra(''); setTipo(sala); setPlano('mensal'); setValor('');
   };
 
   const abrirEditar = (a: Assinante) => {
@@ -90,9 +94,19 @@ export function CafeAssinantes() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">ASSINANTES</h1>
-        <Button size="sm" onClick={() => { setEditando(null); setModalAberto(true); }}>+ Adicionar</Button>
+        <Button size="sm" onClick={() => { setEditando(null); setTipo(sala); setModalAberto(true); }}>+ Adicionar</Button>
+      </div>
+      <div className="flex gap-1 mb-5">
+        <button onClick={() => setSala('oficial')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sala === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Oficiais
+        </button>
+        <button onClick={() => setSala('graduado')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sala === 'graduado' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Graduados
+        </button>
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">

@@ -10,33 +10,34 @@ interface CafeStats {
   insumos_alerta: number;
 }
 
-type Filtro = '' | 'oficial' | 'graduado';
-
 export function CafeDashboard() {
-  const [filtro, setFiltro] = useState<Filtro>('');
+  const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
+    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
+  );
   const [stats, setStats] = useState<CafeStats | null>(null);
 
+  useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
   useEffect(() => {
-    const query = filtro ? `?tipo=${filtro}` : '';
-    api.get<CafeStats>(`/api/cafe/admin/stats${query}`).then(setStats);
-  }, [filtro]);
+    setStats(null);
+    api.get<CafeStats>(`/api/cafe/admin/stats?tipo=${tipo}`).then(setStats);
+  }, [tipo]);
 
   if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">CAIXINHA DO CAFE</h1>
-        <div className="flex gap-1">
-          {([['', 'Todos'], ['oficial', 'Oficiais'], ['graduado', 'Graduados']] as [Filtro, string][]).map(([f, label]) => (
-            <button key={f} onClick={() => setFiltro(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtro === f ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
-              }`}>
-              {label}
-            </button>
-          ))}
-        </div>
+      </div>
+      <div className="flex gap-1 mb-5">
+        <button onClick={() => setTipo('oficial')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Oficiais
+        </button>
+        <button onClick={() => setTipo('graduado')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'graduado' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Graduados
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

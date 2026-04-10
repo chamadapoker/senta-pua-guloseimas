@@ -13,6 +13,9 @@ interface Insumo {
 }
 
 export function CafeInsumos() {
+  const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
+    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
+  );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Insumo | null>(null);
@@ -21,8 +24,9 @@ export function CafeInsumos() {
   const [estoque, setEstoque] = useState('0');
   const [estoqueMin, setEstoqueMin] = useState('0');
 
-  const carregar = () => api.get<Insumo[]>('/api/cafe/admin/insumos').then(setInsumos);
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
+  const carregar = () => api.get<Insumo[]>(`/api/cafe/admin/insumos?tipo=${tipo}`).then(setInsumos);
+  useEffect(() => { carregar(); }, [tipo]);
 
   const abrirNovo = () => {
     setEditando(null);
@@ -38,7 +42,7 @@ export function CafeInsumos() {
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { nome, unidade, estoque: parseFloat(estoque), estoque_min: parseFloat(estoqueMin) };
+    const data = { nome, unidade, estoque: parseFloat(estoque), estoque_min: parseFloat(estoqueMin), tipo };
     if (editando) {
       await api.put(`/api/cafe/admin/insumos/${editando.id}`, data);
     } else {
@@ -56,9 +60,19 @@ export function CafeInsumos() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">ESTOQUE INSUMOS</h1>
         <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
+      </div>
+      <div className="flex gap-1 mb-5">
+        <button onClick={() => setTipo('oficial')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Oficiais
+        </button>
+        <button onClick={() => setTipo('graduado')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'graduado' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
+          Graduados
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
