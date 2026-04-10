@@ -14,13 +14,14 @@ interface Devedor {
   total_devido: number;
 }
 
-const PIX_EMAIL = 'sandraobregon12@gmail.com';
+const PIX_CPF = '05435197597';
+const PIX_NOME = 'VICTOR HENRIQUE DE OLIVEIRA ALMEIDA';
 
 export function CafePublico() {
   const [devedores, setDevedores] = useState<Devedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiadoCodigo, setCopiadoCodigo] = useState<string | null>(null);
-  const [copiadoEmail, setCopiadoEmail] = useState(false);
+  const [copiadoChave, setCopiadoChave] = useState(false);
 
   useEffect(() => {
     api.get<Devedor[]>('/api/cafe/devedores').then(setDevedores).finally(() => setLoading(false));
@@ -33,10 +34,10 @@ export function CafePublico() {
     setTimeout(() => setCopiadoCodigo(null), 3000);
   };
 
-  const copiarEmail = async () => {
-    await navigator.clipboard.writeText(PIX_EMAIL);
-    setCopiadoEmail(true);
-    setTimeout(() => setCopiadoEmail(false), 3000);
+  const copiarChave = async () => {
+    await navigator.clipboard.writeText(PIX_CPF);
+    setCopiadoChave(true);
+    setTimeout(() => setCopiadoChave(false), 3000);
   };
 
   const emDia = devedores.filter(d => d.total_devido === 0);
@@ -49,18 +50,19 @@ export function CafePublico() {
 
       {/* PIX info */}
       <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
-        <p className="text-xs text-texto-fraco mb-3 uppercase tracking-wider text-center">Chave PIX para pagamento (e-mail)</p>
+        <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX para pagamento (CPF)</p>
+        <p className="text-[10px] text-texto-fraco mb-3 text-center">{PIX_NOME}</p>
         <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-          <span className="text-sm text-azul font-medium truncate">{PIX_EMAIL}</span>
-          <button onClick={copiarEmail} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors">
-            {copiadoEmail ? (
+          <span className="text-sm text-azul font-medium font-mono tracking-wider">{PIX_CPF}</span>
+          <button onClick={copiarChave} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors">
+            {copiadoChave ? (
               <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             ) : (
-              <svg className="w-4 h-4 text-texto-fraco" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              <svg className="w-4 h-4 text-texto-fraco" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
             )}
           </button>
         </div>
-        {copiadoEmail && <p className="text-verde text-xs mt-2 text-center">E-mail copiado!</p>}
+        {copiadoChave && <p className="text-verde text-xs mt-2 text-center">CPF copiado!</p>}
       </div>
 
       {loading ? (
