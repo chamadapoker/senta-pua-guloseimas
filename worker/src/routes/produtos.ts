@@ -65,6 +65,7 @@ produtos.put('/:id', authMiddleware, async (c) => {
   if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
   if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
   if ('categoria' in body) { fields.push('categoria = ?'); values.push(body.categoria); }
+  if ('estoque' in body) { fields.push('estoque = ?'); values.push(body.estoque); }
 
   if (!fields.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
 

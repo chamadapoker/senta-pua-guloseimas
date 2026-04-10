@@ -7,6 +7,7 @@ export interface Produto {
   ordem: number;
   imagem_url: string | null;
   categoria: 'oficiais' | 'graduados' | 'geral';
+  estoque: number | null;
   created_at: string;
 }
 

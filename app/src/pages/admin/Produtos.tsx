@@ -39,6 +39,7 @@ export function Produtos() {
   const [disponivel, setDisponivel] = useState(true);
   const [imagemUrl, setImagemUrl] = useState('');
   const [previewImg, setPreviewImg] = useState('');
+  const [estoque, setEstoque] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +49,7 @@ export function Produtos() {
   const abrirNovo = () => {
     setEditando(null);
     setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0'); setCategoria('geral'); setDisponivel(true);
+    setEstoque('');
     setImagemUrl(''); setPreviewImg('');
     setModalAberto(true);
   };
@@ -55,6 +57,7 @@ export function Produtos() {
   const abrirEditar = (p: Produto) => {
     setEditando(p);
     setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral'); setDisponivel(!!p.disponivel);
+    setEstoque(p.estoque != null ? String(p.estoque) : '');
     setImagemUrl(p.imagem_url || '');
     setPreviewImg(resolveImg(p.imagem_url) || '');
     setModalAberto(true);
@@ -87,6 +90,7 @@ export function Produtos() {
       imagem_url: imagemUrl || null,
       categoria,
       disponivel: disponivel ? 1 : 0,
+      estoque: estoque !== '' ? parseInt(estoque) : null,
     };
     if (editando) {
       await api.put(`/api/produtos/${editando.id}`, data);
@@ -137,7 +141,14 @@ export function Produtos() {
                 <span className="text-white/90 font-bold">R$ {p.preco.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-white/60">Ordem: {p.ordem}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/60">Ordem: {p.ordem}</span>
+                  {p.estoque != null && (
+                    <span className={`text-xs ${p.estoque <= 0 ? 'text-red-300' : p.estoque <= 5 ? 'text-amber-300' : 'text-white/60'}`}>
+                      Est: {p.estoque}
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button onClick={() => abrirEditar(p)} className="text-white/80 text-xs font-medium hover:underline">Editar</button>
                   <button onClick={() => excluir(p)} className="text-red-300 text-xs font-medium hover:underline">Excluir</button>
@@ -225,6 +236,19 @@ export function Produtos() {
                 <option value="graduados">Sala dos Graduados</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Estoque</label>
+            <input
+              type="number"
+              min="0"
+              value={estoque}
+              onChange={(e) => setEstoque(e.target.value)}
+              placeholder="Vazio = sem limite"
+              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
+            />
+            <p className="text-xs text-texto-fraco mt-1">Deixe vazio para estoque ilimitado</p>
           </div>
 
           {/* Disponível / Esgotado */}

@@ -80,6 +80,19 @@ pedidos.post('/', async (c) => {
   );
   await c.env.DB.batch(batch);
 
+  // Decrementar estoque e auto-esgotado
+  const estoqueUpdates = itensCalculados.map(item =>
+    c.env.DB.prepare(
+      "UPDATE produtos SET estoque = MAX(estoque - ?, 0) WHERE id = ? AND estoque IS NOT NULL"
+    ).bind(item.quantidade, item.produto_id)
+  );
+  if (estoqueUpdates.length) await c.env.DB.batch(estoqueUpdates);
+
+  // Auto-esgotado: marcar como indisponível se estoque chegou a 0
+  await c.env.DB.prepare(
+    "UPDATE produtos SET disponivel = 0 WHERE estoque IS NOT NULL AND estoque <= 0"
+  ).run();
+
   return c.json({ pedido_id: pedidoId, total, status }, 201);
 });
 
