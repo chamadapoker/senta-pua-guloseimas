@@ -11,7 +11,7 @@ const FRASES_PIX = [
 const FRASES_FIADO = [
   'Um Leão sempre paga suas dívidas. Já um Centauro... não sabemos!',
   'Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.',
-  'Dívida registrada, piloto. Um Senta Pua sempre paga o que deve!',
+  'Dívida registrada, militar. Um Senta Pua sempre paga o que deve!',
   'Anotado no fiado! Mas lembre-se: aqui não tem anistia.',
   'Fiado feito. A conta não prescreve, soldado!',
   'Registrado! Um devedor honrado paga antes da próxima missão.',
@@ -26,7 +26,7 @@ export function Obrigado() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as { nome?: string; metodo?: string } | null;
-  const nome = state?.nome || 'PILOTO';
+  const nome = state?.nome || 'MILITAR';
   const metodo = state?.metodo || 'fiado';
   const frase = fraseAleatoria(metodo);
 

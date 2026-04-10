@@ -8,7 +8,7 @@ import { gerarPayloadPix } from '../services/pix';
 const PIX_EMAIL = 'sandraobregon12@gmail.com';
 
 const FRASES_PAGOU = [
-  'Valeu, piloto! Um Leão sempre honra suas dívidas!',
+  'Valeu, militar! Um Leão sempre honra suas dívidas!',
   'Pagamento registrado! Você é exemplo pro esquadrão!',
   'PIX confirmado! Moral lá em cima, soldado!',
   'Boa, militar! Rápido no gatilho e no PIX!',
@@ -43,7 +43,7 @@ export function PixPage() {
 
   useEffect(() => {
     if (pago) {
-      const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } }), 2000);
+      const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'MILITAR', metodo: 'pix' } }), 2000);
       return () => clearTimeout(t);
     }
   }, [pago, navigate]);
@@ -64,7 +64,7 @@ export function PixPage() {
   const confirmarPagamento = () => {
     setMostrarConfirmacao(true);
     setTimeout(() => {
-      navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } });
+      navigate('/obrigado', { state: { nome: 'MILITAR', metodo: 'pix' } });
     }, 3000);
   };
 
@@ -77,7 +77,7 @@ export function PixPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="font-display text-2xl text-azul tracking-wider mb-4">VALEU, PILOTO!</h2>
+          <h2 className="font-display text-2xl text-azul tracking-wider mb-4">VALEU, MILITAR!</h2>
           <p className="text-texto-fraco italic px-6 text-sm leading-relaxed">"{frase}"</p>
         </div>
       </PublicLayout>
