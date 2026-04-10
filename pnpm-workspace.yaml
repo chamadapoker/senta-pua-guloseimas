@@ -1,0 +1,7 @@
+packages:
+  - app
+  - worker
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

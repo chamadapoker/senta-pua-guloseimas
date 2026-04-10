@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --azul: #1a3a6b;
+  --azul-claro: #2456a4;
+  --vermelho: #b01c2e;
+  --dourado: #c8a84b;
+  --bg: #f4f4f4;
+  --texto: #1a1a1a;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
