@@ -16,6 +16,14 @@ cafe.get('/devedores', async (c) => {
     ORDER BY cl.nome_guerra ASC
   `).all();
 
+  // Get pending payment IDs for each subscriber
+  for (const r of results as any[]) {
+    const { results: pags } = await c.env.DB.prepare(
+      "SELECT id FROM cafe_pagamentos WHERE assinante_id = ? AND status = 'pendente'"
+    ).bind(r.id).all();
+    r.pagamento_ids = pags.map((p: any) => p.id);
+  }
+
   return c.json(results);
 });
 
