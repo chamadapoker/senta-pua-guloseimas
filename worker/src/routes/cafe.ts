@@ -252,15 +252,19 @@ cafe.delete('/admin/insumos/:id', authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
-// ADMIN: dashboard stats
+// ADMIN: dashboard stats (filtro por tipo: ?tipo=oficial ou ?tipo=graduado)
 cafe.get('/admin/stats', authMiddleware, async (c) => {
+  const tipo = c.req.query('tipo');
   const now = new Date();
   const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+  const tipoFilter = tipo ? " AND ca.tipo = '" + tipo + "'" : '';
+  const tipoFilterPag = tipo ? ` AND cp.assinante_id IN (SELECT id FROM cafe_assinantes WHERE tipo = '${tipo}')` : '';
+
   const [totalAssinantes, recebidoMes, pendente, insumosAlerta] = await Promise.all([
-    c.env.DB.prepare("SELECT COUNT(*) as valor FROM cafe_assinantes WHERE ativo = 1").first<{ valor: number }>(),
-    c.env.DB.prepare("SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos WHERE status = 'pago' AND referencia = ?").bind(mesAtual).first<{ valor: number }>(),
-    c.env.DB.prepare("SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos WHERE status = 'pendente'").first<{ valor: number }>(),
+    c.env.DB.prepare(`SELECT COUNT(*) as valor FROM cafe_assinantes ca WHERE ativo = 1${tipoFilter}`).first<{ valor: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos cp WHERE status = 'pago' AND referencia = ?${tipoFilterPag}`).bind(mesAtual).first<{ valor: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos cp WHERE status = 'pendente'${tipoFilterPag}`).first<{ valor: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) as valor FROM cafe_insumos WHERE estoque <= estoque_min").first<{ valor: number }>(),
   ]);
 
