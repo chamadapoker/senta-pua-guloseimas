@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PublicLayout } from '../components/Layout';
 import { api } from '../services/api';
 
@@ -14,10 +14,16 @@ const SISTEMAS: { id: Sistema; label: string }[] = [
 export function Home() {
   const [sistema, setSistema] = useState<Sistema>('guloseimas');
   const [nomes, setNomes] = useState({ nome_sala_oficiais: 'Sala dos Oficiais', nome_sala_graduados: 'Sala dos Graduados' });
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get<Record<string, string>>('/api/config').then((c) => setNomes((n) => ({ ...n, ...c }))).catch(() => {});
   }, []);
+
+  const selecionarSistema = (s: Sistema) => {
+    if (s === 'loja') { navigate('/loja'); return; }
+    setSistema(s);
+  };
 
   return (
     <PublicLayout>
@@ -33,7 +39,7 @@ export function Home() {
           {SISTEMAS.map((s) => (
             <button
               key={s.id}
-              onClick={() => setSistema(s.id)}
+              onClick={() => selecionarSistema(s.id)}
               className={`flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl text-xs font-medium transition-all ${
                 sistema === s.id
                   ? 'bg-azul text-white shadow-md'
@@ -78,21 +84,6 @@ export function Home() {
                 <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
               </div>
             </Link>
-          </div>
-        )}
-
-        {sistema === 'loja' && (
-          <div className="text-center max-w-sm mx-auto animate-fade-in">
-            <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm">
-              <h2 className="font-display text-xl text-azul tracking-wider mb-2">LOJA MILITAR</h2>
-              <p className="text-texto-fraco text-sm mb-5">Camisas, bones, canecas e artigos do esquadrao.</p>
-              <Link
-                to="/loja"
-                className="inline-block bg-azul text-white font-display text-sm tracking-wider px-6 py-3 rounded-xl hover:bg-azul/90 transition-colors"
-              >
-                ACESSAR LOJA
-              </Link>
-            </div>
           </div>
         )}
 
