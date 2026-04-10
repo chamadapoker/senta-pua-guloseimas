@@ -9,7 +9,7 @@ interface DebitoUnificado {
   ximboca: { evento: string; data: string; valor: number }[];
 }
 
-export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnificado, totalGeral: number) {
+export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnificado, totalGeral: number, cafeGraduado = false) {
   const doc = new jsPDF();
   const azul: [number, number, number] = [26, 58, 107];
   const vermelho: [number, number, number] = [192, 57, 43];
@@ -153,7 +153,10 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text('Documento gerado automaticamente pelo APP RP POKER.', pageWidth / 2, footerY, { align: 'center' });
-  doc.text('Chave PIX: sandraobregon12@gmail.com', pageWidth / 2, footerY + 5, { align: 'center' });
+  doc.text('PIX Guloseimas/Loja/Oficiais: sandraobregon12@gmail.com', pageWidth / 2, footerY + 5, { align: 'center' });
+  if (cafeGraduado) {
+    doc.text('PIX Cafe Graduados: lucas.gabriel.s.vilela@gmail.com', pageWidth / 2, footerY + 10, { align: 'center' });
+  }
 
   doc.save(`extrato-unificado-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }

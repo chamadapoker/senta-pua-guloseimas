@@ -60,12 +60,13 @@ export function ClienteExtrato() {
 
   const handlePdfWhatsapp = async () => {
     const fmt = (d: string) => new Date(d + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const cafeGraduado = cafe.some(p => p.cafe_tipo === 'graduado');
     await gerarExtratoUnificadoPDF(cliente.nome_guerra, {
       guloseimas: guloseimas.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at) })),
       loja: loja.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at), parcelas: p.parcelas })),
       cafe: cafe.filter(p => p.status === 'pendente').map(p => ({ referencia: p.referencia, valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
       ximboca: ximboca.filter(p => p.status !== 'pago').map(p => ({ evento: p.evento_nome, data: new Date(p.evento_data + 'T12:00:00').toLocaleDateString('pt-BR'), valor: p.valor_individual ?? p.valor_por_pessoa })),
-    }, totalDevido);
+    }, totalDevido, cafeGraduado);
     window.open(montarLinkCobranca(cliente.nome_guerra, totalDevido), '_blank');
   };
 
