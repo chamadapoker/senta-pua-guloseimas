@@ -71,10 +71,16 @@ export function CafeAssinantes() {
   const toggleAtivo = async (a: Assinante) => {
     if (a.ativo) {
       if (!confirm(`Desativar ${a.nome_guerra}?`)) return;
-      await api.delete(`/api/cafe/admin/assinantes/${a.id}`);
+      await api.put(`/api/cafe/admin/assinantes/${a.id}/desativar`, {});
     } else {
       await api.put(`/api/cafe/admin/assinantes/${a.id}`, { ativo: 1 });
     }
+    carregar();
+  };
+
+  const excluir = async (a: Assinante) => {
+    if (!confirm(`Excluir ${a.nome_guerra} permanentemente? Todos os pagamentos desse assinante serão apagados.`)) return;
+    await api.delete(`/api/cafe/admin/assinantes/${a.id}`);
     carregar();
   };
 
@@ -110,17 +116,23 @@ export function CafeAssinantes() {
                   <td className="px-4 py-3 text-right">
                     <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
-                    <button onClick={() => abrirEditar(a)}
-                      className="text-xs font-medium px-3 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200">
-                      Editar
-                    </button>
-                    <button onClick={() => toggleAtivo(a)}
-                      className={`text-xs font-medium px-3 py-1 rounded-lg ${
-                        a.ativo ? 'text-vermelho bg-red-50 border border-red-200' : 'text-verde bg-green-50 border border-green-200'
-                      }`}>
-                      {a.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button onClick={() => abrirEditar(a)}
+                        className="text-xs font-medium px-2.5 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">
+                        Editar
+                      </button>
+                      <button onClick={() => toggleAtivo(a)}
+                        className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
+                          a.ativo ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100' : 'text-verde bg-green-50 border border-green-200 hover:bg-green-100'
+                        }`}>
+                        {a.ativo ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button onClick={() => excluir(a)}
+                        className="text-xs font-medium px-2.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">
+                        Excluir
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

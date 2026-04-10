@@ -109,10 +109,20 @@ cafe.put('/admin/assinantes/:id', authMiddleware, async (c) => {
   return c.json(results[0]);
 });
 
-// ADMIN: remove subscriber
-cafe.delete('/admin/assinantes/:id', authMiddleware, async (c) => {
+// ADMIN: desativar subscriber (soft delete)
+cafe.put('/admin/assinantes/:id/desativar', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const result = await c.env.DB.prepare('UPDATE cafe_assinantes SET ativo = 0 WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return c.json({ error: 'Assinante não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
+// ADMIN: excluir subscriber permanentemente
+cafe.delete('/admin/assinantes/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  // Excluir pagamentos primeiro
+  await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind(id).run();
+  const result = await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Assinante não encontrado' }, 404);
   return c.json({ ok: true });
 });
