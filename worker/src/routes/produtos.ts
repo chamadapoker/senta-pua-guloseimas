@@ -8,7 +8,7 @@ const produtos = new Hono<AppType>();
 // Público: lista produtos disponíveis (filtro opcional por categoria)
 produtos.get('/', async (c) => {
   const cat = c.req.query('categoria');
-  let sql = 'SELECT * FROM produtos WHERE disponivel = 1';
+  let sql = 'SELECT * FROM produtos WHERE 1=1';
   const params: string[] = [];
 
   if (cat && cat !== 'geral') {
