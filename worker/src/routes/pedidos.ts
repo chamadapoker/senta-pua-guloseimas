@@ -124,6 +124,17 @@ pedidos.get('/', authMiddleware, async (c) => {
   return c.json(results);
 });
 
+// Público: militar confirma que pagou (botão "Já Paguei")
+pedidos.put('/:id/confirmar-pagamento', async (c) => {
+  const id = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    "UPDATE pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
+  ).bind(id).all();
+
+  if (!results.length) return c.json({ error: 'Pedido não encontrado ou já processado' }, 404);
+  return c.json(results[0]);
+});
+
 // Admin: marcar como pago
 pedidos.put('/:id/pagar', authMiddleware, async (c) => {
   const id = c.req.param('id');

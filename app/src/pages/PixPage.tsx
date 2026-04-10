@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PublicLayout } from '../components/Layout';
 import { Button } from '../components/ui/Button';
 import { usePixPolling } from '../hooks/usePixPolling';
+import { api } from '../services/api';
 import { gerarPayloadPix } from '../services/pix';
 
 const PIX_EMAIL = 'sandraobregon12@gmail.com';
@@ -61,7 +62,12 @@ export function PixPage() {
     setTimeout(() => setCopiadoEmail(false), 3000);
   };
 
-  const confirmarPagamento = () => {
+  const confirmarPagamento = async () => {
+    try {
+      await api.put(`/api/pedidos/${pedidoId}/confirmar-pagamento`, {});
+    } catch {
+      // mesmo se falhar, redireciona — admin pode confirmar depois
+    }
     setMostrarConfirmacao(true);
     setTimeout(() => {
       navigate('/obrigado', { state: { nome: 'MILITAR', metodo: 'pix' } });
