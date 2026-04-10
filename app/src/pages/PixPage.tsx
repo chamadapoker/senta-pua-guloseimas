@@ -10,7 +10,7 @@ const PIX_EMAIL = 'sandraobregon12@gmail.com';
 const FRASES_PAGOU = [
   'Valeu, militar! Um Leão sempre honra suas dívidas!',
   'Pagamento registrado! Você é exemplo pro esquadrão!',
-  'PIX confirmado! Moral lá em cima, soldado!',
+  'PIX confirmado! Moral lá em cima, militar!',
   'Boa, militar! Rápido no gatilho e no PIX!',
   'Recebido! O 1/10 GpAv agradece, guerreiro!',
 ];

@@ -13,7 +13,7 @@ const FRASES_FIADO = [
   'Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.',
   'Dívida registrada, militar. Um Senta Pua sempre paga o que deve!',
   'Anotado no fiado! Mas lembre-se: aqui não tem anistia.',
-  'Fiado feito. A conta não prescreve, soldado!',
+  'Fiado feito. A conta não prescreve, militar!',
   'Registrado! Um devedor honrado paga antes da próxima missão.',
 ];
 
