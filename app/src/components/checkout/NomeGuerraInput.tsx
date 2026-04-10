@@ -44,10 +44,10 @@ export function NomeGuerraInput({ value, onChange }: Props) {
       <input
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
         onFocus={() => sugestoes.length > 0 && setAberto(true)}
-        placeholder="Ex: Maverick, Iceman..."
-        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-azul"
+        placeholder="Ex: MAVERICK, ICEMAN..."
+        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base uppercase focus:outline-none focus:ring-2 focus:ring-azul"
       />
       {aberto && sugestoes.length > 0 && (
         <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-40 overflow-y-auto">

@@ -1,12 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { PublicLayout } from '../components/Layout';
 import { usePixPolling } from '../hooks/usePixPolling';
+import { gerarPayloadPix } from '../services/pix';
 
 export function PixPage() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
   const { pedido, pago } = usePixPolling(pedidoId);
   const navigate = useNavigate();
+
+  const pixPayload = useMemo(() => {
+    if (!pedido) return null;
+    return gerarPayloadPix(pedido.total);
+  }, [pedido]);
 
   useEffect(() => {
     if (pago) {
@@ -32,16 +39,26 @@ export function PixPage() {
             <h1 className="text-xl font-bold text-azul mb-6">Pagamento PIX</h1>
 
             <div className="bg-white rounded-xl p-6 mb-4">
-              <div className="w-48 h-48 mx-auto bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                <div className="text-center text-gray-400 text-sm px-4">
-                  QR Code PIX será configurado em breve
+              {pixPayload ? (
+                <div className="flex flex-col items-center">
+                  <QRCodeSVG
+                    value={pixPayload}
+                    size={220}
+                    level="M"
+                    className="mb-4"
+                  />
+                  <p className="text-xs text-gray-400 mb-4 break-all max-w-[260px]">
+                    Chave PIX: sandraobregon12@gmail.com
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="w-48 h-48 mx-auto bg-gray-100 rounded-lg flex items-center justify-center mb-4 animate-pulse" />
+              )}
 
               {pedido && (
-                <div className="mt-4">
+                <div className="mt-2">
                   <div className="text-2xl font-bold text-azul">R$ {pedido.total.toFixed(2)}</div>
-                  <p className="text-gray-500 text-sm mt-1">Escaneie o QR Code no seu banco</p>
+                  <p className="text-gray-500 text-sm mt-1">Escaneie o QR Code no app do seu banco</p>
                 </div>
               )}
             </div>
