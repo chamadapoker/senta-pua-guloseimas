@@ -36,7 +36,7 @@ export function Configuracoes() {
 
   return (
     <AdminLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">CONFIGURAÇÕES</h1>
+      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">CATÁLOGOS</h1>
 
       <form onSubmit={salvar} className="max-w-md">
         <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4">
