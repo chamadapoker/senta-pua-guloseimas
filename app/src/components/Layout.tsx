@@ -20,10 +20,7 @@ function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
   return (
     <Link to="/" className="flex items-center gap-3 justify-center">
       <img src="/logo.png" alt="1/10 GpAv" className={`${isMd ? 'w-10 h-10' : 'w-11 h-11'} object-contain`} />
-      <div className="leading-tight">
-        <div className={`font-display text-azul tracking-wider ${isMd ? 'text-xl' : 'text-2xl'}`}>SENTA PUA</div>
-        <div className={`text-vermelho tracking-[0.15em] font-medium uppercase ${isMd ? 'text-[10px]' : 'text-xs'}`}>APP RP POKER</div>
-      </div>
+      <div className={`font-display text-azul tracking-wider ${isMd ? 'text-xl' : 'text-2xl'}`}>APP RP POKER</div>
     </Link>
   );
 }
