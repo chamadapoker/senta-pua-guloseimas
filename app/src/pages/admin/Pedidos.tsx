@@ -30,6 +30,12 @@ export function Pedidos() {
     carregar();
   };
 
+  const excluirPedido = async (pedidoId: string) => {
+    if (!confirm('Excluir este pedido? Essa ação não pode ser desfeita.')) return;
+    await api.delete(`/api/pedidos/${pedidoId}`);
+    carregar();
+  };
+
   const toggleSelecionado = (id: string) => {
     const novo = new Set(selecionados);
     if (novo.has(id)) novo.delete(id); else novo.add(id);
@@ -104,12 +110,15 @@ export function Pedidos() {
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 flex items-center gap-2">
                     {p.status !== 'pago' && (
                       <button onClick={() => marcarPago(p.id)} className="text-verde text-xs hover:underline">
                         Pagar
                       </button>
                     )}
+                    <button onClick={() => excluirPedido(p.id)} className="text-vermelho text-xs hover:underline">
+                      Excluir
+                    </button>
                   </td>
                 </tr>
               ))}

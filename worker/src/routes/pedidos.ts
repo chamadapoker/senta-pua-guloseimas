@@ -131,4 +131,14 @@ pedidos.put('/:id/pagar', authMiddleware, async (c) => {
   return c.json(results[0]);
 });
 
+// Admin: excluir pedido
+pedidos.delete('/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(id).run();
+  const result = await c.env.DB.prepare('DELETE FROM pedidos WHERE id = ?').bind(id).run();
+
+  if (!result.meta.changes) return c.json({ error: 'Pedido não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
 export default pedidos;
