@@ -1,6 +1,20 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+type SistemaAdmin = 'guloseimas' | 'loja' | 'cafe';
+
+const SISTEMAS_ADMIN: { id: SistemaAdmin; label: string; emoji: string }[] = [
+  { id: 'guloseimas', label: 'Guloseimas', emoji: '🍬' },
+  { id: 'loja', label: 'Loja', emoji: '🎽' },
+  { id: 'cafe', label: 'Café', emoji: '☕' },
+];
+
+function getSistemaFromPath(pathname: string): SistemaAdmin {
+  if (pathname.startsWith('/admin/loja')) return 'loja';
+  if (pathname.startsWith('/admin/cafe')) return 'cafe';
+  return 'guloseimas';
+}
+
 function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const isMd = size === 'md';
   return (
@@ -30,25 +44,55 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  const { logout } = useAuth();
-
-  const navLinks = [
+const NAV_LINKS: Record<SistemaAdmin, { to: string; label: string }[]> = {
+  guloseimas: [
     { to: '/admin', label: 'Dashboard' },
     { to: '/admin/pedidos', label: 'Pedidos' },
     { to: '/admin/produtos', label: 'Produtos' },
     { to: '/admin/clientes', label: 'Militares' },
     { to: '/admin/config', label: 'Catálogos' },
-  ];
+  ],
+  loja: [
+    { to: '/admin/loja', label: 'Dashboard' },
+    { to: '/admin/loja/pedidos', label: 'Pedidos' },
+    { to: '/admin/loja/produtos', label: 'Produtos' },
+    { to: '/admin/loja/clientes', label: 'Militares' },
+  ],
+  cafe: [
+    { to: '/admin/cafe', label: 'Dashboard' },
+    { to: '/admin/cafe/mensalidades', label: 'Mensalidades' },
+    { to: '/admin/cafe/insumos', label: 'Estoque Insumos' },
+    { to: '/admin/cafe/assinantes', label: 'Assinantes' },
+  ],
+};
+
+export function AdminLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const { logout } = useAuth();
+  const sistemaAtual = getSistemaFromPath(location.pathname);
+  const navLinks = NAV_LINKS[sistemaAtual];
 
   return (
     <div className="min-h-screen bg-fundo">
       <header className="bg-white border-b border-borda sticky top-0 z-30 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Logo />
-          <div className="flex items-center gap-4">
-            <button onClick={logout} className="text-vermelho text-sm font-medium px-3 py-2 rounded-lg bg-vermelho/10 hover:bg-vermelho/20 transition-colors">Sair</button>
+          <div className="flex items-center gap-2">
+            {SISTEMAS_ADMIN.map((s) => (
+              <Link
+                key={s.id}
+                to={s.id === 'guloseimas' ? '/admin' : `/admin/${s.id}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  sistemaAtual === s.id
+                    ? 'bg-azul text-white shadow-sm'
+                    : 'bg-fundo text-texto-fraco hover:bg-gray-200'
+                }`}
+              >
+                <span>{s.emoji}</span>
+                <span className="hidden sm:inline">{s.label}</span>
+              </Link>
+            ))}
+            <button onClick={logout} className="text-vermelho text-sm font-medium px-3 py-2 rounded-lg bg-vermelho/10 hover:bg-vermelho/20 transition-colors ml-2">Sair</button>
           </div>
         </div>
       </header>

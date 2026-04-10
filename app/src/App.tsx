@@ -12,6 +12,8 @@ import { Clientes } from './pages/admin/Clientes';
 import { ClienteExtrato } from './pages/admin/ClienteExtrato';
 import { Pedidos } from './pages/admin/Pedidos';
 import { Configuracoes } from './pages/admin/Configuracoes';
+import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
+import { CafeDashboard } from './pages/admin/cafe/CafeDashboard';
 import { useAuth } from './hooks/useAuth';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -45,6 +47,10 @@ export function App() {
         <Route path="/admin/clientes/:id" element={<AdminGuard><ClienteExtrato /></AdminGuard>} />
         <Route path="/admin/pedidos" element={<AdminGuard><Pedidos /></AdminGuard>} />
         <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
+        {/* Loja Militar */}
+        <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
+        {/* Caixinha do Café */}
+        <Route path="/admin/cafe" element={<AdminGuard><CafeDashboard /></AdminGuard>} />
       </Routes>
     </BrowserRouter>
   );
