@@ -5,7 +5,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding  = "DB"
 database_name = "senta-pua-db"
-database_id   = "COLE_O_ID_AQUI_APOS_wrangler_d1_create"
+database_id   = "e469b470-8e61-4eeb-966d-20eafc0a2ac5"
 
 [vars]
 AMBIENTE = "production"
