@@ -106,7 +106,7 @@ export function Pedidos() {
                     )}
                   </td>
                   <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">
-                    {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                    {new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                   </td>
                   <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
                   <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">

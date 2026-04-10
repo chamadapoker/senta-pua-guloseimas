@@ -71,7 +71,7 @@ export function ClienteExtrato() {
           <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-texto-fraco">
-                {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                {new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
               </span>
               {statusBadge(p.status)}
             </div>

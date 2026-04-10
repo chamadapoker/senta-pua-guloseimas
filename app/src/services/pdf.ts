@@ -49,9 +49,9 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
 
   // ===== TABELA DE PEDIDOS =====
   const tableData = pedidos.map((p) => {
-    const dt = new Date(p.created_at);
-    const data = dt.toLocaleDateString('pt-BR');
-    const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dt = new Date(p.created_at + 'Z');
+    const data = dt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
     return [
       `${data}\n${hora}`,
       p.itens_resumo || '-',
