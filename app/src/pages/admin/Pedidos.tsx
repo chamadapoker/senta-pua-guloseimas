@@ -31,9 +31,13 @@ export function Pedidos() {
   };
 
   const excluirPedido = async (pedidoId: string) => {
-    if (!confirm('Excluir este pedido? Essa ação não pode ser desfeita.')) return;
-    await api.delete(`/api/pedidos/${pedidoId}`);
-    carregar();
+    if (!window.confirm('Tem certeza que deseja excluir este pedido? Essa ação não pode ser desfeita.')) return;
+    try {
+      await api.delete(`/api/pedidos/${pedidoId}`);
+      carregar();
+    } catch (e) {
+      alert('Erro ao excluir: ' + (e instanceof Error ? e.message : 'tente novamente'));
+    }
   };
 
   const toggleSelecionado = (id: string) => {

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(CLOUDFLARE_API_TOKEN=cfut_FWjc2sky7MWB2SvQG7QovOH16tq69dcX07DnYTuYee82418d npx wrangler secret put ADMIN_SENHA)"
+    ]
+  }
+}

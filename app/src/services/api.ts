@@ -3,9 +3,12 @@ const BASE_URL = import.meta.env.VITE_WORKER_URL || '';
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...((options?.headers as Record<string, string>) || {}),
   };
+
+  if (options?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
