@@ -34,11 +34,12 @@ loja.get('/produtos', async (c) => {
 
 // PUBLIC: create order (same trigrama flow as guloseimas)
 loja.post('/pedidos', async (c) => {
-  const { nome_guerra, itens, metodo, whatsapp } = await c.req.json<{
+  const { nome_guerra, itens, metodo, whatsapp, parcelas } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; variacao_id?: string; quantidade: number }[];
     metodo: 'pix' | 'fiado';
     whatsapp?: string;
+    parcelas?: number;
   }>();
 
   if (!nome_guerra || !itens?.length || !metodo) {
@@ -120,6 +121,25 @@ loja.post('/pedidos', async (c) => {
     );
 
   await c.env.DB.batch([...batch, ...estoqueUpdates]);
+
+  // Generate parcelas
+  const numParcelas = Math.min(Math.max(parseInt(String(parcelas)) || 1, 1), 3);
+  const valorParcela = Math.round((total / numParcelas) * 100) / 100;
+  const parcelaBatch = [];
+  for (let i = 1; i <= numParcelas; i++) {
+    // Last parcela absorbs rounding difference
+    const val = i === numParcelas ? Math.round((total - valorParcela * (numParcelas - 1)) * 100) / 100 : valorParcela;
+    parcelaBatch.push(
+      c.env.DB.prepare(
+        'INSERT INTO loja_parcelas (pedido_id, numero, total_parcelas, valor) VALUES (?, ?, ?, ?)'
+      ).bind(pedidoId, i, numParcelas, val)
+    );
+  }
+  // Update pedido with parcelas count
+  parcelaBatch.push(
+    c.env.DB.prepare('UPDATE loja_pedidos SET parcelas = ? WHERE id = ?').bind(numParcelas, pedidoId)
+  );
+  await c.env.DB.batch(parcelaBatch);
 
   return c.json({ pedido_id: pedidoId, total, status }, 201);
 });
@@ -270,7 +290,7 @@ loja.delete('/admin/produtos/:id', authMiddleware, async (c) => {
 loja.get('/admin/pedidos', authMiddleware, async (c) => {
   const status = c.req.query('status');
   let sql = `
-    SELECT p.*, cl.nome_guerra,
+    SELECT p.*, p.parcelas, cl.nome_guerra,
       GROUP_CONCAT(ip.nome_produto || COALESCE(' (' || ip.nome_variacao || ')', '') || ' x' || ip.quantidade, ', ') as itens_resumo
     FROM loja_pedidos p
     JOIN clientes cl ON cl.id = p.cliente_id
@@ -303,6 +323,69 @@ loja.delete('/admin/pedidos/:id', authMiddleware, async (c) => {
   const result = await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Pedido não encontrado' }, 404);
   return c.json({ ok: true });
+});
+
+// PUBLIC: list parcelas for an order
+loja.get('/pedidos/:id/parcelas', async (c) => {
+  const id = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM loja_parcelas WHERE pedido_id = ? ORDER BY numero ASC'
+  ).bind(id).all();
+  return c.json(results);
+});
+
+// PUBLIC: confirm parcela payment
+loja.put('/parcelas/:id/confirmar', async (c) => {
+  const id = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    "UPDATE loja_parcelas SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
+  ).bind(id).all();
+  if (!results.length) return c.json({ error: 'Parcela não encontrada' }, 404);
+
+  // Check if all parcelas are paid, then mark order as pago
+  const parcela = results[0] as any;
+  const pendentes = await c.env.DB.prepare(
+    "SELECT COUNT(*) as total FROM loja_parcelas WHERE pedido_id = ? AND status = 'pendente'"
+  ).bind(parcela.pedido_id).first<{ total: number }>();
+
+  if (pendentes?.total === 0) {
+    await c.env.DB.prepare(
+      "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ?"
+    ).bind(parcela.pedido_id).run();
+  }
+
+  return c.json(results[0]);
+});
+
+// ADMIN: list parcelas for an order
+loja.get('/admin/pedidos/:id/parcelas', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM loja_parcelas WHERE pedido_id = ? ORDER BY numero ASC'
+  ).bind(id).all();
+  return c.json(results);
+});
+
+// ADMIN: mark parcela as paid
+loja.put('/admin/parcelas/:id/pagar', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { results } = await c.env.DB.prepare(
+    "UPDATE loja_parcelas SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
+  ).bind(id).all();
+  if (!results.length) return c.json({ error: 'Parcela não encontrada' }, 404);
+
+  const parcela = results[0] as any;
+  const pendentes = await c.env.DB.prepare(
+    "SELECT COUNT(*) as total FROM loja_parcelas WHERE pedido_id = ? AND status = 'pendente'"
+  ).bind(parcela.pedido_id).first<{ total: number }>();
+
+  if (pendentes?.total === 0) {
+    await c.env.DB.prepare(
+      "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ?"
+    ).bind(parcela.pedido_id).run();
+  }
+
+  return c.json(results[0]);
 });
 
 // ADMIN: dashboard stats

@@ -20,6 +20,7 @@ import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
 import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
 import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
 import { CafePublico } from './pages/CafePublico';
+import { LojaPublica } from './pages/LojaPublica';
 import { useAuth } from './hooks/useAuth';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,7 @@ export function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/pix/:pedidoId" element={<PixPage />} />
         <Route path="/obrigado" element={<Obrigado />} />
+        <Route path="/loja" element={<LojaPublica />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<AdminGuard><Dashboard /></AdminGuard>} />
         <Route path="/admin/produtos" element={<AdminGuard><Produtos /></AdminGuard>} />

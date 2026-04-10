@@ -85,10 +85,13 @@ export function Home() {
           <div className="text-center max-w-sm mx-auto animate-fade-in">
             <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm">
               <h2 className="font-display text-xl text-azul tracking-wider mb-2">LOJA MILITAR</h2>
-              <p className="text-texto-fraco text-sm">Camisas, canecas, abridores, facas e mais artigos do esquadrão.</p>
-              <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <p className="text-amber-800 text-xs font-medium">Em breve disponível!</p>
-              </div>
+              <p className="text-texto-fraco text-sm mb-5">Camisas, bones, canecas e artigos do esquadrao.</p>
+              <Link
+                to="/loja"
+                className="inline-block bg-azul text-white font-display text-sm tracking-wider px-6 py-3 rounded-xl hover:bg-azul/90 transition-colors"
+              >
+                ACESSAR LOJA
+              </Link>
             </div>
           </div>
         )}
