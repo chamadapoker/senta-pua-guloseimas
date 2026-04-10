@@ -1,13 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-function Logo() {
+function Logo({ size = 'md' }: { size?: 'md' | 'lg' }) {
+  const isMd = size === 'md';
   return (
-    <Link to="/" className="flex items-center gap-3">
-      <img src="/logo.png" alt="1/10 GpAv" className="w-9 h-9 object-contain" />
+    <Link to="/" className="flex items-center gap-3 justify-center">
+      <img src="/logo.png" alt="1/10 GpAv" className={`${isMd ? 'w-10 h-10' : 'w-11 h-11'} object-contain`} />
       <div className="leading-tight">
-        <div className="font-display text-lg text-azul tracking-wider">SENTA PUA</div>
-        <div className="text-[10px] text-vermelho tracking-[0.15em] font-medium uppercase">Guloseimas</div>
+        <div className={`font-display text-azul tracking-wider ${isMd ? 'text-xl' : 'text-2xl'}`}>SENTA PUA</div>
+        <div className={`text-vermelho tracking-[0.15em] font-medium uppercase ${isMd ? 'text-[10px]' : 'text-xs'}`}>Guloseimas</div>
       </div>
     </Link>
   );
@@ -17,9 +18,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-fundo">
       <header className="bg-white border-b border-borda sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <Logo />
-          <span className="text-[10px] text-texto-fraco tracking-widest uppercase font-medium">1/10 GpAv</span>
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-center">
+          <Logo size="lg" />
         </div>
       </header>
       <main className="max-w-lg mx-auto px-4 py-5">{children}</main>
