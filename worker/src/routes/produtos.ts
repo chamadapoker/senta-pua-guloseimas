@@ -39,13 +39,25 @@ produtos.post('/', authMiddleware, async (c) => {
 // Admin: editar produto
 produtos.put('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { nome, emoji, preco, disponivel, ordem, imagem_url } = await c.req.json();
+  const body = await c.req.json();
 
+  // Build dynamic SET clause so we only update fields that were sent
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
+  if ('emoji' in body) { fields.push('emoji = ?'); values.push(body.emoji); }
+  if ('preco' in body) { fields.push('preco = ?'); values.push(body.preco); }
+  if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
+  if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
+  if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
+
+  if (!fields.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
+
+  values.push(id);
   const { results } = await c.env.DB.prepare(
-    `UPDATE produtos SET nome = COALESCE(?, nome), emoji = COALESCE(?, emoji),
-     preco = COALESCE(?, preco), disponivel = COALESCE(?, disponivel),
-     ordem = COALESCE(?, ordem), imagem_url = COALESCE(?, imagem_url) WHERE id = ? RETURNING *`
-  ).bind(nome, emoji, preco, disponivel, ordem, imagem_url, id).all<Produto>();
+    `UPDATE produtos SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+  ).bind(...values).all<Produto>();
 
   if (!results.length) return c.json({ error: 'Produto não encontrado' }, 404);
   return c.json(results[0]);
