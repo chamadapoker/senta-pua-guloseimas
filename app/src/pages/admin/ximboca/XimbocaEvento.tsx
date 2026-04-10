@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
@@ -51,6 +52,13 @@ export function XimbocaEvento() {
   const marcarPago = async (pid: string) => {
     await api.put(`/api/ximboca/participantes/${pid}/pagar`, {});
     carregar();
+  };
+
+  const cobrarParticipante = async (p: Participante) => {
+    if (!evento) return;
+    const valor = p.valor_individual ?? evento.valor_por_pessoa;
+    const dataFormatada = new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR');
+    await gerarCobrancaXimbocaPDF(evento.nome, dataFormatada, p.nome, valor);
   };
 
   const removerParticipante = async (pid: string) => {
@@ -135,6 +143,7 @@ export function XimbocaEvento() {
                       className={`text-xs font-medium px-2 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100 ${!p.whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
                       Cobrar
                     </a>
+                    <button onClick={() => cobrarParticipante(p)} className="text-xs font-medium px-2 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">PDF</button>
                     <button onClick={() => marcarPago(p.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">Pagar</button>
                   </>
                 )}

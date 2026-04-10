@@ -110,3 +110,140 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   // ===== DOWNLOAD =====
   doc.save(`extrato-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }
+
+export async function gerarCobrancaCafePDF(nome: string, tipo: string, mesesPendentes: { referencia: string; valor: number }[], totalDevido: number, pixChave: string) {
+  const doc = new jsPDF();
+  const azul: [number, number, number] = [26, 58, 107];
+  const vermelho: [number, number, number] = [192, 57, 43];
+  const amber: [number, number, number] = [180, 120, 30];
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, pageWidth, 38, 'F');
+  doc.setFillColor(...vermelho);
+  doc.rect(0, 38, pageWidth, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text('CAIXINHA DO CAFE', pageWidth / 2, 16, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setTextColor(...amber);
+  doc.text(`1/10 GpAv — ${tipo === 'oficial' ? 'Sala dos Oficiais' : 'Sala SO Lange'}`, pageWidth / 2, 24, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text('COBRANCA DE MENSALIDADE', pageWidth / 2, 32, { align: 'center' });
+
+  // Dados
+  const yStart = 50;
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(14, yStart - 4, pageWidth - 28, 22, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(26, 58, 107);
+  doc.text(`Militar: ${nome}`, 20, yStart + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+
+  // Tabela
+  const tableData = mesesPendentes.map(m => [m.referencia, `R$ ${m.valor.toFixed(2)}`, 'PENDENTE']);
+
+  autoTable(doc, {
+    startY: yStart + 26,
+    head: [['Referencia', 'Valor', 'Status']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: azul, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, halign: 'center' },
+    bodyStyles: { fontSize: 9, textColor: [50, 50, 50] },
+    alternateRowStyles: { fillColor: [248, 248, 248] },
+    columnStyles: { 0: { halign: 'center' }, 1: { halign: 'right' }, 2: { halign: 'center' } },
+    margin: { left: 14, right: 14 },
+  });
+
+  // Total
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  doc.setFillColor(...vermelho);
+  doc.roundedRect(14, finalY, pageWidth - 28, 18, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`TOTAL PENDENTE: R$ ${totalDevido.toFixed(2)}`, pageWidth / 2, finalY + 12, { align: 'center' });
+
+  // Rodape
+  const footerY = finalY + 32;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Documento gerado automaticamente pelo sistema Caixinha do Cafe.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text(`Chave PIX: ${pixChave}`, pageWidth / 2, footerY + 5, { align: 'center' });
+
+  doc.save(`cafe-cobranca-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+}
+
+export async function gerarCobrancaXimbocaPDF(nomeEvento: string, dataEvento: string, participante: string, valor: number) {
+  const doc = new jsPDF();
+  const azul: [number, number, number] = [26, 58, 107];
+  const vermelho: [number, number, number] = [192, 57, 43];
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, pageWidth, 38, 'F');
+  doc.setFillColor(...vermelho);
+  doc.rect(0, 38, pageWidth, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text('XIMBOCA', pageWidth / 2, 16, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setTextColor(212, 168, 67);
+  doc.text(`1/10 GpAv — Esquadrao Poker`, pageWidth / 2, 24, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text('COBRANCA DE PARTICIPACAO', pageWidth / 2, 32, { align: 'center' });
+
+  // Dados
+  const yStart = 50;
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(14, yStart - 4, pageWidth - 28, 34, 3, 3, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(26, 58, 107);
+  doc.text(`Evento: ${nomeEvento}`, 20, yStart + 4);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Data: ${dataEvento}`, 20, yStart + 13);
+  doc.text(`Participante: ${participante}`, 20, yStart + 22);
+
+  // Valor
+  const valY = yStart + 44;
+  doc.setFillColor(...vermelho);
+  doc.roundedRect(14, valY, pageWidth - 28, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`VALOR: R$ ${valor.toFixed(2)}`, pageWidth / 2, valY + 14, { align: 'center' });
+
+  // Rodape
+  const footerY = valY + 36;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Documento gerado automaticamente pelo sistema Ximboca.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Chave PIX: sandraobregon12@gmail.com', pageWidth / 2, footerY + 5, { align: 'center' });
+
+  doc.save(`ximboca-cobranca-${participante.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+}

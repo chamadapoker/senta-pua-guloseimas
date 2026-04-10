@@ -4,6 +4,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { gerarCobrancaCafePDF } from '../../../services/pdf';
 
 interface Mensalidade {
   id: string;
@@ -54,6 +55,13 @@ export function CafeMensalidades() {
     } catch (e) {
       alert('Erro: ' + (e instanceof Error ? e.message : 'tente novamente'));
     } finally { setGerando(false); }
+  };
+
+  const cobrar = async (m: Mensalidade) => {
+    const pendentes = mensalidades.filter(x => x.nome_guerra === m.nome_guerra && x.status === 'pendente');
+    const totalDevido = pendentes.reduce((a, x) => a + x.valor, 0);
+    const pixChave = tipo === 'oficial' ? 'sandraobregon12@gmail.com' : 'lucas.gabriel.s.vilela@gmail.com';
+    await gerarCobrancaCafePDF(m.nome_guerra, tipo, pendentes.map(p => ({ referencia: p.referencia, valor: p.valor })), totalDevido, pixChave);
   };
 
   const marcarPago = async (id: string) => {
@@ -126,7 +134,10 @@ export function CafeMensalidades() {
                   </td>
                   <td className="px-3 py-3">
                     {m.status === 'pendente' && (
-                      <button onClick={() => marcarPago(m.id)} className="text-verde text-xs hover:underline">Pagar</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => marcarPago(m.id)} className="text-verde text-xs hover:underline">Pagar</button>
+                        <button onClick={() => cobrar(m)} className="text-azul text-xs hover:underline">PDF</button>
+                      </div>
                     )}
                   </td>
                 </tr>
