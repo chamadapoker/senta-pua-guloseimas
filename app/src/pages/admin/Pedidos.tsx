@@ -23,9 +23,7 @@ export function Pedidos() {
   };
 
   const marcarLotePago = async () => {
-    for (const id of selecionados) {
-      await api.put(`/api/pedidos/${id}/pagar`, {});
-    }
+    await Promise.all([...selecionados].map(id => api.put(`/api/pedidos/${id}/pagar`, {})));
     setSelecionados(new Set());
     carregar();
   };

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS produtos (
   imagem_url  TEXT DEFAULT NULL,
   categoria   TEXT NOT NULL DEFAULT 'geral'
                 CHECK (categoria IN ('oficiais', 'graduados', 'geral')),
+  estoque     INTEGER DEFAULT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

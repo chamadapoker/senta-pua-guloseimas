@@ -20,6 +20,7 @@ interface Assinante {
 export function CafeAssinantes() {
   const [assinantes, setAssinantes] = useState<Assinante[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
+  const [editando, setEditando] = useState<Assinante | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [tipo, setTipo] = useState('graduado');
   const [plano, setPlano] = useState('mensal');
@@ -28,17 +29,39 @@ export function CafeAssinantes() {
   const carregar = () => api.get<Assinante[]>('/api/cafe/admin/assinantes').then(setAssinantes);
   useEffect(() => { carregar(); }, []);
 
+  const fecharModal = () => {
+    setModalAberto(false);
+    setEditando(null);
+    setNomeGuerra(''); setTipo('graduado'); setPlano('mensal'); setValor('');
+  };
+
+  const abrirEditar = (a: Assinante) => {
+    setEditando(a);
+    setNomeGuerra(a.nome_guerra);
+    setTipo(a.tipo);
+    setPlano(a.plano);
+    setValor(String(a.valor));
+    setModalAberto(true);
+  };
+
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/api/cafe/admin/assinantes', {
-        nome_guerra: nomeGuerra.trim().toUpperCase(),
-        tipo,
-        plano,
-        valor: parseFloat(valor),
-      });
-      setModalAberto(false);
-      setNomeGuerra(''); setValor('');
+      if (editando) {
+        await api.put(`/api/cafe/admin/assinantes/${editando.id}`, {
+          tipo,
+          plano,
+          valor: parseFloat(valor),
+        });
+      } else {
+        await api.post('/api/cafe/admin/assinantes', {
+          nome_guerra: nomeGuerra.trim().toUpperCase(),
+          tipo,
+          plano,
+          valor: parseFloat(valor),
+        });
+      }
+      fecharModal();
       carregar();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erro');
@@ -59,7 +82,7 @@ export function CafeAssinantes() {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl text-azul tracking-wider">ASSINANTES</h1>
-        <Button size="sm" onClick={() => setModalAberto(true)}>+ Adicionar</Button>
+        <Button size="sm" onClick={() => { setEditando(null); setModalAberto(true); }}>+ Adicionar</Button>
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
@@ -87,7 +110,11 @@ export function CafeAssinantes() {
                   <td className="px-4 py-3 text-right">
                     <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
+                    <button onClick={() => abrirEditar(a)}
+                      className="text-xs font-medium px-3 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200">
+                      Editar
+                    </button>
                     <button onClick={() => toggleAtivo(a)}
                       className={`text-xs font-medium px-3 py-1 rounded-lg ${
                         a.ativo ? 'text-vermelho bg-red-50 border border-red-200' : 'text-verde bg-green-50 border border-green-200'
@@ -103,12 +130,12 @@ export function CafeAssinantes() {
         {assinantes.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhum assinante</div>}
       </div>
 
-      <Modal open={modalAberto} onClose={() => setModalAberto(false)} title="Novo Assinante">
+      <Modal open={modalAberto} onClose={fecharModal} title={editando ? 'Editar Assinante' : 'Novo Assinante'}>
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Trigrama</label>
             <input value={nomeGuerra} onChange={(e) => setNomeGuerra(e.target.value)}
-              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required />
+              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required disabled={!!editando} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -131,7 +158,7 @@ export function CafeAssinantes() {
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)}
               className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
-          <Button type="submit" className="w-full">Adicionar</Button>
+          <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Adicionar'}</Button>
         </form>
       </Modal>
     </AdminLayout>

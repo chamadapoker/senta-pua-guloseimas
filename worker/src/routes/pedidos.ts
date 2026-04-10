@@ -48,6 +48,15 @@ pedidos.post('/', async (c) => {
   }
 
   const produtoMap = new Map(produtos.map(p => [p.id, p]));
+
+  // Validar estoque antes de calcular
+  for (const item of itens) {
+    const produto = produtoMap.get(item.produto_id)!;
+    if (produto.estoque !== null && item.quantidade > produto.estoque) {
+      return c.json({ error: `Estoque insuficiente para ${produto.nome} (disponível: ${produto.estoque})` }, 400);
+    }
+  }
+
   let total = 0;
   const itensCalculados = itens.map(item => {
     const produto = produtoMap.get(item.produto_id)!;

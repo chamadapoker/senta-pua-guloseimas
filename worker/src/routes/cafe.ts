@@ -9,22 +9,22 @@ cafe.get('/devedores', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT ca.id, cl.nome_guerra, ca.tipo, ca.plano, ca.valor,
       (SELECT COUNT(*) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as meses_devendo,
-      (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as total_devido
+      (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as total_devido,
+      (SELECT GROUP_CONCAT(cp.id) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as pagamento_ids_str
     FROM cafe_assinantes ca
     JOIN clientes cl ON cl.id = ca.cliente_id
     WHERE ca.ativo = 1
     ORDER BY cl.nome_guerra ASC
   `).all();
 
-  // Get pending payment IDs for each subscriber
-  for (const r of results as any[]) {
-    const { results: pags } = await c.env.DB.prepare(
-      "SELECT id FROM cafe_pagamentos WHERE assinante_id = ? AND status = 'pendente'"
-    ).bind(r.id).all();
-    r.pagamento_ids = pags.map((p: any) => p.id);
-  }
+  // Convert comma-separated IDs to array
+  const mapped = results.map((r: any) => ({
+    ...r,
+    pagamento_ids: r.pagamento_ids_str ? r.pagamento_ids_str.split(',') : [],
+    pagamento_ids_str: undefined,
+  }));
 
-  return c.json(results);
+  return c.json(mapped);
 });
 
 // PUBLIC: confirm payment from military
@@ -135,26 +135,25 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
     'SELECT * FROM cafe_assinantes WHERE ativo = 1'
   ).all<{ id: string; valor: number }>();
 
-  // Skip if already generated
-  let criados = 0;
+  // Get all existing payments for this reference in one query
+  const { results: existentes } = await c.env.DB.prepare(
+    'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
+  ).bind(referencia).all<{ assinante_id: string }>();
+  const jaGerados = new Set(existentes.map(e => e.assinante_id));
+
   const batch = [];
   for (const a of assinantes) {
-    const existing = await c.env.DB.prepare(
-      'SELECT id FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?'
-    ).bind(a.id, referencia).first();
-
-    if (!existing) {
+    if (!jaGerados.has(a.id)) {
       batch.push(
         c.env.DB.prepare(
           'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
         ).bind(a.id, referencia, a.valor)
       );
-      criados++;
     }
   }
 
   if (batch.length) await c.env.DB.batch(batch);
-  return c.json({ criados, total: assinantes.length });
+  return c.json({ criados: batch.length, total: assinantes.length });
 });
 
 // ADMIN: list all payments (mensalidades page)
