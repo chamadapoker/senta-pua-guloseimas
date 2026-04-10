@@ -40,7 +40,7 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(26, 58, 107);
-  doc.text(`Cliente: ${nome}`, 20, yStart + 4);
+  doc.text(`Militar: ${nome}`, 20, yStart + 4);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -48,16 +48,21 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
 
   // ===== TABELA DE PEDIDOS =====
-  const tableData = pedidos.map((p) => [
-    new Date(p.created_at).toLocaleDateString('pt-BR'),
-    p.itens_resumo || '-',
-    `R$ ${p.total.toFixed(2)}`,
-    p.status.toUpperCase(),
-  ]);
+  const tableData = pedidos.map((p) => {
+    const dt = new Date(p.created_at);
+    const data = dt.toLocaleDateString('pt-BR');
+    const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return [
+      `${data}\n${hora}`,
+      p.itens_resumo || '-',
+      `R$ ${p.total.toFixed(2)}`,
+      p.status.toUpperCase(),
+    ];
+  });
 
   autoTable(doc, {
     startY: yStart + 26,
-    head: [['Data', 'Itens', 'Valor', 'Status']],
+    head: [['Data / Hora', 'Itens', 'Valor', 'Status']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -75,7 +80,7 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
       fillColor: [248, 248, 248],
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 25 },
+      0: { halign: 'center', cellWidth: 30 },
       1: { cellWidth: 'auto' },
       2: { halign: 'right', cellWidth: 28 },
       3: { halign: 'center', cellWidth: 25 },
