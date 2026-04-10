@@ -7,24 +7,82 @@ import { gerarPayloadPix } from '../services/pix';
 
 const PIX_EMAIL = 'sandraobregon12@gmail.com';
 
+const FRASES_PAGOU = [
+  'Valeu, piloto! Um Leão sempre honra suas dívidas!',
+  'Pagamento registrado! Você é exemplo pro esquadrão!',
+  'PIX confirmado! Moral lá em cima, soldado!',
+  'Boa, militar! Rápido no gatilho e no PIX!',
+  'Recebido! O 1/10 GpAv agradece, guerreiro!',
+];
+
 export function PixPage() {
   const { pedidoId } = useParams<{ pedidoId: string }>();
   const { pedido, pago } = usePixPolling(pedidoId);
   const navigate = useNavigate();
   const [copiadoCodigo, setCopiadoCodigo] = useState(false);
   const [copiadoEmail, setCopiadoEmail] = useState(false);
+  const [saiuDoApp, setSaiuDoApp] = useState(false);
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
+  const [frase] = useState(() => FRASES_PAGOU[Math.floor(Math.random() * FRASES_PAGOU.length)]);
 
   const pixPayload = useMemo(() => {
     if (!pedido) return null;
     return gerarPayloadPix(pedido.total);
   }, [pedido]);
 
+  // Detectar quando o militar sai e volta pro app
   useEffect(() => {
-    if (pago) { const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } }), 2000); return () => clearTimeout(t); }
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setSaiuDoApp(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (pago) {
+      const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } }), 2000);
+      return () => clearTimeout(t);
+    }
   }, [pago, navigate]);
 
-  const copiarCodigo = async () => { if (!pixPayload) return; await navigator.clipboard.writeText(pixPayload); setCopiadoCodigo(true); setTimeout(() => setCopiadoCodigo(false), 3000); };
-  const copiarEmail = async () => { await navigator.clipboard.writeText(PIX_EMAIL); setCopiadoEmail(true); setTimeout(() => setCopiadoEmail(false), 3000); };
+  const copiarCodigo = async () => {
+    if (!pixPayload) return;
+    await navigator.clipboard.writeText(pixPayload);
+    setCopiadoCodigo(true);
+    setTimeout(() => setCopiadoCodigo(false), 3000);
+  };
+
+  const copiarEmail = async () => {
+    await navigator.clipboard.writeText(PIX_EMAIL);
+    setCopiadoEmail(true);
+    setTimeout(() => setCopiadoEmail(false), 3000);
+  };
+
+  const confirmarPagamento = () => {
+    setMostrarConfirmacao(true);
+    setTimeout(() => {
+      navigate('/obrigado', { state: { nome: 'PILOTO', metodo: 'pix' } });
+    }, 3000);
+  };
+
+  if (mostrarConfirmacao) {
+    return (
+      <PublicLayout>
+        <div className="text-center py-16 animate-fade-in">
+          <div className="w-20 h-20 mx-auto rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-5">
+            <svg className="w-10 h-10 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="font-display text-2xl text-azul tracking-wider mb-4">VALEU, PILOTO!</h2>
+          <p className="text-texto-fraco italic px-6 text-sm leading-relaxed">"{frase}"</p>
+        </div>
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>
@@ -69,6 +127,20 @@ export function PixPage() {
               <p className="text-xs text-texto-fraco ml-10">Vá em PIX &rarr; Pagar &rarr; Copia e Cola e cole o código</p>
             </div>
 
+            {/* Botão JÁ PAGUEI aparece quando o militar volta pro app */}
+            {saiuDoApp && (
+              <div className="bg-white rounded-2xl p-5 mb-4 border-2 border-verde shadow-sm animate-slide-up">
+                <p className="text-sm font-medium text-texto mb-3">Já fez o PIX?</p>
+                <Button variant="success" size="lg" className="w-full" onClick={confirmarPagamento}>
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    JÁ PAGUEI
+                  </span>
+                </Button>
+              </div>
+            )}
+
+            {/* Chave PIX email */}
             <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
               <p className="text-xs text-texto-fraco mb-3 uppercase tracking-wider">Ou pague pela chave PIX (e-mail)</p>
               <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
@@ -84,10 +156,13 @@ export function PixPage() {
               {copiadoEmail && <p className="text-verde text-xs mt-2">E-mail copiado!</p>}
             </div>
 
-            <div className="flex items-center justify-center gap-2 text-sm text-texto-fraco mb-4">
-              <div className="w-2 h-2 rounded-full bg-verde animate-pulse" />
-              Aguardando confirmação...
-            </div>
+            {!saiuDoApp && (
+              <div className="flex items-center justify-center gap-2 text-sm text-texto-fraco mb-4">
+                <div className="w-2 h-2 rounded-full bg-verde animate-pulse" />
+                Aguardando confirmação...
+              </div>
+            )}
+
             <button onClick={() => navigate('/')} className="text-texto-fraco text-sm underline hover:text-texto">Cancelar e voltar</button>
           </>
         )}
