@@ -36,6 +36,7 @@ export function Produtos() {
   const [preco, setPreco] = useState('');
   const [ordem, setOrdem] = useState('0');
   const [categoria, setCategoria] = useState<'oficiais' | 'graduados' | 'geral'>('geral');
+  const [disponivel, setDisponivel] = useState(true);
   const [imagemUrl, setImagemUrl] = useState('');
   const [previewImg, setPreviewImg] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -46,14 +47,14 @@ export function Produtos() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0'); setCategoria('geral');
+    setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0'); setCategoria('geral'); setDisponivel(true);
     setImagemUrl(''); setPreviewImg('');
     setModalAberto(true);
   };
 
   const abrirEditar = (p: Produto) => {
     setEditando(p);
-    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral');
+    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral'); setDisponivel(!!p.disponivel);
     setImagemUrl(p.imagem_url || '');
     setPreviewImg(resolveImg(p.imagem_url) || '');
     setModalAberto(true);
@@ -85,6 +86,7 @@ export function Produtos() {
       ordem: parseInt(ordem),
       imagem_url: imagemUrl || null,
       categoria,
+      disponivel: disponivel ? 1 : 0,
     };
     if (editando) {
       await api.put(`/api/produtos/${editando.id}`, data);
@@ -223,6 +225,15 @@ export function Produtos() {
                 <option value="graduados">Sala dos Graduados</option>
               </select>
             </div>
+          </div>
+
+          {/* Disponível / Esgotado */}
+          <div className="flex items-center justify-between bg-fundo rounded-xl px-4 py-3">
+            <div>
+              <span className="text-sm font-medium">{disponivel ? 'Disponível' : 'Esgotado'}</span>
+              <p className="text-xs text-texto-fraco">{disponivel ? 'Produto aparece no catálogo' : 'Produto aparece como esgotado'}</p>
+            </div>
+            <Toggle checked={disponivel} onChange={setDisponivel} />
           </div>
 
           <Button type="submit" className="w-full" disabled={uploading}>
