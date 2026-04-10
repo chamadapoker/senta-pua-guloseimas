@@ -23,6 +23,9 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="max-w-lg mx-auto px-4 py-5">{children}</main>
+      <footer className="text-center py-4 text-[10px] text-texto-fraco tracking-wider">
+        Desenvolvido pelo 3S TIN HÖEHR
+      </footer>
     </div>
   );
 }
@@ -67,6 +70,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
       <main className="max-w-5xl mx-auto px-4 py-5">{children}</main>
+      <footer className="text-center py-4 text-[10px] text-texto-fraco tracking-wider">
+        Desenvolvido pelo 3S TIN HÖEHR
+      </footer>
     </div>
   );
 }
