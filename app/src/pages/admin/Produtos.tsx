@@ -208,15 +208,9 @@ export function Produtos() {
             <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Emoji</label>
-              <input value={emoji} onChange={(e) => setEmoji(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Preço (R$)</label>
+            <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
