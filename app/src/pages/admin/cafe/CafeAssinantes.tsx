@@ -46,6 +46,10 @@ export function CafeAssinantes() {
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editando && !/^[A-ZÀ-ÚÖ]{3}$/.test(nomeGuerra.trim())) {
+      alert('Trigrama deve ter exatamente 3 letras');
+      return;
+    }
     try {
       if (editando) {
         await api.put(`/api/cafe/admin/assinantes/${editando.id}`, {
@@ -146,8 +150,9 @@ export function CafeAssinantes() {
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Trigrama</label>
-            <input value={nomeGuerra} onChange={(e) => setNomeGuerra(e.target.value)}
-              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required disabled={!!editando} />
+            <input value={nomeGuerra} maxLength={3}
+              onChange={(e) => setNomeGuerra(e.target.value.toUpperCase().replace(/[^A-ZÀ-ÚÖ]/g, '').slice(0, 3))}
+              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase tracking-widest" required disabled={!!editando} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

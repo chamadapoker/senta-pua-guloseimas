@@ -26,8 +26,7 @@ export function Checkout() {
 
   const validarTrigrama = (nome: string) => {
     const limpo = nome.trim();
-    if (limpo.length < 3) return 'Trigrama deve ter no mínimo 3 letras';
-    if (!/^[A-Za-zÀ-ú\s]+$/.test(limpo)) return 'Trigrama deve conter apenas letras';
+    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(limpo)) return 'Trigrama deve ter exatamente 3 letras';
     return null;
   };
 
@@ -102,7 +101,7 @@ export function Checkout() {
         <div>
           <label className="block text-sm font-medium text-texto-fraco mb-1.5">Trigrama (nome de guerra)</label>
           <NomeGuerraInput value={nomeGuerra} onChange={setNomeGuerra} />
-          <p className="text-xs text-texto-fraco mt-1">Mínimo 3 letras — seu trigrama militar</p>
+          <p className="text-xs text-texto-fraco mt-1">Exatamente 3 letras — seu trigrama militar</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-texto-fraco mb-1.5">

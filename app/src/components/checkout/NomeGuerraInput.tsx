@@ -37,9 +37,10 @@ export function NomeGuerraInput({ value, onChange }: Props) {
     <div ref={wrapperRef} className="relative">
       <input
         type="text" value={value}
-        onChange={(e) => onChange(e.target.value.toUpperCase().replace(/[^A-ZÀ-ÚÖ\s]/g, ''))}
+        maxLength={3}
+        onChange={(e) => onChange(e.target.value.toUpperCase().replace(/[^A-ZÀ-ÚÖ]/g, '').slice(0, 3))}
         onFocus={() => sugestoes.length > 0 && setAberto(true)}
-        placeholder="Digite seu trigrama..."
+        placeholder="Ex: HÖE, RBA..."
         className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base uppercase placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul tracking-widest font-display text-lg"
       />
       {aberto && sugestoes.length > 0 && (

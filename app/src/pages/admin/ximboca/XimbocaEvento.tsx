@@ -175,7 +175,7 @@ export function XimbocaEvento() {
         <form onSubmit={adicionarParticipante} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={partNome} onChange={e => setPartNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required placeholder="Trigrama ou nome" />
+            <input value={partNome} onChange={e => setPartNome(e.target.value.toUpperCase())} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required placeholder="Trigrama ou nome" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp (opcional)</label>

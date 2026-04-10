@@ -199,8 +199,8 @@ loja.post('/admin/produtos', authMiddleware, async (c) => {
     if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
 
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO loja_produtos (nome, descricao, preco, imagem_url, ordem) VALUES (?, ?, ?, ?, ?) RETURNING *'
-    ).bind(nome, descricao || '', preco, imagem_url || null, ordem ?? 0).all();
+      'INSERT INTO loja_produtos (nome, descricao, preco, imagem_url, ordem, disponivel) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
+    ).bind(nome, descricao || '', preco, imagem_url || null, ordem ?? 0, body.disponivel ?? 1).all();
 
     const produto = results[0] as any;
 

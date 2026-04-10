@@ -109,7 +109,7 @@ export function LojaPublica() {
 
   const enviarPedido = async () => {
     const metodo = 'pix' as const;
-    if (nomeGuerra.trim().length < 3) { setErro('Trigrama deve ter no minimo 3 letras'); return; }
+    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(nomeGuerra.trim())) { setErro('Trigrama deve ter exatamente 3 letras'); return; }
     if (visitante && !esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
     if (visitante && !whatsapp.trim()) { setErro('WhatsApp obrigatório para visitantes'); return; }
 
