@@ -24,30 +24,26 @@ export function Login() {
 
   return (
     <PublicLayout>
-      <div className="max-w-sm mx-auto py-10">
-        <h1 className="text-2xl font-bold text-azul mb-6 text-center">Admin</h1>
+      <div className="max-w-sm mx-auto py-10 animate-fade-in">
+        <h1 className="font-display text-3xl text-white tracking-wider mb-6 text-center">ADMIN</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Email</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul"
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-fundo-card border border-borda rounded-xl px-4 py-3 text-texto focus:outline-none focus:ring-2 focus:ring-dourado/50"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Senha</label>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Senha</label>
             <input
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul"
+              type="password" value={senha} onChange={(e) => setSenha(e.target.value)}
+              className="w-full bg-fundo-card border border-borda rounded-xl px-4 py-3 text-texto focus:outline-none focus:ring-2 focus:ring-dourado/50"
               required
             />
           </div>
-          {erro && <p className="text-vermelho text-sm">{erro}</p>}
+          {erro && <p className="text-vermelho text-sm bg-vermelho/10 border border-vermelho/20 rounded-lg px-3 py-2">{erro}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>

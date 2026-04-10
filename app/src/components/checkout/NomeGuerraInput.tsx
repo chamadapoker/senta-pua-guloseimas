@@ -46,16 +46,16 @@ export function NomeGuerraInput({ value, onChange }: Props) {
         value={value}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
         onFocus={() => sugestoes.length > 0 && setAberto(true)}
-        placeholder="Ex: MAVERICK, ICEMAN..."
-        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base uppercase focus:outline-none focus:ring-2 focus:ring-azul"
+        placeholder="Ex: MAV, ICE, TOP..."
+        className="w-full bg-fundo-card border border-borda rounded-xl px-4 py-3 text-base uppercase text-texto placeholder-texto-fraco/50 focus:outline-none focus:ring-2 focus:ring-dourado/50 focus:border-dourado/50 tracking-widest font-display text-lg"
       />
       {aberto && sugestoes.length > 0 && (
-        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-40 overflow-y-auto">
+        <ul className="absolute z-10 w-full bg-fundo-card border border-borda rounded-xl mt-1 shadow-2xl max-h-40 overflow-y-auto">
           {sugestoes.map((s) => (
             <li key={s.id}>
               <button
                 type="button"
-                className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                className="w-full text-left px-4 py-2.5 hover:bg-fundo-elevado text-sm text-texto transition-colors"
                 onClick={() => { onChange(s.nome_guerra); setAberto(false); }}
               >
                 {s.nome_guerra}

@@ -4,15 +4,15 @@ interface BadgeProps {
 }
 
 const variants = {
-  success: 'bg-green-100 text-green-800',
-  danger: 'bg-red-100 text-red-800',
-  warning: 'bg-yellow-100 text-yellow-800',
-  neutral: 'bg-gray-100 text-gray-800',
+  success: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
+  danger: 'bg-vermelho/15 text-red-400 border border-vermelho/20',
+  warning: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+  neutral: 'bg-fundo-elevado text-texto-fraco border border-borda',
 };
 
 export function Badge({ variant, children }: BadgeProps) {
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${variants[variant]}`}>
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]}`}>
       {children}
     </span>
   );

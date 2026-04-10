@@ -7,8 +7,8 @@ import { ProductCard } from '../components/catalogo/ProductCard';
 import { CartBar } from '../components/catalogo/CartBar';
 
 const TITULOS: Record<string, string> = {
-  oficiais: 'Sala dos Oficiais',
-  graduados: 'Sala dos Graduados',
+  oficiais: 'SALA DOS OFICIAIS',
+  graduados: 'SALA DOS GRADUADOS',
 };
 
 export function Catalogo() {
@@ -24,33 +24,35 @@ export function Catalogo() {
       .finally(() => setLoading(false));
   }, [categoria]);
 
-  const titulo = categoria ? TITULOS[categoria] || 'Cardápio' : 'Cardápio';
+  const titulo = categoria ? TITULOS[categoria] || 'CARDÁPIO' : 'CARDÁPIO';
 
   return (
     <PublicLayout>
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-azul">{titulo}</h1>
-        <p className="text-sm text-gray-500">Escolha seus itens e feche o pedido</p>
+      <div className="mb-5">
+        <h1 className="font-display text-2xl text-white tracking-wider">{titulo}</h1>
+        <p className="text-sm text-texto-fraco mt-1">Toque no + para adicionar ao pedido</p>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse">
-              <div className="aspect-square bg-gray-200" />
+            <div key={i} className="bg-fundo-card rounded-2xl overflow-hidden border border-borda animate-pulse">
+              <div className="aspect-square bg-fundo-elevado" />
               <div className="p-3 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-5 bg-gray-200 rounded w-1/2" />
+                <div className="h-4 bg-fundo-elevado rounded w-3/4" />
+                <div className="h-5 bg-fundo-elevado rounded w-1/2" />
               </div>
             </div>
           ))}
         </div>
       ) : produtos.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Nenhum produto disponível</div>
+        <div className="text-center py-16 text-texto-fraco">Nenhum produto disponível</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 pb-24">
-          {produtos.map((p) => (
-            <ProductCard key={p.id} produto={p} />
+        <div className="grid grid-cols-2 gap-3 pb-28">
+          {produtos.map((p, i) => (
+            <div key={p.id} style={{ animationDelay: `${i * 60}ms` }}>
+              <ProductCard produto={p} />
+            </div>
           ))}
         </div>
       )}

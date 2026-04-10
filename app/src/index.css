@@ -1,17 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   --azul: #1a3a6b;
-  --azul-claro: #2456a4;
-  --vermelho: #b01c2e;
-  --dourado: #c8a84b;
-  --bg: #f4f4f4;
-  --texto: #1a1a1a;
+  --vermelho: #c0392b;
+  --dourado: #d4a843;
+  --fundo: #0f1117;
+  --fundo-card: #1a1d28;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--fundo);
+  color: #e8e8ed;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar dark */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--fundo); }
+::-webkit-scrollbar-thumb { background: #2a2e3d; border-radius: 3px; }
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }

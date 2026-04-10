@@ -1,5 +1,5 @@
 const PIX_KEY = 'sandraobregon12@gmail.com';
-const MERCHANT_NAME = 'SENTA PUA GULOSEIMAS';
+const MERCHANT_NAME = 'SENTA PUA GULOSE';  // max 25 chars, sem acento
 const MERCHANT_CITY = 'ANAPOLIS';
 
 function tlv(id: string, value: string): string {
@@ -10,10 +10,9 @@ function tlv(id: string, value: string): string {
 function crc16(payload: string): string {
   const polynomial = 0x1021;
   let crc = 0xffff;
-  const bytes = new TextEncoder().encode(payload);
-  for (const byte of bytes) {
-    crc ^= byte << 8;
-    for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
       if (crc & 0x8000) {
         crc = ((crc << 1) ^ polynomial) & 0xffff;
       } else {
@@ -30,19 +29,24 @@ export function gerarPayloadPix(valor?: number): string {
   const merchantAccount = tlv('26', gui + key);
 
   let payload = '';
-  payload += tlv('00', '01');
-  payload += merchantAccount;
-  payload += tlv('52', '0000');
-  payload += tlv('53', '986');
+  payload += tlv('00', '01');                   // Payload Format Indicator
+  payload += merchantAccount;                    // Merchant Account (PIX)
+  payload += tlv('52', '0000');                  // Merchant Category Code
+  payload += tlv('53', '986');                   // Transaction Currency (BRL)
 
   if (valor && valor > 0) {
-    payload += tlv('54', valor.toFixed(2));
+    payload += tlv('54', valor.toFixed(2));       // Transaction Amount
   }
 
-  payload += tlv('58', 'BR');
-  payload += tlv('59', MERCHANT_NAME);
-  payload += tlv('60', MERCHANT_CITY);
+  payload += tlv('58', 'BR');                    // Country Code
+  payload += tlv('59', MERCHANT_NAME);           // Merchant Name
+  payload += tlv('60', MERCHANT_CITY);           // Merchant City
 
+  // Additional Data Field com txid
+  const txid = tlv('05', '***');
+  payload += tlv('62', txid);
+
+  // CRC16 placeholder + cálculo
   payload += '6304';
   const checksum = crc16(payload);
   payload += checksum;

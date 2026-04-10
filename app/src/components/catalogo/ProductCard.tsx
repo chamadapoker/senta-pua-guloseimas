@@ -15,13 +15,13 @@ export function ProductCard({ produto }: { produto: Produto }) {
   const imgSrc = resolveImg(produto.imagem_url);
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden border border-gray-100">
-      <div className="relative aspect-square bg-gray-50">
+    <div className="bg-fundo-card rounded-2xl overflow-hidden border border-borda hover:border-borda/80 transition-all group animate-slide-up">
+      <div className="relative aspect-square bg-fundo-elevado">
         {imgSrc ? (
           <img
             src={imgSrc}
             alt={produto.nome}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">
@@ -29,21 +29,23 @@ export function ProductCard({ produto }: { produto: Produto }) {
           </div>
         )}
         {quantidade > 0 && (
-          <span className="absolute top-2 right-2 bg-vermelho text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow">
+          <span className="absolute top-2 right-2 bg-vermelho text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-lg shadow-vermelho/40 animate-slide-up">
             {quantidade}
           </span>
         )}
+        {/* Gradient overlay */}
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-fundo-card to-transparent" />
       </div>
 
       <div className="p-3">
-        <h3 className="font-semibold text-texto text-sm leading-tight truncate">{produto.nome}</h3>
+        <h3 className="font-medium text-texto text-sm leading-tight truncate">{produto.nome}</h3>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-azul font-bold text-base">
+          <span className="text-dourado font-bold text-base font-display tracking-wide">
             R$ {produto.preco.toFixed(2).replace('.', ',')}
           </span>
           <button
             onClick={() => adicionar(produto)}
-            className="w-8 h-8 rounded-full bg-vermelho text-white flex items-center justify-center text-lg font-bold active:scale-90 transition-transform shadow-sm"
+            className="w-9 h-9 rounded-xl bg-vermelho text-white flex items-center justify-center text-lg font-bold active:scale-90 transition-all shadow-lg shadow-vermelho/30 hover:shadow-vermelho/50"
           >
             +
           </button>
