@@ -28,7 +28,7 @@ const app = new Hono<{ Bindings: Env; Variables: { adminEmail: string } }>();
 
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
-    origin: [c.env.FRONTEND_URL, 'https://senta-pua-guloseimas.pages.dev', 'https://app-senta-pua.pages.dev', 'http://localhost:5173'],
+    origin: [c.env.FRONTEND_URL, 'https://app-senta-pua.pages.dev', 'http://localhost:5173'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   });

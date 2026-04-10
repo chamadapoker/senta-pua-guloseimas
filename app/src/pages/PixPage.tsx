@@ -110,7 +110,7 @@ export function PixPage() {
           </Button>
 
           <button onClick={() => navigate('/')} className="text-texto-fraco text-sm underline hover:text-texto">
-            Voltar ao cardápio
+            Voltar ao catálogo
           </button>
         </div>
       </PublicLayout>

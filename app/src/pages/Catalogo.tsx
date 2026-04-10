@@ -10,7 +10,7 @@ export function Catalogo() {
   const { categoria } = useParams<{ categoria: string }>();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [titulo, setTitulo] = useState('CARDÁPIO');
+  const [titulo, setTitulo] = useState('CATÁLOGO');
 
   useEffect(() => {
     api.get<Record<string, string>>('/api/config').then((c) => {
