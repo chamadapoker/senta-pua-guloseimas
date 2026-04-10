@@ -13,7 +13,13 @@ import { ClienteExtrato } from './pages/admin/ClienteExtrato';
 import { Pedidos } from './pages/admin/Pedidos';
 import { Configuracoes } from './pages/admin/Configuracoes';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
+import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
+import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
 import { CafeDashboard } from './pages/admin/cafe/CafeDashboard';
+import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
+import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
+import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
+import { CafePublico } from './pages/CafePublico';
 import { useAuth } from './hooks/useAuth';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -49,8 +55,15 @@ export function App() {
         <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
         {/* Loja Militar */}
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
+        <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
+        <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />
         {/* Caixinha do Café */}
         <Route path="/admin/cafe" element={<AdminGuard><CafeDashboard /></AdminGuard>} />
+        <Route path="/admin/cafe/mensalidades" element={<AdminGuard><CafeMensalidades /></AdminGuard>} />
+        <Route path="/admin/cafe/insumos" element={<AdminGuard><CafeInsumos /></AdminGuard>} />
+        <Route path="/admin/cafe/assinantes" element={<AdminGuard><CafeAssinantes /></AdminGuard>} />
+        {/* Cafe Publico */}
+        <Route path="/cafe" element={<CafePublico />} />
       </Routes>
     </BrowserRouter>
   );

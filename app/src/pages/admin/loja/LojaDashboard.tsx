@@ -1,16 +1,30 @@
+import { useEffect, useState } from 'react';
 import { AdminLayout } from '../../../components/Layout';
+import { StatCard } from '../../../components/admin/StatCard';
+import { api } from '../../../services/api';
+
+interface LojaStats {
+  vendido_mes: number;
+  recebido_mes: number;
+  pendente_total: number;
+  vendas_hoje: number;
+}
 
 export function LojaDashboard() {
+  const [stats, setStats] = useState<LojaStats | null>(null);
+
+  useEffect(() => { api.get<LojaStats>('/api/loja/admin/stats').then(setStats); }, []);
+
+  if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+
   return (
     <AdminLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">LOJA MILITAR</h1>
-
-      <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm text-center">
-        <h2 className="font-display text-xl text-azul tracking-wider mb-2">EM CONSTRUÇÃO</h2>
-        <p className="text-texto-fraco text-sm max-w-md mx-auto">
-          Sistema de venda de artigos militares — camisas, canecas, abridores, facas e mais.
-          Com controle de estoque, tamanhos e variações.
-        </p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <StatCard label="Vendido no mês" value={`R$ ${stats.vendido_mes.toFixed(2)}`} />
+        <StatCard label="Recebido" value={`R$ ${stats.recebido_mes.toFixed(2)}`} color="text-verde" />
+        <StatCard label="Pendente" value={`R$ ${stats.pendente_total.toFixed(2)}`} color="text-vermelho" />
+        <StatCard label="Vendas hoje" value={String(stats.vendas_hoje)} color="text-azul" />
       </div>
     </AdminLayout>
   );

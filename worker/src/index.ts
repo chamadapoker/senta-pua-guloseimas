@@ -8,6 +8,8 @@ import pix from './routes/pix';
 import dashboard from './routes/dashboard';
 import images from './routes/images';
 import config from './routes/config';
+import loja from './routes/loja';
+import cafe from './routes/cafe';
 
 export type Env = {
   DB: D1Database;
@@ -40,6 +42,8 @@ app.route('/api/pix', pix);
 app.route('/api/admin', dashboard);
 app.route('/api/images', images);
 app.route('/api/config', config);
+app.route('/api/loja', loja);
+app.route('/api/cafe', cafe);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
