@@ -97,4 +97,58 @@ clientes.delete('/:id', authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
+// Admin: extrato unificado (todos os sistemas)
+clientes.get('/:id/extrato-completo', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+
+  const cliente = await c.env.DB.prepare('SELECT * FROM clientes WHERE id = ?').bind(id).first();
+  if (!cliente) return c.json({ error: 'Cliente não encontrado' }, 404);
+
+  // Guloseimas pedidos
+  const { results: pedidosGuloseimas } = await c.env.DB.prepare(`
+    SELECT p.*, GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
+    FROM pedidos p
+    LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
+    WHERE p.cliente_id = ?
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
+  `).bind(id).all();
+
+  // Loja pedidos
+  const { results: pedidosLoja } = await c.env.DB.prepare(`
+    SELECT p.*, GROUP_CONCAT(ip.nome_produto || COALESCE(' (' || ip.nome_variacao || ')', '') || ' x' || ip.quantidade, ', ') as itens_resumo
+    FROM loja_pedidos p
+    LEFT JOIN loja_itens_pedido ip ON ip.pedido_id = p.id
+    WHERE p.cliente_id = ?
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
+  `).bind(id).all();
+
+  // Café mensalidades pendentes
+  const { results: cafePendentes } = await c.env.DB.prepare(`
+    SELECT cp.*, ca.tipo as cafe_tipo, ca.plano as cafe_plano
+    FROM cafe_pagamentos cp
+    JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+    WHERE ca.cliente_id = ?
+    ORDER BY cp.referencia DESC
+  `).bind(id).all();
+
+  // Ximbóca participações
+  const { results: ximbocaPendentes } = await c.env.DB.prepare(`
+    SELECT xp.*, xe.nome as evento_nome, xe.data as evento_data, xe.valor_por_pessoa
+    FROM ximboca_participantes xp
+    JOIN ximboca_eventos xe ON xe.id = xp.evento_id
+    WHERE xp.nome = (SELECT nome_guerra FROM clientes WHERE id = ?)
+    ORDER BY xe.data DESC
+  `).bind(id).all();
+
+  return c.json({
+    cliente,
+    guloseimas: pedidosGuloseimas,
+    loja: pedidosLoja,
+    cafe: cafePendentes,
+    ximboca: ximbocaPendentes,
+  });
+});
+
 export default clientes;

@@ -8,37 +8,61 @@ import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoPDF } from '../../services/pdf';
 import type { Cliente, Pedido } from '../../types';
 
+interface CafePagamento { id: string; referencia: string; valor: number; status: string; cafe_tipo: string; cafe_plano: string; }
+interface XimbocaPart { id: string; nome: string; status: string; evento_nome: string; evento_data: string; valor_por_pessoa: number; valor_individual: number | null; }
+interface LojaPedido { id: string; total: number; status: string; created_at: string; itens_resumo?: string; parcelas: number; }
+
+interface ExtratoCompleto {
+  cliente: Cliente;
+  guloseimas: Pedido[];
+  loja: LojaPedido[];
+  cafe: CafePagamento[];
+  ximboca: XimbocaPart[];
+}
+
 export function ClienteExtrato() {
   const { id } = useParams<{ id: string }>();
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [data, setData] = useState<ExtratoCompleto | null>(null);
+  const [aba, setAba] = useState<'guloseimas' | 'loja' | 'cafe' | 'ximboca'>('guloseimas');
 
   const carregar = async () => {
     if (!id) return;
-    const data = await api.get<{ cliente: Cliente; pedidos: Pedido[] }>(`/api/clientes/${id}/extrato`);
-    setCliente(data.cliente);
-    setPedidos(data.pedidos);
+    const d = await api.get<ExtratoCompleto>(`/api/clientes/${id}/extrato-completo`);
+    setData(d);
   };
 
   useEffect(() => { carregar(); }, [id]);
 
-  const marcarPago = async (pedidoId: string) => {
+  const marcarPagoGuloseimas = async (pedidoId: string) => {
     await api.put(`/api/pedidos/${pedidoId}/pagar`, {});
     carregar();
   };
 
-  const saldoDevedor = pedidos
-    .filter((p) => p.status !== 'pago')
-    .reduce((sum, p) => sum + p.total, 0);
-
-  const handlePdfWhatsapp = async () => {
-    if (!cliente) return;
-    const pendentes = pedidos.filter((p) => p.status !== 'pago');
-    await gerarExtratoPDF(cliente.nome_guerra, pendentes, saldoDevedor);
-    window.open(montarLinkCobranca(cliente.nome_guerra, saldoDevedor), '_blank');
+  const marcarPagoLoja = async (pedidoId: string) => {
+    await api.put(`/api/loja/admin/pedidos/${pedidoId}/pagar`, {});
+    carregar();
   };
 
-  if (!cliente) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  const marcarPagoCafe = async (pagId: string) => {
+    await api.put(`/api/cafe/admin/mensalidades/${pagId}/pagar`, {});
+    carregar();
+  };
+
+  if (!data) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+
+  const { cliente, guloseimas, loja, cafe, ximboca } = data;
+
+  const devidoGuloseimas = guloseimas.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0);
+  const devidoLoja = loja.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0);
+  const devidoCafe = cafe.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0);
+  const devidoXimboca = ximboca.filter(p => p.status !== 'pago').reduce((s, p) => s + (p.valor_individual ?? p.valor_por_pessoa), 0);
+  const totalDevido = devidoGuloseimas + devidoLoja + devidoCafe + devidoXimboca;
+
+  const handlePdfWhatsapp = async () => {
+    const pendentes = guloseimas.filter(p => p.status !== 'pago');
+    await gerarExtratoPDF(cliente.nome_guerra, pendentes, devidoGuloseimas);
+    window.open(montarLinkCobranca(cliente.nome_guerra, totalDevido), '_blank');
+  };
 
   const statusBadge = (status: string) => {
     if (status === 'pago') return <Badge variant="success">Pago</Badge>;
@@ -46,25 +70,47 @@ export function ClienteExtrato() {
     return <Badge variant="warning">Pendente</Badge>;
   };
 
+  const abas = [
+    { id: 'guloseimas' as const, label: 'Guloseimas', count: guloseimas.filter(p => p.status !== 'pago').length, valor: devidoGuloseimas },
+    { id: 'loja' as const, label: 'Loja', count: loja.filter(p => p.status !== 'pago').length, valor: devidoLoja },
+    { id: 'cafe' as const, label: 'Cafe', count: cafe.filter(p => p.status === 'pendente').length, valor: devidoCafe },
+    { id: 'ximboca' as const, label: 'Ximboca', count: ximboca.filter(p => p.status !== 'pago').length, valor: devidoXimboca },
+  ];
+
   return (
     <AdminLayout>
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-14 h-14 rounded-full bg-azul flex items-center justify-center text-white font-display text-xl tracking-wider border-2 border-azul-claro/30">
-          {cliente.nome_guerra.slice(0, 2).toUpperCase()}
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-14 h-14 rounded-full bg-azul flex items-center justify-center text-white font-display text-xl tracking-wider">
+          {cliente.nome_guerra.slice(0, 2)}
         </div>
         <div>
           <h1 className="font-display text-xl text-texto tracking-wider">
             {cliente.nome_guerra}
             {!cliente.ativo && <span className="ml-2 text-sm text-vermelho">BLOQUEADO</span>}
+            {cliente.visitante ? <span className="ml-2 text-[10px] text-azul bg-azul/10 px-1.5 py-0.5 rounded">VISITANTE{cliente.esquadrao_origem ? ` - ${cliente.esquadrao_origem}` : ''}</span> : null}
           </h1>
-          {saldoDevedor > 0 && (
-            <span className="text-vermelho font-bold font-display tracking-wide">Deve R$ {saldoDevedor.toFixed(2)}</span>
+          {totalDevido > 0 && (
+            <span className="text-vermelho font-bold font-display tracking-wide">Total pendente: R$ {totalDevido.toFixed(2)}</span>
           )}
         </div>
       </div>
 
+      {/* Summary cards */}
+      {totalDevido > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+          {abas.filter(a => a.valor > 0).map(a => (
+            <div key={a.id} className="bg-white rounded-lg p-3 border border-borda text-center">
+              <div className="text-[10px] text-texto-fraco uppercase">{a.label}</div>
+              <div className="font-display text-sm text-vermelho font-bold">R$ {a.valor.toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        {saldoDevedor > 0 && (
+        {totalDevido > 0 && (
           <Button variant="danger" size="sm" onClick={handlePdfWhatsapp}>
             Gerar PDF + WhatsApp
           </Button>
@@ -83,30 +129,101 @@ export function ClienteExtrato() {
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {pedidos.map((p) => (
-          <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-texto-fraco">
-                {new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-              </span>
-              {statusBadge(p.status)}
-            </div>
-            <div className="text-sm text-texto-fraco mb-2">{p.itens_resumo || 'Itens do pedido'}</div>
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</span>
-              {p.status !== 'pago' && (
-                <Button size="sm" variant="outline" onClick={() => marcarPago(p.id)}>
-                  Marcar pago
-                </Button>
-              )}
-            </div>
-          </div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 overflow-x-auto">
+        {abas.map(a => (
+          <button key={a.id} onClick={() => setAba(a.id)}
+            className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              aba === a.id ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'
+            }`}>
+            {a.label} {a.count > 0 && <span className="ml-1 bg-vermelho/20 text-vermelho px-1.5 py-0.5 rounded-full text-[10px]">{a.count}</span>}
+          </button>
         ))}
-        {pedidos.length === 0 && (
-          <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>
-        )}
       </div>
+
+      {/* Guloseimas tab */}
+      {aba === 'guloseimas' && (
+        <div className="space-y-3">
+          {guloseimas.map(p => (
+            <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-texto-fraco">{new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
+                {statusBadge(p.status)}
+              </div>
+              <div className="text-sm text-texto-fraco mb-2">{p.itens_resumo || '-'}</div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</span>
+                {p.status !== 'pago' && <Button size="sm" variant="outline" onClick={() => marcarPagoGuloseimas(p.id)}>Marcar pago</Button>}
+              </div>
+            </div>
+          ))}
+          {guloseimas.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>}
+        </div>
+      )}
+
+      {/* Loja tab */}
+      {aba === 'loja' && (
+        <div className="space-y-3">
+          {loja.map(p => (
+            <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-texto-fraco">{new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
+                <div className="flex items-center gap-2">
+                  {p.parcelas > 1 && <span className="text-[10px] text-azul bg-azul/10 px-1.5 py-0.5 rounded">{p.parcelas}x</span>}
+                  {statusBadge(p.status)}
+                </div>
+              </div>
+              <div className="text-sm text-texto-fraco mb-2">{p.itens_resumo || '-'}</div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</span>
+                {p.status !== 'pago' && <Button size="sm" variant="outline" onClick={() => marcarPagoLoja(p.id)}>Marcar pago</Button>}
+              </div>
+            </div>
+          ))}
+          {loja.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhum pedido na loja</div>}
+        </div>
+      )}
+
+      {/* Cafe tab */}
+      {aba === 'cafe' && (
+        <div className="space-y-3">
+          {cafe.map(p => (
+            <div key={p.id} className={`bg-white rounded-xl p-4 border shadow-sm ${p.cafe_plano === 'anual' ? 'border-amber-400' : 'border-borda'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-texto-fraco">Ref: {p.referencia}</span>
+                  <span className="text-[10px] text-texto-fraco bg-fundo px-1.5 py-0.5 rounded capitalize">{p.cafe_tipo} - {p.cafe_plano}</span>
+                </div>
+                {statusBadge(p.status)}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-dourado font-display tracking-wide">R$ {p.valor.toFixed(2)}</span>
+                {p.status === 'pendente' && <Button size="sm" variant="outline" onClick={() => marcarPagoCafe(p.id)}>Marcar pago</Button>}
+              </div>
+            </div>
+          ))}
+          {cafe.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhuma mensalidade</div>}
+        </div>
+      )}
+
+      {/* Ximboca tab */}
+      {aba === 'ximboca' && (
+        <div className="space-y-3">
+          {ximboca.map(p => (
+            <div key={p.id} className="bg-white rounded-xl p-4 border border-borda shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <span className="font-medium text-texto text-sm">{p.evento_nome}</span>
+                  <span className="text-xs text-texto-fraco ml-2">{new Date(p.evento_data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                </div>
+                {statusBadge(p.status)}
+              </div>
+              <span className="font-bold text-dourado font-display tracking-wide">R$ {(p.valor_individual ?? p.valor_por_pessoa).toFixed(2)}</span>
+            </div>
+          ))}
+          {ximboca.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhuma participacao</div>}
+        </div>
+      )}
     </AdminLayout>
   );
 }
