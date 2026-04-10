@@ -1,0 +1,203 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { AdminLayout } from '../../../components/Layout';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { Modal } from '../../../components/ui/Modal';
+import { api } from '../../../services/api';
+
+interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; }
+interface Despesa { id: string; descricao: string; valor: number; categoria: string; created_at: string; }
+interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; descricao: string; status: string; }
+
+export function XimbocaEvento() {
+  const { id } = useParams<{ id: string }>();
+  const [evento, setEvento] = useState<Evento | null>(null);
+  const [participantes, setParticipantes] = useState<Participante[]>([]);
+  const [despesas, setDespesas] = useState<Despesa[]>([]);
+
+  // Add participant
+  const [modalPart, setModalPart] = useState(false);
+  const [partNome, setPartNome] = useState('');
+  const [partWhats, setPartWhats] = useState('');
+
+  // Add expense
+  const [modalDesp, setModalDesp] = useState(false);
+  const [despDescricao, setDespDescricao] = useState('');
+  const [despValor, setDespValor] = useState('');
+  const [despCategoria, setDespCategoria] = useState('geral');
+
+  const carregar = () => {
+    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[] }>(`/api/ximboca/eventos/${id}`).then(d => {
+      setEvento(d.evento);
+      setParticipantes(d.participantes);
+      setDespesas(d.despesas);
+    });
+  };
+
+  useEffect(() => { carregar(); }, [id]);
+
+  const adicionarParticipante = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await api.post(`/api/ximboca/eventos/${id}/participantes`, { nome: partNome, whatsapp: partWhats || null });
+    setModalPart(false); setPartNome(''); setPartWhats('');
+    carregar();
+  };
+
+  const marcarPago = async (pid: string) => {
+    await api.put(`/api/ximboca/participantes/${pid}/pagar`, {});
+    carregar();
+  };
+
+  const removerParticipante = async (pid: string) => {
+    if (!confirm('Remover participante?')) return;
+    await api.delete(`/api/ximboca/participantes/${pid}`);
+    carregar();
+  };
+
+  const adicionarDespesa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await api.post(`/api/ximboca/eventos/${id}/despesas`, { descricao: despDescricao, valor: parseFloat(despValor), categoria: despCategoria });
+    setModalDesp(false); setDespDescricao(''); setDespValor(''); setDespCategoria('geral');
+    carregar();
+  };
+
+  const removerDespesa = async (did: string) => {
+    if (!confirm('Remover despesa?')) return;
+    await api.delete(`/api/ximboca/despesas/${did}`);
+    carregar();
+  };
+
+  if (!evento) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+
+  const totalPagos = participantes.filter(p => p.status === 'pago').length;
+  const totalArrecadado = totalPagos * evento.valor_por_pessoa;
+  const totalDespesas = despesas.reduce((a, d) => a + d.valor, 0);
+  const saldo = totalArrecadado - totalDespesas;
+
+  return (
+    <AdminLayout>
+      <div className="flex items-center gap-3 mb-2">
+        <Link to="/admin/ximboca/eventos" className="text-texto-fraco hover:text-texto">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        </Link>
+        <h1 className="font-display text-2xl text-azul tracking-wider">{evento.nome}</h1>
+        <Badge variant={evento.status === 'aberto' ? 'success' : 'warning'}>{evento.status}</Badge>
+      </div>
+      <p className="text-sm text-texto-fraco mb-5">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
+
+      {/* Financial summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white rounded-xl p-3 border border-borda text-center">
+          <div className="text-xs text-texto-fraco">Participantes</div>
+          <div className="font-display text-lg text-azul">{totalPagos}/{participantes.length}</div>
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-borda text-center">
+          <div className="text-xs text-texto-fraco">Arrecadado</div>
+          <div className="font-display text-lg text-verde">R$ {totalArrecadado.toFixed(2)}</div>
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-borda text-center">
+          <div className="text-xs text-texto-fraco">Gasto</div>
+          <div className="font-display text-lg text-vermelho">R$ {totalDespesas.toFixed(2)}</div>
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-borda text-center">
+          <div className="text-xs text-texto-fraco">Saldo</div>
+          <div className={`font-display text-lg ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Participants */}
+      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
+        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Participantes</h2>
+          <Button size="sm" onClick={() => setModalPart(true)}>+ Adicionar</Button>
+        </div>
+        <div className="divide-y divide-borda/50">
+          {participantes.map(p => (
+            <div key={p.id} className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <span className="font-medium text-texto text-sm">{p.nome}</span>
+                {p.whatsapp && <span className="text-xs text-texto-fraco ml-2">{p.whatsapp}</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                {p.status === 'pago' ? (
+                  <Badge variant="success">Pago</Badge>
+                ) : (
+                  <button onClick={() => marcarPago(p.id)} className="text-xs font-medium px-2.5 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100">Pagar</button>
+                )}
+                <button onClick={() => removerParticipante(p.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+              </div>
+            </div>
+          ))}
+          {participantes.length === 0 && <div className="text-center py-6 text-texto-fraco text-sm">Nenhum participante</div>}
+        </div>
+      </div>
+
+      {/* Expenses */}
+      <div className="bg-white rounded-xl border border-borda shadow-sm">
+        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Despesas</h2>
+          <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
+        </div>
+        <div className="divide-y divide-borda/50">
+          {despesas.map(d => (
+            <div key={d.id} className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <span className="text-sm text-texto">{d.descricao}</span>
+                <span className="text-[10px] text-texto-fraco ml-2 bg-fundo px-1.5 py-0.5 rounded">{d.categoria}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-vermelho text-sm">R$ {d.valor.toFixed(2)}</span>
+                <button onClick={() => removerDespesa(d.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+              </div>
+            </div>
+          ))}
+          {despesas.length === 0 && <div className="text-center py-6 text-texto-fraco text-sm">Nenhuma despesa</div>}
+        </div>
+      </div>
+
+      {/* Add participant modal */}
+      <Modal open={modalPart} onClose={() => setModalPart(false)} title="Adicionar Participante">
+        <form onSubmit={adicionarParticipante} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nome</label>
+            <input value={partNome} onChange={e => setPartNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required placeholder="Trigrama ou nome" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">WhatsApp (opcional)</label>
+            <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+          </div>
+          <Button type="submit" className="w-full">Adicionar</Button>
+        </form>
+      </Modal>
+
+      {/* Add expense modal */}
+      <Modal open={modalDesp} onClose={() => setModalDesp(false)} title="Adicionar Despesa">
+        <form onSubmit={adicionarDespesa} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Descricao</label>
+            <input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: 10kg Picanha, Carvao..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Valor (R$)</label>
+              <input type="number" step="0.01" value={despValor} onChange={e => setDespValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Categoria</label>
+              <select value={despCategoria} onChange={e => setDespCategoria(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <option value="carne">Carne</option>
+                <option value="bebida">Bebida</option>
+                <option value="carvao">Carvao</option>
+                <option value="descartavel">Descartavel</option>
+                <option value="tempero">Tempero</option>
+                <option value="geral">Geral</option>
+              </select>
+            </div>
+          </div>
+          <Button type="submit" className="w-full">Adicionar</Button>
+        </form>
+      </Modal>
+    </AdminLayout>
+  );
+}

@@ -19,6 +19,9 @@ import { CafeDashboard } from './pages/admin/cafe/CafeDashboard';
 import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
 import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
 import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
+import { XimbocaDashboard } from './pages/admin/ximboca/XimbocaDashboard';
+import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
+import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { useAuth } from './hooks/useAuth';
@@ -64,6 +67,10 @@ export function App() {
         <Route path="/admin/cafe/mensalidades" element={<AdminGuard><CafeMensalidades /></AdminGuard>} />
         <Route path="/admin/cafe/insumos" element={<AdminGuard><CafeInsumos /></AdminGuard>} />
         <Route path="/admin/cafe/assinantes" element={<AdminGuard><CafeAssinantes /></AdminGuard>} />
+        {/* Ximboca */}
+        <Route path="/admin/ximboca" element={<AdminGuard><XimbocaDashboard /></AdminGuard>} />
+        <Route path="/admin/ximboca/eventos" element={<AdminGuard><XimbocaEventos /></AdminGuard>} />
+        <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
         {/* Cafe Publico */}
         <Route path="/cafe" element={<CafePublico />} />
       </Routes>

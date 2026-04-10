@@ -1,17 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-type SistemaAdmin = 'guloseimas' | 'loja' | 'cafe';
+type SistemaAdmin = 'guloseimas' | 'loja' | 'cafe' | 'ximboca';
 
 const SISTEMAS_ADMIN: { id: SistemaAdmin; label: string }[] = [
   { id: 'guloseimas', label: 'Guloseimas' },
   { id: 'loja', label: 'Loja' },
   { id: 'cafe', label: 'Café' },
+  { id: 'ximboca', label: 'Ximboca' },
 ];
 
 function getSistemaFromPath(pathname: string): SistemaAdmin {
   if (pathname.startsWith('/admin/loja')) return 'loja';
   if (pathname.startsWith('/admin/cafe')) return 'cafe';
+  if (pathname.startsWith('/admin/ximboca')) return 'ximboca';
   return 'guloseimas';
 }
 
@@ -59,6 +61,10 @@ const NAV_LINKS: Record<SistemaAdmin, { to: string; label: string }[]> = {
     { to: '/admin/cafe/mensalidades', label: 'Mensalidades' },
     { to: '/admin/cafe/insumos', label: 'Estoque Insumos' },
     { to: '/admin/cafe/assinantes', label: 'Assinantes' },
+  ],
+  ximboca: [
+    { to: '/admin/ximboca', label: 'Dashboard' },
+    { to: '/admin/ximboca/eventos', label: 'Eventos' },
   ],
 };
 

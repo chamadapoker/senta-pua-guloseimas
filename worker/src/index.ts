@@ -10,6 +10,7 @@ import images from './routes/images';
 import config from './routes/config';
 import loja from './routes/loja';
 import cafe from './routes/cafe';
+import ximboca from './routes/ximboca';
 
 export type Env = {
   DB: D1Database;
@@ -44,6 +45,7 @@ app.route('/api/images', images);
 app.route('/api/config', config);
 app.route('/api/loja', loja);
 app.route('/api/cafe', cafe);
+app.route('/api/ximboca', ximboca);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
