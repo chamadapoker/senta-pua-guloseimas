@@ -6,15 +6,18 @@ import { PublicLayout } from '../components/Layout';
 import { ProductCard } from '../components/catalogo/ProductCard';
 import { CartBar } from '../components/catalogo/CartBar';
 
-const TITULOS: Record<string, string> = {
-  oficiais: 'SALA DOS OFICIAIS',
-  graduados: 'SALA DOS GRADUADOS',
-};
-
 export function Catalogo() {
   const { categoria } = useParams<{ categoria: string }>();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [titulo, setTitulo] = useState('CARDÁPIO');
+
+  useEffect(() => {
+    api.get<Record<string, string>>('/api/config').then((c) => {
+      if (categoria === 'oficiais' && c.nome_sala_oficiais) setTitulo(c.nome_sala_oficiais.toUpperCase());
+      if (categoria === 'graduados' && c.nome_sala_graduados) setTitulo(c.nome_sala_graduados.toUpperCase());
+    }).catch(() => {});
+  }, [categoria]);
 
   useEffect(() => {
     setLoading(true);
@@ -23,8 +26,6 @@ export function Catalogo() {
       .then(setProdutos)
       .finally(() => setLoading(false));
   }, [categoria]);
-
-  const titulo = categoria ? TITULOS[categoria] || 'CARDÁPIO' : 'CARDÁPIO';
 
   return (
     <PublicLayout>

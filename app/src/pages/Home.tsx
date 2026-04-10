@@ -1,7 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicLayout } from '../components/Layout';
+import { api } from '../services/api';
 
 export function Home() {
+  const [nomes, setNomes] = useState({ nome_sala_oficiais: 'Sala dos Oficiais', nome_sala_graduados: 'Sala dos Graduados' });
+
+  useEffect(() => {
+    api.get<Record<string, string>>('/api/config').then((c) => setNomes((n) => ({ ...n, ...c }))).catch(() => {});
+  }, []);
+
   return (
     <PublicLayout>
       <div className="py-6 animate-fade-in">
@@ -10,7 +18,7 @@ export function Home() {
           <h1 className="font-display text-3xl sm:text-4xl text-azul tracking-wider">SENTA PUA</h1>
           <p className="font-display text-lg sm:text-xl text-vermelho tracking-[0.15em] mt-1">GULOSEIMAS</p>
           <div className="w-16 h-[2px] bg-azul mx-auto mt-4" />
-          <p className="text-texto-fraco text-sm mt-4">Escolha sua sala para acessar o cardápio</p>
+          <p className="text-texto-fraco text-sm mt-4">Escolha sua sala</p>
         </div>
 
         <div className="space-y-4 max-w-sm mx-auto">
@@ -23,8 +31,7 @@ export function Home() {
                 🎖️
               </div>
               <div className="flex-1">
-                <h2 className="font-display text-xl text-azul tracking-wide">SALA DOS OFICIAIS</h2>
-                <p className="text-xs text-texto-fraco mt-0.5">Cardápio exclusivo</p>
+                <h2 className="font-display text-lg sm:text-xl text-azul tracking-wide uppercase">{nomes.nome_sala_oficiais}</h2>
               </div>
               <span className="text-texto-fraco group-hover:text-azul group-hover:translate-x-1 transition-all">&rarr;</span>
             </div>
@@ -39,8 +46,7 @@ export function Home() {
                 ⭐
               </div>
               <div className="flex-1">
-                <h2 className="font-display text-xl text-vermelho tracking-wide">SALA DOS GRADUADOS</h2>
-                <p className="text-xs text-texto-fraco mt-0.5">Cardápio exclusivo</p>
+                <h2 className="font-display text-lg sm:text-xl text-vermelho tracking-wide uppercase">{nomes.nome_sala_graduados}</h2>
               </div>
               <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
             </div>

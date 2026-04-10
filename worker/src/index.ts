@@ -7,6 +7,7 @@ import pedidos from './routes/pedidos';
 import pix from './routes/pix';
 import dashboard from './routes/dashboard';
 import images from './routes/images';
+import config from './routes/config';
 
 export type Env = {
   DB: D1Database;
@@ -38,6 +39,7 @@ app.route('/api/pedidos', pedidos);
 app.route('/api/pix', pix);
 app.route('/api/admin', dashboard);
 app.route('/api/images', images);
+app.route('/api/config', config);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 

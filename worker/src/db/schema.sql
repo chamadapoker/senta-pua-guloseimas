@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS admin (
   senha_hash    TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS configuracoes (
+  chave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES
+  ('nome_sala_oficiais', 'Sala dos Oficiais'),
+  ('nome_sala_graduados', 'Sala dos Graduados');
+
 CREATE INDEX IF NOT EXISTS idx_pedidos_cliente ON pedidos(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_status  ON pedidos(status);
 CREATE INDEX IF NOT EXISTS idx_itens_pedido    ON itens_pedido(pedido_id);

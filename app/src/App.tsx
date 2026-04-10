@@ -11,6 +11,7 @@ import { Produtos } from './pages/admin/Produtos';
 import { Clientes } from './pages/admin/Clientes';
 import { ClienteExtrato } from './pages/admin/ClienteExtrato';
 import { Pedidos } from './pages/admin/Pedidos';
+import { Configuracoes } from './pages/admin/Configuracoes';
 import { useAuth } from './hooks/useAuth';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,7 @@ export function App() {
         <Route path="/admin/clientes" element={<AdminGuard><Clientes /></AdminGuard>} />
         <Route path="/admin/clientes/:id" element={<AdminGuard><ClienteExtrato /></AdminGuard>} />
         <Route path="/admin/pedidos" element={<AdminGuard><Pedidos /></AdminGuard>} />
+        <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
       </Routes>
     </BrowserRouter>
   );
