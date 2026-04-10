@@ -46,7 +46,9 @@ export function ProductCard({ produto }: { produto: Produto }) {
             R$ {produto.preco.toFixed(2).replace('.', ',')}
           </span>
           {esgotado ? (
-            <span className="text-white/40 text-xs font-medium">Indisponível</span>
+            <span className="w-11 h-11 rounded-xl bg-white/10 text-white/40 flex items-center justify-center text-[10px] font-medium">
+              Esgotado
+            </span>
           ) : (
             <button
               onClick={() => adicionar(produto)}
