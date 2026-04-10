@@ -60,6 +60,8 @@ INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES
   ('nome_sala_oficiais', 'Sala dos Oficiais'),
   ('nome_sala_graduados', 'Sala dos Graduados');
 
+INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('loja_max_parcelas', '1');
+
 CREATE INDEX IF NOT EXISTS idx_pedidos_cliente ON pedidos(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_status  ON pedidos(status);
 CREATE INDEX IF NOT EXISTS idx_itens_pedido    ON itens_pedido(pedido_id);

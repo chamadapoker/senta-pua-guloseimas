@@ -66,9 +66,14 @@ export function LojaPublica() {
   const [erro, setErro] = useState('');
   const [pedidoCriado, setPedidoCriado] = useState<{ pedido_id: string; total: number; parcelas: number } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
+  const [maxParcelas, setMaxParcelas] = useState(1);
 
   useEffect(() => {
     api.get<Produto[]>('/api/loja/produtos').then(setProdutos).finally(() => setLoading(false));
+    api.get<Record<string, string>>('/api/config').then(c => {
+      const max = parseInt(c.loja_max_parcelas) || 1;
+      setMaxParcelas(Math.min(Math.max(max, 1), 3));
+    }).catch(() => {});
   }, []);
 
   const abrirProduto = (p: Produto) => {
@@ -271,16 +276,18 @@ export function LojaPublica() {
           {/* PIX options */}
           <div className="bg-white rounded-xl border border-borda p-4 shadow-sm">
             <p className="text-sm font-medium mb-3">Pagar via PIX</p>
-            <div className="flex gap-2 mb-3">
-              {[1, 2, 3].map(n => (
-                <button key={n} onClick={() => setParcelas(n)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${parcelas === n ? 'bg-azul text-white' : 'bg-fundo text-texto-fraco border border-borda'}`}>
-                  {n}x R$ {(totalCarrinho / n).toFixed(2)}
-                </button>
-              ))}
-            </div>
+            {maxParcelas > 1 && (
+              <div className="flex gap-2 mb-3">
+                {Array.from({ length: maxParcelas }, (_, i) => i + 1).map(n => (
+                  <button key={n} onClick={() => setParcelas(n)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${parcelas === n ? 'bg-azul text-white' : 'bg-fundo text-texto-fraco border border-borda'}`}>
+                    {n}x R$ {(totalCarrinho / n).toFixed(2)}
+                  </button>
+                ))}
+              </div>
+            )}
             <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={enviando}>
-              {enviando ? 'Enviando...' : `Pagar PIX ${parcelas}x`}
+              {enviando ? 'Enviando...' : `Pagar PIX ${maxParcelas > 1 ? `${parcelas}x` : ''}`}
             </Button>
           </div>
 

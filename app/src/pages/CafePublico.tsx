@@ -165,11 +165,12 @@ export function CafePublico() {
               <h2 className="font-display text-lg text-vermelho tracking-wider mb-3">PENDENTES</h2>
               <div className="space-y-3">
                 {devendo.map((d) => (
-                  <div key={d.id} className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+                  <div key={d.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden ${d.plano === 'anual' ? 'border-amber-400 ring-1 ring-amber-300' : 'border-red-200'}`}>
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <div>
                           <span className="font-medium text-texto">{d.nome_guerra}</span>
+                          {d.plano === 'anual' && <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>}
                           <span className="text-xs text-texto-fraco ml-2 capitalize">{d.tipo} - {d.plano}</span>
                         </div>
                         <Badge variant="danger">R$ {d.total_devido.toFixed(2)}</Badge>
@@ -226,10 +227,11 @@ export function CafePublico() {
               <h2 className="font-display text-lg text-verde tracking-wider mb-3">EM DIA</h2>
               <div className="space-y-2">
                 {emDia.map((d) => (
-                  <div key={d.id} className="bg-white rounded-xl p-4 border border-green-200 shadow-sm">
+                  <div key={d.id} className={`bg-white rounded-xl p-4 border shadow-sm ${d.plano === 'anual' ? 'border-amber-400 ring-1 ring-amber-300' : 'border-green-200'}`}>
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium text-texto">{d.nome_guerra}</span>
+                        {d.plano === 'anual' && <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>}
                         <span className="text-xs text-texto-fraco ml-2 capitalize">{d.tipo} - {d.plano}</span>
                       </div>
                       <Badge variant="success">Em dia</Badge>
