@@ -16,9 +16,9 @@ interface Devedor {
   pagamento_ids?: string[];
 }
 
-const PIX_CPF = '05435197597';
-const PIX_NOME = 'VICTOR HENRIQUE DE OLIVEIRA ALMEIDA';
-const WHATSAPP_HENRIQUE = '5587991261572';
+const PIX_EMAIL_CAFE = 'lucas.gabriel.s.vilela@gmail.com';
+const PIX_NOME_CAFE = 'LUCAS GABRIEL S VILELA';
+const WHATSAPP_CAFE = '5512981302277';
 
 export function CafePublico() {
   const [devedores, setDevedores] = useState<Devedor[]>([]);
@@ -35,14 +35,14 @@ export function CafePublico() {
   useEffect(() => { carregar(); }, []);
 
   const copiarPix = async (valor: number, id: string) => {
-    const payload = gerarPayloadPix(valor);
+    const payload = gerarPayloadPix(valor, { chave: PIX_EMAIL_CAFE, nome: PIX_NOME_CAFE });
     await navigator.clipboard.writeText(payload);
     setCopiadoCodigo(id);
     setTimeout(() => setCopiadoCodigo(null), 3000);
   };
 
   const copiarChave = async () => {
-    await navigator.clipboard.writeText(PIX_CPF);
+    await navigator.clipboard.writeText(PIX_EMAIL_CAFE);
     setCopiadoChave(true);
     setTimeout(() => setCopiadoChave(false), 3000);
   };
@@ -63,7 +63,7 @@ export function CafePublico() {
 
   const enviarComprovante = (d: Devedor) => {
     const msg = `Comprovante Caixinha do Cafe\nMilitar: ${d.nome_guerra}\nValor: R$ ${d.total_devido.toFixed(2)}\n\n_Anexe o comprovante do banco abaixo_`;
-    window.open(`https://wa.me/${WHATSAPP_HENRIQUE}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${WHATSAPP_CAFE}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const emDia = devedores.filter(d => d.total_devido === 0);
@@ -76,10 +76,10 @@ export function CafePublico() {
 
       {/* PIX info */}
       <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
-        <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX para pagamento (CPF)</p>
-        <p className="text-[10px] text-texto-fraco mb-3 text-center">{PIX_NOME}</p>
+        <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX para pagamento (e-mail)</p>
+        <p className="text-[10px] text-texto-fraco mb-3 text-center">{PIX_NOME_CAFE}</p>
         <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-          <span className="text-sm text-azul font-medium font-mono tracking-wider">{PIX_CPF}</span>
+          <span className="text-sm text-azul font-medium truncate">{PIX_EMAIL_CAFE}</span>
           <button onClick={copiarChave} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors">
             {copiadoChave ? (
               <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -88,7 +88,7 @@ export function CafePublico() {
             )}
           </button>
         </div>
-        {copiadoChave && <p className="text-verde text-xs mt-2 text-center">CPF copiado!</p>}
+        {copiadoChave && <p className="text-verde text-xs mt-2 text-center">E-mail copiado!</p>}
       </div>
 
       {loading ? (

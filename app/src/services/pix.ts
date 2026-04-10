@@ -23,9 +23,9 @@ function crc16(payload: string): string {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-export function gerarPayloadPix(valor?: number): string {
+export function gerarPayloadPix(valor?: number, opcoes?: { chave?: string; nome?: string; cidade?: string }): string {
   const gui = tlv('00', 'br.gov.bcb.pix');
-  const key = tlv('01', PIX_KEY);
+  const key = tlv('01', opcoes?.chave || PIX_KEY);
   const merchantAccount = tlv('26', gui + key);
 
   let payload = '';
@@ -39,8 +39,8 @@ export function gerarPayloadPix(valor?: number): string {
   }
 
   payload += tlv('58', 'BR');                    // Country Code
-  payload += tlv('59', MERCHANT_NAME);           // Merchant Name
-  payload += tlv('60', MERCHANT_CITY);           // Merchant City
+  payload += tlv('59', opcoes?.nome || MERCHANT_NAME);  // Merchant Name
+  payload += tlv('60', opcoes?.cidade || MERCHANT_CITY); // Merchant City
 
   // Additional Data Field com txid
   const txid = tlv('05', '***');
