@@ -109,7 +109,7 @@ export function Produtos() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-white tracking-wider">Produtos</h1>
+        <h1 className="font-display text-2xl text-azul tracking-wider">PRODUTOS</h1>
         <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
       </div>
 

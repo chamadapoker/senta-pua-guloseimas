@@ -23,7 +23,7 @@ export function Clientes() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-2xl text-white tracking-wider">MILITARES</h1>
+        <h1 className="font-display text-2xl text-azul tracking-wider">MILITARES</h1>
         <div className="flex gap-1">
           {(['todos', 'divida', 'dia'] as const).map((f) => (
             <button

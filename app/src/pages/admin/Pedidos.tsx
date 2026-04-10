@@ -45,7 +45,7 @@ export function Pedidos() {
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-2xl text-white tracking-wider">PEDIDOS</h1>
+        <h1 className="font-display text-2xl text-azul tracking-wider">PEDIDOS</h1>
         <div className="flex gap-1">
           {['', 'pendente', 'fiado', 'pago'].map((s) => (
             <button
