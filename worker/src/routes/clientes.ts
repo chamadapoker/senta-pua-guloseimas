@@ -56,4 +56,17 @@ clientes.get('/:id/extrato', authMiddleware, async (c) => {
   return c.json({ cliente, pedidos });
 });
 
+// Admin: bloquear/desbloquear militar
+clientes.put('/:id/bloquear', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { ativo } = await c.req.json<{ ativo: number }>();
+
+  const { results } = await c.env.DB.prepare(
+    'UPDATE clientes SET ativo = ? WHERE id = ? RETURNING *'
+  ).bind(ativo, id).all();
+
+  if (!results.length) return c.json({ error: 'Militar não encontrado' }, 404);
+  return c.json(results[0]);
+});
+
 export default clientes;

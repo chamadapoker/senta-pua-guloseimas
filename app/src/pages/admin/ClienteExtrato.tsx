@@ -53,18 +53,35 @@ export function ClienteExtrato() {
           {cliente.nome_guerra.slice(0, 2).toUpperCase()}
         </div>
         <div>
-          <h1 className="font-display text-xl text-texto tracking-wider">{cliente.nome_guerra}</h1>
+          <h1 className="font-display text-xl text-texto tracking-wider">
+            {cliente.nome_guerra}
+            {!cliente.ativo && <span className="ml-2 text-sm text-vermelho">BLOQUEADO</span>}
+          </h1>
           {saldoDevedor > 0 && (
             <span className="text-vermelho font-bold font-display tracking-wide">Deve R$ {saldoDevedor.toFixed(2)}</span>
           )}
         </div>
       </div>
 
-      {saldoDevedor > 0 && (
-        <Button variant="danger" size="sm" className="mb-5" onClick={handlePdfWhatsapp}>
-          Gerar PDF + WhatsApp
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {saldoDevedor > 0 && (
+          <Button variant="danger" size="sm" onClick={handlePdfWhatsapp}>
+            Gerar PDF + WhatsApp
+          </Button>
+        )}
+        <Button
+          variant={cliente.ativo ? 'outline' : 'success'}
+          size="sm"
+          onClick={async () => {
+            const acao = cliente.ativo ? 'bloquear' : 'desbloquear';
+            if (!window.confirm(`Tem certeza que deseja ${acao} ${cliente.nome_guerra}?`)) return;
+            await api.put(`/api/clientes/${cliente.id}/bloquear`, { ativo: cliente.ativo ? 0 : 1 });
+            carregar();
+          }}
+        >
+          {cliente.ativo ? 'Bloquear militar' : 'Desbloquear militar'}
         </Button>
-      )}
+      </div>
 
       <div className="space-y-3">
         {pedidos.map((p) => (

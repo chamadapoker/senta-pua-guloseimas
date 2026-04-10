@@ -20,14 +20,18 @@ pedidos.post('/', async (c) => {
 
   // Buscar ou criar cliente
   let cliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(nome_guerra).first<{ id: string }>();
+    'SELECT id, ativo FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(nome_guerra).first<{ id: string; ativo: number }>();
+
+  if (cliente && !cliente.ativo) {
+    return c.json({ error: 'Militar bloqueado. Procure o responsável da cantina para regularizar sua situação.' }, 403);
+  }
 
   if (!cliente) {
     const { results } = await c.env.DB.prepare(
       'INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?) RETURNING id'
     ).bind(nome_guerra, whatsapp || null).all<{ id: string }>();
-    cliente = results[0];
+    cliente = { ...results[0], ativo: 1 };
   } else if (whatsapp) {
     await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE id = ?').bind(whatsapp, cliente.id).run();
   }
