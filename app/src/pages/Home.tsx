@@ -5,10 +5,10 @@ import { api } from '../services/api';
 
 type Sistema = 'guloseimas' | 'loja' | 'cafe';
 
-const SISTEMAS: { id: Sistema; label: string; emoji: string }[] = [
-  { id: 'guloseimas', label: 'Guloseimas', emoji: '🍬' },
-  { id: 'loja', label: 'Loja Militar', emoji: '🎽' },
-  { id: 'cafe', label: 'Caixinha do Café', emoji: '☕' },
+const SISTEMAS: { id: Sistema; label: string }[] = [
+  { id: 'guloseimas', label: 'Guloseimas' },
+  { id: 'loja', label: 'Loja Militar' },
+  { id: 'cafe', label: 'Caixinha do Café' },
 ];
 
 export function Home() {
@@ -40,7 +40,6 @@ export function Home() {
                   : 'text-texto-fraco hover:bg-fundo'
               }`}
             >
-              <span className="text-lg">{s.emoji}</span>
               <span className="leading-tight">{s.label}</span>
             </button>
           ))}
@@ -85,7 +84,6 @@ export function Home() {
         {sistema === 'loja' && (
           <div className="text-center max-w-sm mx-auto animate-fade-in">
             <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm">
-              <div className="w-20 h-20 mx-auto rounded-full bg-azul/10 flex items-center justify-center text-4xl mb-4">🎽</div>
               <h2 className="font-display text-xl text-azul tracking-wider mb-2">LOJA MILITAR</h2>
               <p className="text-texto-fraco text-sm">Camisas, canecas, abridores, facas e mais artigos do esquadrão.</p>
               <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
@@ -98,7 +96,6 @@ export function Home() {
         {sistema === 'cafe' && (
           <div className="text-center max-w-sm mx-auto animate-fade-in">
             <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm">
-              <div className="w-20 h-20 mx-auto rounded-full bg-amber-100 flex items-center justify-center text-4xl mb-4">☕</div>
               <h2 className="font-display text-xl text-azul tracking-wider mb-2">CAIXINHA DO CAFÉ</h2>
               <p className="text-texto-fraco text-sm">Controle de mensalidade do café para oficiais e graduados.</p>
               <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">

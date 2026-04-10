@@ -3,10 +3,10 @@ import { useAuth } from '../hooks/useAuth';
 
 type SistemaAdmin = 'guloseimas' | 'loja' | 'cafe';
 
-const SISTEMAS_ADMIN: { id: SistemaAdmin; label: string; emoji: string }[] = [
-  { id: 'guloseimas', label: 'Guloseimas', emoji: '🍬' },
-  { id: 'loja', label: 'Loja', emoji: '🎽' },
-  { id: 'cafe', label: 'Café', emoji: '☕' },
+const SISTEMAS_ADMIN: { id: SistemaAdmin; label: string }[] = [
+  { id: 'guloseimas', label: 'Guloseimas' },
+  { id: 'loja', label: 'Loja' },
+  { id: 'cafe', label: 'Café' },
 ];
 
 function getSistemaFromPath(pathname: string): SistemaAdmin {
@@ -88,8 +88,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     : 'bg-fundo text-texto-fraco hover:bg-gray-200'
                 }`}
               >
-                <span>{s.emoji}</span>
-                <span className="hidden sm:inline">{s.label}</span>
+                <span>{s.label}</span>
               </Link>
             ))}
             <button onClick={logout} className="text-vermelho text-sm font-medium px-3 py-2 rounded-lg bg-vermelho/10 hover:bg-vermelho/20 transition-colors ml-2">Sair</button>
