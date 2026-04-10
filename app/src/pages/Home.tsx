@@ -88,19 +88,40 @@ export function Home() {
         )}
 
         {sistema === 'cafe' && (
-          <div className="text-center max-w-sm mx-auto animate-fade-in">
-            <div className="bg-white rounded-2xl p-8 border border-borda shadow-sm">
-              <h2 className="font-display text-xl text-azul tracking-wider mb-2">CAIXINHA DO CAFE</h2>
-              <p className="text-texto-fraco text-sm mb-5">Controle de mensalidade do cafe para oficiais e graduados.</p>
-              <Link
-                to="/cafe"
-                className="inline-block bg-azul text-white font-display text-sm tracking-wider px-6 py-3 rounded-xl hover:bg-azul/90 transition-colors"
-              >
-                ACESSAR CAIXINHA
-              </Link>
-            </div>
+          <div className="space-y-4 max-w-sm mx-auto animate-fade-in">
+            <p className="text-texto-fraco text-sm text-center mb-2">Escolha sua sala</p>
+            <Link
+              to="/cafe?sala=oficial"
+              className="group block bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7 text-azul" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg sm:text-xl text-azul tracking-wide">SALA DOS OFICIAIS</h2>
+                </div>
+                <span className="text-texto-fraco group-hover:text-azul group-hover:translate-x-1 transition-all">&rarr;</span>
+              </div>
+            </Link>
+
+            <Link
+              to="/cafe?sala=graduado"
+              className="group block bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-vermelho/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg className="w-7 h-7 text-vermelho" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg sm:text-xl text-vermelho tracking-wide">SALA SO LANGE</h2>
+                </div>
+                <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
+              </div>
+            </Link>
           </div>
         )}
+
       </div>
     </PublicLayout>
   );

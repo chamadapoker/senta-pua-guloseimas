@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PublicLayout } from '../components/Layout';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -24,7 +25,9 @@ const PIX_POR_SALA = {
 type Sala = null | 'oficial' | 'graduado';
 
 export function CafePublico() {
-  const [sala, setSala] = useState<Sala>(null);
+  const [searchParams] = useSearchParams();
+  const salaParam = searchParams.get('sala');
+  const [sala, setSala] = useState<Sala>(salaParam === 'oficial' || salaParam === 'graduado' ? salaParam : null);
   const [devedores, setDevedores] = useState<Devedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiadoCodigo, setCopiadoCodigo] = useState<string | null>(null);
