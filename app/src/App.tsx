@@ -26,6 +26,17 @@ import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { useAuth } from './hooks/useAuth';
+import { api } from './services/api';
+import { setPixDefaults } from './services/pix';
+
+// Load PIX config once on app start
+api.get<Record<string, string>>('/api/config').then(c => {
+  setPixDefaults(
+    c.pix_guloseimas_chave || '',
+    c.pix_guloseimas_nome || '',
+    c.pix_guloseimas_cidade || 'ANAPOLIS'
+  );
+}).catch(() => {});
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { token, checkAuth } = useAuth();

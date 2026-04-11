@@ -1,6 +1,12 @@
-const PIX_KEY = 'sandraobregon12@gmail.com';
-const MERCHANT_NAME = 'SENTA PUA GULOSE';  // max 25 chars, sem acento
-const MERCHANT_CITY = 'ANAPOLIS';
+let PIX_KEY = '';
+let MERCHANT_NAME = '';
+let MERCHANT_CITY = '';
+
+export function setPixDefaults(chave: string, nome: string, cidade: string) {
+  PIX_KEY = chave;
+  MERCHANT_NAME = nome;
+  MERCHANT_CITY = cidade;
+}
 
 function tlv(id: string, value: string): string {
   const len = value.length.toString().padStart(2, '0');

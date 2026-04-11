@@ -7,8 +7,7 @@ import { api } from '../services/api';
 import { gerarPayloadPix } from '../services/pix';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
-const PIX_EMAIL = 'sandraobregon12@gmail.com';
-const WHATSAPP_RP = '5532998352670';
+// PIX config loaded from API
 
 function resolveImg(url: string | null): string | null {
   if (!url) return null;
@@ -67,12 +66,14 @@ export function LojaPublica() {
   const [pedidoCriado, setPedidoCriado] = useState<{ pedido_id: string; total: number; parcelas: number } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
   const [maxParcelas, setMaxParcelas] = useState(1);
+  const [pixConfig, setPixConfig] = useState({ chave: '', whatsapp: '' });
 
   useEffect(() => {
     api.get<Produto[]>('/api/loja/produtos').then(setProdutos).finally(() => setLoading(false));
     api.get<Record<string, string>>('/api/config').then(c => {
       const max = parseInt(c.loja_max_parcelas) || 1;
       setMaxParcelas(Math.min(Math.max(max, 1), 3));
+      setPixConfig({ chave: c.pix_guloseimas_chave || '', whatsapp: c.pix_guloseimas_whatsapp || '' });
     }).catch(() => {});
   }, []);
 
@@ -151,7 +152,7 @@ export function LojaPublica() {
   const enviarComprovante = () => {
     if (!pedidoCriado) return;
     const msg = `Comprovante Loja - Pedido #${pedidoCriado.pedido_id}\nValor: R$ ${pedidoCriado.total.toFixed(2)}${pedidoCriado.parcelas > 1 ? ` (${pedidoCriado.parcelas}x de R$ ${(pedidoCriado.total / pedidoCriado.parcelas).toFixed(2)})` : ''}\n\n_Anexe o comprovante do banco abaixo_`;
-    window.open(`https://wa.me/${WHATSAPP_RP}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${pixConfig.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // Order confirmed view

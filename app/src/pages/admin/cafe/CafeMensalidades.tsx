@@ -27,8 +27,14 @@ export function CafeMensalidades() {
   const [modalGerar, setModalGerar] = useState(false);
   const [referencia, setReferencia] = useState('');
   const [gerando, setGerando] = useState(false);
+  const [pixConfig, setPixConfig] = useState({ oficial: '', graduado: '' });
 
   useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
+  useEffect(() => {
+    api.get<Record<string, string>>('/api/config').then(c => {
+      setPixConfig({ oficial: c.pix_cafe_oficial_chave || '', graduado: c.pix_cafe_graduado_chave || '' });
+    }).catch(() => {});
+  }, []);
 
   const carregar = () => {
     const params = new URLSearchParams();
@@ -60,7 +66,7 @@ export function CafeMensalidades() {
   const cobrar = async (m: Mensalidade) => {
     const pendentes = mensalidades.filter(x => x.nome_guerra === m.nome_guerra && x.status === 'pendente');
     const totalDevido = pendentes.reduce((a, x) => a + x.valor, 0);
-    const pixChave = tipo === 'oficial' ? 'sandraobregon12@gmail.com' : 'lucas.gabriel.s.vilela@gmail.com';
+    const pixChave = pixConfig[tipo];
     await gerarCobrancaCafePDF(m.nome_guerra, tipo, pendentes.map(p => ({ referencia: p.referencia, valor: p.valor })), totalDevido, pixChave);
   };
 

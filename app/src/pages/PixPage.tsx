@@ -6,9 +6,6 @@ import { usePixPolling } from '../hooks/usePixPolling';
 import { api } from '../services/api';
 import { gerarPayloadPix } from '../services/pix';
 
-const PIX_EMAIL = 'sandraobregon12@gmail.com';
-const WHATSAPP_RP = '5532998352670';
-
 const FRASES_PAGOU = [
   'Valeu, militar! Um Leão sempre honra suas dívidas!',
   'Pagamento registrado! Você é exemplo pro esquadrão!',
@@ -26,6 +23,13 @@ export function PixPage() {
   const [saiuDoApp, setSaiuDoApp] = useState(false);
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [frase] = useState(() => FRASES_PAGOU[Math.floor(Math.random() * FRASES_PAGOU.length)]);
+  const [pixConfig, setPixConfig] = useState({ chave: '', whatsapp: '' });
+
+  useEffect(() => {
+    api.get<Record<string, string>>('/api/config').then(c => {
+      setPixConfig({ chave: c.pix_guloseimas_chave || '', whatsapp: c.pix_guloseimas_whatsapp || '' });
+    }).catch(() => {});
+  }, []);
 
   const pixPayload = useMemo(() => {
     if (!pedido) return null;
@@ -58,7 +62,7 @@ export function PixPage() {
   };
 
   const copiarEmail = async () => {
-    await navigator.clipboard.writeText(PIX_EMAIL);
+    await navigator.clipboard.writeText(pixConfig.chave);
     setCopiadoEmail(true);
     setTimeout(() => setCopiadoEmail(false), 3000);
   };
@@ -75,7 +79,7 @@ export function PixPage() {
   const enviarComprovante = () => {
     const valor = pedido ? `R$ ${pedido.total.toFixed(2)}` : '';
     const msg = `Comprovante PIX - Pedido #${pedidoId}\nValor: ${valor}\n\n_Anexe o comprovante do banco abaixo_`;
-    window.open(`https://wa.me/${WHATSAPP_RP}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${pixConfig.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   if (mostrarConfirmacao) {
@@ -177,7 +181,7 @@ export function PixPage() {
             <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
               <p className="text-xs text-texto-fraco mb-3 uppercase tracking-wider">Ou pague pela chave PIX (e-mail)</p>
               <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-                <span className="text-sm text-azul font-medium truncate">{PIX_EMAIL}</span>
+                <span className="text-sm text-azul font-medium truncate">{pixConfig.chave}</span>
                 <button onClick={copiarEmail} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors" title="Copiar e-mail">
                   {copiadoEmail ? (
                     <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>

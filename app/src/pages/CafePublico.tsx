@@ -17,11 +17,6 @@ interface Devedor {
   pagamento_ids?: string[];
 }
 
-const PIX_POR_SALA = {
-  oficial: { chave: 'sandraobregon12@gmail.com', nome: 'SENTA PUA GULOSE', whatsapp: '5532998352670' },
-  graduado: { chave: 'lucas.gabriel.s.vilela@gmail.com', nome: 'LUCAS GABRIEL S VILELA', whatsapp: '5512981302277' },
-};
-
 type Sala = null | 'oficial' | 'graduado';
 
 export function CafePublico() {
@@ -35,6 +30,10 @@ export function CafePublico() {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [confirmado, setConfirmado] = useState<string | null>(null);
   const [nomes, setNomes] = useState({ nome_cafe_oficiais: 'Sala dos Oficiais', nome_cafe_graduados: 'Sala do Lange' });
+  const [pixPorSala, setPixPorSala] = useState({
+    oficial: { chave: '', nome: '', whatsapp: '' },
+    graduado: { chave: '', nome: '', whatsapp: '' },
+  });
 
   const carregar = () => {
     api.get<Devedor[]>('/api/cafe/devedores').then(setDevedores).finally(() => setLoading(false));
@@ -42,10 +41,16 @@ export function CafePublico() {
 
   useEffect(() => {
     carregar();
-    api.get<Record<string, string>>('/api/config').then((c) => setNomes((n) => ({ ...n, ...c }))).catch(() => {});
+    api.get<Record<string, string>>('/api/config').then((c) => {
+      setNomes((n) => ({ ...n, ...c }));
+      setPixPorSala({
+        oficial: { chave: c.pix_cafe_oficial_chave || '', nome: c.pix_cafe_oficial_nome || '', whatsapp: c.pix_cafe_oficial_whatsapp || '' },
+        graduado: { chave: c.pix_cafe_graduado_chave || '', nome: c.pix_cafe_graduado_nome || '', whatsapp: c.pix_cafe_graduado_whatsapp || '' },
+      });
+    }).catch(() => {});
   }, []);
 
-  const pixInfo = sala ? PIX_POR_SALA[sala] : null;
+  const pixInfo = sala ? pixPorSala[sala] : null;
 
   const copiarPix = async (valor: number, id: string) => {
     if (!pixInfo) return;
