@@ -1,9 +1,18 @@
 {
   "name": "Senta Pua Guloseimas",
   "short_name": "Senta Pua",
+  "description": "Da Pátria os Olhos — App RP 1/10 GAV",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f4f4f4",
   "theme_color": "#1a3a6b",
-  "icons": []
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
