@@ -12,6 +12,7 @@ import { Clientes } from './pages/admin/Clientes';
 import { ClienteExtrato } from './pages/admin/ClienteExtrato';
 import { Pedidos } from './pages/admin/Pedidos';
 import { Configuracoes } from './pages/admin/Configuracoes';
+import { Relatorios } from './pages/admin/Relatorios';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
 import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
 import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
@@ -70,6 +71,7 @@ export function App() {
         <Route path="/admin/clientes/:id" element={<AdminGuard><ClienteExtrato /></AdminGuard>} />
         <Route path="/admin/pedidos" element={<AdminGuard><Pedidos /></AdminGuard>} />
         <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
+        <Route path="/admin/relatorios" element={<AdminGuard><Relatorios /></AdminGuard>} />
         {/* Loja Militar */}
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />

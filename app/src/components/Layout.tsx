@@ -49,7 +49,8 @@ const NAV_LINKS: Record<SistemaAdmin, { to: string; label: string }[]> = {
     { to: '/admin/pedidos', label: 'Pedidos' },
     { to: '/admin/produtos', label: 'Produtos' },
     { to: '/admin/clientes', label: 'Militares' },
-    { to: '/admin/config', label: 'Catálogos' },
+    { to: '/admin/relatorios', label: 'Relatórios' },
+    { to: '/admin/config', label: 'Configurações' },
   ],
   loja: [
     { to: '/admin/loja', label: 'Dashboard' },
