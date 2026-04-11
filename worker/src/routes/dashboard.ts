@@ -27,7 +27,7 @@ dashboard.get('/stats', authMiddleware, async (c) => {
     ).bind(hoje).first<{ valor: number }>(),
 
     c.env.DB.prepare(`
-      SELECT cl.id as cliente_id, cl.nome_guerra,
+      SELECT cl.id as cliente_id, cl.nome_guerra, cl.whatsapp,
         SUM(p.total) as total_devido
       FROM pedidos p
       JOIN clientes cl ON cl.id = p.cliente_id

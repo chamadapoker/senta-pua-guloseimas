@@ -46,6 +46,6 @@ export interface DashboardStats {
   recebido_mes: number;
   pendente_total: number;
   vendas_hoje: number;
-  devedores: { cliente_id: string; nome_guerra: string; total_devido: number }[];
+  devedores: { cliente_id: string; nome_guerra: string; whatsapp: string | null; total_devido: number }[];
   ultimos_7_dias: { data: string; total: number }[];
 }
