@@ -17,6 +17,14 @@ interface Assinante {
   total_devido: number;
 }
 
+interface Pagamento {
+  id: string;
+  referencia: string;
+  valor: number;
+  status: string;
+  paid_at: string | null;
+}
+
 export function CafeAssinantes() {
   const [sala, setSala] = useState<'oficial' | 'graduado'>(() =>
     (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
@@ -29,6 +37,12 @@ export function CafeAssinantes() {
   const [plano, setPlano] = useState('mensal');
   const [valor, setValor] = useState('');
 
+  // Modal detalhes/cobrar
+  const [detalhes, setDetalhes] = useState<Assinante | null>(null);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
+  const [cobrancaValor, setCobrancaValor] = useState('');
+  const [cobrancaRef, setCobrancaRef] = useState('');
+
   useEffect(() => { localStorage.setItem('cafe_tipo', sala); }, [sala]);
   const carregar = () => api.get<Assinante[]>(`/api/cafe/admin/assinantes?tipo=${sala}`).then(setAssinantes);
   useEffect(() => { carregar(); }, [sala]);
@@ -37,6 +51,35 @@ export function CafeAssinantes() {
     setModalAberto(false);
     setEditando(null);
     setNomeGuerra(''); setTipo(sala); setPlano('mensal'); setValor('');
+  };
+
+  const abrirDetalhes = async (a: Assinante) => {
+    setDetalhes(a);
+    setCobrancaValor(String(a.valor));
+    const now = new Date();
+    setCobrancaRef(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const pags = await api.get<Pagamento[]>(`/api/cafe/admin/assinantes/${a.id}/pagamentos`);
+    setPagamentos(pags);
+  };
+
+  const cobrar = async () => {
+    if (!detalhes || !cobrancaValor || !cobrancaRef) return;
+    await api.post(`/api/cafe/admin/assinantes/${detalhes.id}/cobrar`, {
+      valor: parseFloat(cobrancaValor),
+      referencia: cobrancaRef,
+    });
+    const pags = await api.get<Pagamento[]>(`/api/cafe/admin/assinantes/${detalhes.id}/pagamentos`);
+    setPagamentos(pags);
+    carregar();
+  };
+
+  const marcarPago = async (pagId: string) => {
+    await api.put(`/api/cafe/admin/mensalidades/${pagId}/pagar`, {});
+    if (detalhes) {
+      const pags = await api.get<Pagamento[]>(`/api/cafe/admin/assinantes/${detalhes.id}/pagamentos`);
+      setPagamentos(pags);
+    }
+    carregar();
   };
 
   const abrirEditar = (a: Assinante) => {
@@ -126,7 +169,7 @@ export function CafeAssinantes() {
             <tbody>
               {assinantes.map((a) => (
                 <tr key={a.id} className={`border-b border-borda/50 hover:bg-fundo transition-colors ${!a.ativo ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-3 font-medium text-texto">{a.nome_guerra}</td>
+                  <td className="px-4 py-3 font-medium text-azul cursor-pointer hover:underline" onClick={() => abrirDetalhes(a)}>{a.nome_guerra}</td>
                   <td className="px-4 py-3 text-center text-xs capitalize">{a.tipo}</td>
                   <td className="px-4 py-3 text-center">
                     {a.plano === 'anual'
@@ -196,11 +239,78 @@ export function CafeAssinantes() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)}
+            <input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)}
               className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
           </div>
           <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Adicionar'}</Button>
         </form>
+      </Modal>
+
+      {/* Modal detalhes do assinante */}
+      <Modal open={!!detalhes} onClose={() => setDetalhes(null)} title={detalhes ? detalhes.nome_guerra : ''}>
+        {detalhes && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-fundo rounded-xl px-4 py-3">
+              <div>
+                <span className="text-sm font-medium">{detalhes.plano === 'anual' ? 'Plano Anual' : 'Plano Mensal'}</span>
+                <p className="text-xs text-texto-fraco">Valor: R$ {detalhes.valor.toFixed(2)}</p>
+              </div>
+              <Badge variant={detalhes.total_devido > 0 ? 'danger' : 'success'}>
+                {detalhes.total_devido > 0 ? `Deve R$ ${detalhes.total_devido.toFixed(2)}` : 'Em dia'}
+              </Badge>
+            </div>
+
+            {/* Criar cobrança manual */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <h3 className="text-sm font-medium text-vermelho mb-3">Adicionar Cobrança</h3>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div>
+                  <label className="block text-xs text-texto-fraco mb-1">Referência</label>
+                  <input type="month" value={cobrancaRef} onChange={(e) => setCobrancaRef(e.target.value)}
+                    className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-texto-fraco mb-1">Valor (R$)</label>
+                  <input type="number" step="0.01" min="0" value={cobrancaValor} onChange={(e) => setCobrancaValor(e.target.value)}
+                    className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="w-full" onClick={cobrar}>
+                Cobrar R$ {parseFloat(cobrancaValor || '0').toFixed(2)}
+              </Button>
+            </div>
+
+            {/* Histórico de pagamentos */}
+            <div>
+              <h3 className="text-sm font-medium mb-2">Histórico</h3>
+              {pagamentos.length === 0 ? (
+                <p className="text-xs text-texto-fraco text-center py-4">Nenhuma cobrança</p>
+              ) : (
+                <div className="space-y-2">
+                  {pagamentos.map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-white border border-borda rounded-lg px-3 py-2">
+                      <div>
+                        <span className="text-sm font-medium">{p.referencia}</span>
+                        <span className="text-sm text-texto-fraco ml-2">R$ {p.valor.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {p.status === 'pago' ? (
+                          <Badge variant="success">Pago</Badge>
+                        ) : (
+                          <>
+                            <Badge variant="warning">Pendente</Badge>
+                            <button onClick={() => marcarPago(p.id)}
+                              className="text-xs text-verde font-medium hover:underline">Pagar</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </AdminLayout>
   );

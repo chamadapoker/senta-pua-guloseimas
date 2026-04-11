@@ -140,6 +140,22 @@ cafe.delete('/admin/assinantes/:id', authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
+// ADMIN: create manual charge for a subscriber
+cafe.post('/admin/assinantes/:id/cobrar', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { valor, referencia } = await c.req.json<{ valor: number; referencia: string }>();
+  if (!valor || !referencia) return c.json({ error: 'Valor e referência obrigatórios' }, 400);
+
+  const assinante = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE id = ?').bind(id).first();
+  if (!assinante) return c.json({ error: 'Assinante não encontrado' }, 404);
+
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?) RETURNING *'
+  ).bind(id, referencia, valor).all();
+
+  return c.json(results[0], 201);
+});
+
 // ADMIN: list payments for a subscriber
 cafe.get('/admin/assinantes/:id/pagamentos', authMiddleware, async (c) => {
   const id = c.req.param('id');
