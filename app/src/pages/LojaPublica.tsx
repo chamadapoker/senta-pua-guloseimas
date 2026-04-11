@@ -110,8 +110,8 @@ export function LojaPublica() {
   const enviarPedido = async () => {
     const metodo = 'pix' as const;
     if (!/^[A-ZÀ-ÚÖ]{3}$/.test(nomeGuerra.trim())) { setErro('Trigrama deve ter exatamente 3 letras'); return; }
+    if (!whatsapp.trim()) { setErro('WhatsApp obrigatório'); return; }
     if (visitante && !esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
-    if (visitante && !whatsapp.trim()) { setErro('WhatsApp obrigatório para visitantes'); return; }
 
     setEnviando(true); setErro('');
     try {
@@ -150,7 +150,7 @@ export function LojaPublica() {
 
   const enviarComprovante = () => {
     if (!pedidoCriado) return;
-    const msg = `Comprovante Loja Militar - Pedido #${pedidoCriado.pedido_id}\nValor: R$ ${pedidoCriado.total.toFixed(2)}${pedidoCriado.parcelas > 1 ? ` (${pedidoCriado.parcelas}x de R$ ${(pedidoCriado.total / pedidoCriado.parcelas).toFixed(2)})` : ''}\n\n_Anexe o comprovante do banco abaixo_`;
+    const msg = `Comprovante Loja - Pedido #${pedidoCriado.pedido_id}\nValor: R$ ${pedidoCriado.total.toFixed(2)}${pedidoCriado.parcelas > 1 ? ` (${pedidoCriado.parcelas}x de R$ ${(pedidoCriado.total / pedidoCriado.parcelas).toFixed(2)})` : ''}\n\n_Anexe o comprovante do banco abaixo_`;
     window.open(`https://wa.me/${WHATSAPP_RP}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -240,7 +240,7 @@ export function LojaPublica() {
             <NomeGuerraInput value={nomeGuerra} onChange={setNomeGuerra} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">WhatsApp <span className="text-texto-fraco/60">(opcional)</span></label>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">WhatsApp</label>
             <input type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
               placeholder="Ex: 62999998888"
               className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul" />
@@ -299,7 +299,7 @@ export function LojaPublica() {
   return (
     <PublicLayout>
       <div className="flex items-center gap-3 mb-5">
-        <h1 className="font-display text-2xl text-azul tracking-wider">LOJA MILITAR</h1>
+        <h1 className="font-display text-2xl text-azul tracking-wider">LOJA</h1>
       </div>
       <p className="text-sm text-texto-fraco mb-5">Toque no produto para ver detalhes</p>
 
