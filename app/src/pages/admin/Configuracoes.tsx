@@ -6,6 +6,8 @@ import { api } from '../../services/api';
 export function Configuracoes() {
   const [nomeOficiais, setNomeOficiais] = useState('');
   const [nomeGraduados, setNomeGraduados] = useState('');
+  const [nomeCafeOficiais, setNomeCafeOficiais] = useState('');
+  const [nomeCafeGraduados, setNomeCafeGraduados] = useState('');
   const [maxParcelas, setMaxParcelas] = useState('1');
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
@@ -14,6 +16,8 @@ export function Configuracoes() {
     api.get<Record<string, string>>('/api/config').then((c) => {
       setNomeOficiais(c.nome_sala_oficiais || 'Sala dos Oficiais');
       setNomeGraduados(c.nome_sala_graduados || 'Sala dos Graduados');
+      setNomeCafeOficiais(c.nome_cafe_oficiais || 'Sala dos Oficiais');
+      setNomeCafeGraduados(c.nome_cafe_graduados || 'Sala do Lange');
       setMaxParcelas(c.loja_max_parcelas || '1');
     });
   }, []);
@@ -26,6 +30,8 @@ export function Configuracoes() {
       await api.put('/api/config', {
         nome_sala_oficiais: nomeOficiais,
         nome_sala_graduados: nomeGraduados,
+        nome_cafe_oficiais: nomeCafeOficiais,
+        nome_cafe_graduados: nomeCafeGraduados,
         loja_max_parcelas: maxParcelas,
       });
       setSalvo(true);
@@ -74,7 +80,31 @@ export function Configuracoes() {
         </div>
 
         <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4 mt-6">
-          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Loja Militar - Parcelamento</h2>
+          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Nomes das Salas - Caixinha do Café</h2>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Sala 1 (Oficiais)</label>
+            <input
+              value={nomeCafeOficiais}
+              onChange={(e) => setNomeCafeOficiais(e.target.value)}
+              className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Sala 2 (Graduados)</label>
+            <input
+              value={nomeCafeGraduados}
+              onChange={(e) => setNomeCafeGraduados(e.target.value)}
+              className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4 mt-6">
+          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Loja - Parcelamento</h2>
           <div>
             <label className="block text-sm font-medium mb-1.5">Parcelas máximas no PIX</label>
             <select

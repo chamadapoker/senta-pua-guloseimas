@@ -137,7 +137,7 @@ export function Produtos() {
             </div>
             <div className="bg-azul p-3">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-sm text-white">{p.emoji} {p.nome}</h3>
+                <h3 className="font-semibold text-sm text-white">{p.emoji ? `${p.emoji} ` : ''}{p.nome}</h3>
                 <span className="text-white/90 font-bold">R$ {p.preco.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mt-2">

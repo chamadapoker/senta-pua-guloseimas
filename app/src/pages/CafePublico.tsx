@@ -34,12 +34,16 @@ export function CafePublico() {
   const [copiadoChave, setCopiadoChave] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [confirmado, setConfirmado] = useState<string | null>(null);
+  const [nomes, setNomes] = useState({ nome_cafe_oficiais: 'Sala dos Oficiais', nome_cafe_graduados: 'Sala do Lange' });
 
   const carregar = () => {
     api.get<Devedor[]>('/api/cafe/devedores').then(setDevedores).finally(() => setLoading(false));
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    carregar();
+    api.get<Record<string, string>>('/api/config').then((c) => setNomes((n) => ({ ...n, ...c }))).catch(() => {});
+  }, []);
 
   const pixInfo = sala ? PIX_POR_SALA[sala] : null;
 
@@ -96,11 +100,11 @@ export function CafePublico() {
               className="group w-full bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all duration-300 text-left"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-azul" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="font-display text-lg text-azul tracking-wide">SALA DOS OFICIAIS</h2>
+                  <h2 className="font-display text-lg text-azul tracking-wide uppercase">{nomes.nome_cafe_oficiais}</h2>
                 </div>
                 <span className="text-texto-fraco group-hover:text-azul group-hover:translate-x-1 transition-all">&rarr;</span>
               </div>
@@ -111,11 +115,11 @@ export function CafePublico() {
               className="group w-full bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all duration-300 text-left"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-vermelho/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-vermelho" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="font-display text-lg text-vermelho tracking-wide">SALA SO LANGE</h2>
+                  <h2 className="font-display text-lg text-vermelho tracking-wide uppercase">{nomes.nome_cafe_graduados}</h2>
                 </div>
                 <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
               </div>
@@ -132,11 +136,11 @@ export function CafePublico() {
         <button onClick={() => setSala(null)} className="text-texto-fraco hover:text-texto transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <h1 className="font-display text-2xl text-azul tracking-wider">
-          {sala === 'oficial' ? 'OFICIAIS' : 'SO LANGE'}
+        <h1 className="font-display text-2xl text-azul tracking-wider uppercase">
+          {sala === 'oficial' ? nomes.nome_cafe_oficiais : nomes.nome_cafe_graduados}
         </h1>
       </div>
-      <p className="text-sm text-texto-fraco mb-6">Caixinha do cafe - {sala === 'oficial' ? 'Oficiais' : 'Graduados'}</p>
+      <p className="text-sm text-texto-fraco mb-6">Caixinha do Cafe</p>
 
       {/* PIX info */}
       <div className="bg-white rounded-2xl p-5 mb-6 border border-borda shadow-sm">
@@ -234,11 +238,9 @@ export function CafePublico() {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium text-texto">{d.nome_guerra}</span>
-                          {d.plano === 'anual' ? (
-                            <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>
-                          ) : (
-                            <span className="text-xs text-texto-fraco ml-2 capitalize">{d.tipo}</span>
-                          )}
+                        {d.plano === 'anual' && (
+                          <span className="ml-2 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>
+                        )}
                       </div>
                       <Badge variant="success">{d.plano === 'anual' ? `Pago ate Dez/${new Date().getFullYear()}` : 'Em dia'}</Badge>
                     </div>

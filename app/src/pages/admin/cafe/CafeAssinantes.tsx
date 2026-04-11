@@ -128,11 +128,21 @@ export function CafeAssinantes() {
                 <tr key={a.id} className={`border-b border-borda/50 hover:bg-fundo transition-colors ${!a.ativo ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-3 font-medium text-texto">{a.nome_guerra}</td>
                   <td className="px-4 py-3 text-center text-xs capitalize">{a.tipo}</td>
-                  <td className="px-4 py-3 text-center text-xs capitalize">{a.plano}</td>
+                  <td className="px-4 py-3 text-center">
+                    {a.plano === 'anual'
+                      ? <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">VIP ANUAL</span>
+                      : <span className="text-xs capitalize">{a.plano}</span>}
+                  </td>
                   <td className="px-4 py-3 text-right text-texto-fraco">R$ {a.valor.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-verde font-medium">R$ {a.total_pago.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-verde font-medium">
+                    {a.plano === 'anual' && a.total_devido === 0
+                      ? <span className="text-amber-600 font-bold">PAGO {new Date().getFullYear()}</span>
+                      : `R$ ${a.total_pago.toFixed(2)}`}
+                  </td>
                   <td className="px-4 py-3 text-right">
-                    <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>
+                    {a.plano === 'anual' && a.total_devido === 0
+                      ? <Badge variant="success">Em dia</Badge>
+                      : <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1.5">

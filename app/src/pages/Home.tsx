@@ -7,13 +7,13 @@ type Sistema = 'guloseimas' | 'loja' | 'cafe';
 
 const SISTEMAS: { id: Sistema; label: string }[] = [
   { id: 'guloseimas', label: 'Guloseimas' },
-  { id: 'loja', label: 'Loja Militar' },
+  { id: 'loja', label: 'Loja' },
   { id: 'cafe', label: 'Caixinha do Café' },
 ];
 
 export function Home() {
   const [sistema, setSistema] = useState<Sistema>('guloseimas');
-  const [nomes, setNomes] = useState({ nome_sala_oficiais: 'Sala dos Oficiais', nome_sala_graduados: 'Sala dos Graduados' });
+  const [nomes, setNomes] = useState({ nome_sala_oficiais: 'Sala dos Oficiais', nome_sala_graduados: 'Sala dos Graduados', nome_cafe_oficiais: 'Sala dos Oficiais', nome_cafe_graduados: 'Sala do Lange' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,8 +60,8 @@ export function Home() {
               className="group block bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all duration-300"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  🎖️
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
                   <h2 className="font-display text-lg sm:text-xl text-azul tracking-wide uppercase">{nomes.nome_sala_oficiais}</h2>
@@ -75,8 +75,8 @@ export function Home() {
               className="group block bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all duration-300"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-vermelho/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                  ⭐
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
                   <h2 className="font-display text-lg sm:text-xl text-vermelho tracking-wide uppercase">{nomes.nome_sala_graduados}</h2>
@@ -96,10 +96,10 @@ export function Home() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-azul" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="font-display text-lg sm:text-xl text-azul tracking-wide">SALA DOS OFICIAIS</h2>
+                  <h2 className="font-display text-lg sm:text-xl text-azul tracking-wide uppercase">{nomes.nome_cafe_oficiais}</h2>
                 </div>
                 <span className="text-texto-fraco group-hover:text-azul group-hover:translate-x-1 transition-all">&rarr;</span>
               </div>
@@ -110,11 +110,11 @@ export function Home() {
               className="group block bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all duration-300"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-vermelho/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-vermelho" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <div className="w-14 h-14 rounded-xl bg-azul/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <img src="/sabre.png" alt="" className="w-10 h-10 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="font-display text-lg sm:text-xl text-vermelho tracking-wide">SALA SO LANGE</h2>
+                  <h2 className="font-display text-lg sm:text-xl text-vermelho tracking-wide uppercase">{nomes.nome_cafe_graduados}</h2>
                 </div>
                 <span className="text-texto-fraco group-hover:text-vermelho group-hover:translate-x-1 transition-all">&rarr;</span>
               </div>

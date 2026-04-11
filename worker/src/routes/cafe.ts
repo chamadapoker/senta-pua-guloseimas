@@ -156,46 +156,27 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
   const { referencia, tipo } = await c.req.json<{ referencia: string; tipo?: string }>();
   if (!referencia) return c.json({ error: 'Referência (ex: 2026-04) obrigatória' }, 400);
 
+  // Buscar apenas assinantes MENSAIS — anuais não recebem cobrança mensal
   const assinantesStmt = tipo
-    ? c.env.DB.prepare('SELECT * FROM cafe_assinantes WHERE ativo = 1 AND tipo = ?').bind(tipo)
-    : c.env.DB.prepare('SELECT * FROM cafe_assinantes WHERE ativo = 1');
+    ? c.env.DB.prepare("SELECT * FROM cafe_assinantes WHERE ativo = 1 AND plano = 'mensal' AND tipo = ?").bind(tipo)
+    : c.env.DB.prepare("SELECT * FROM cafe_assinantes WHERE ativo = 1 AND plano = 'mensal'");
   const { results: assinantes } = await assinantesStmt.all<{ id: string; valor: number; plano: string }>();
 
-  // Para cada assinante, determinar a referência correta
-  const refMensal = referencia; // ex: "2026-04"
-  const refAnual = referencia.substring(0, 4); // ex: "2026"
-
-  // Get existing payments for both references
-  const { results: existentesMensal } = await c.env.DB.prepare(
+  // Get existing payments for this reference
+  const { results: existentes } = await c.env.DB.prepare(
     'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
-  ).bind(refMensal).all<{ assinante_id: string }>();
-  const { results: existentesAnual } = await c.env.DB.prepare(
-    'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
-  ).bind(refAnual).all<{ assinante_id: string }>();
+  ).bind(referencia).all<{ assinante_id: string }>();
 
-  const jaGeradosMensal = new Set(existentesMensal.map(e => e.assinante_id));
-  const jaGeradosAnual = new Set(existentesAnual.map(e => e.assinante_id));
+  const jaGerados = new Set(existentes.map(e => e.assinante_id));
 
   const batch = [];
   for (const a of assinantes) {
-    if (a.plano === 'anual') {
-      // Anual: gera 1 cobrança por ano
-      if (!jaGeradosAnual.has(a.id)) {
-        batch.push(
-          c.env.DB.prepare(
-            'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
-          ).bind(a.id, refAnual, a.valor)
-        );
-      }
-    } else {
-      // Mensal: gera 1 cobrança por mês
-      if (!jaGeradosMensal.has(a.id)) {
-        batch.push(
-          c.env.DB.prepare(
-            'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
-          ).bind(a.id, refMensal, a.valor)
-        );
-      }
+    if (!jaGerados.has(a.id)) {
+      batch.push(
+        c.env.DB.prepare(
+          'INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)'
+        ).bind(a.id, referencia, a.valor)
+      );
     }
   }
 
@@ -297,20 +278,22 @@ cafe.delete('/admin/insumos/:id', authMiddleware, async (c) => {
 // ADMIN: dashboard stats (filtro por tipo: ?tipo=oficial ou ?tipo=graduado)
 cafe.get('/admin/stats', authMiddleware, async (c) => {
   const tipo = c.req.query('tipo');
-  // Validate tipo to prevent SQL injection
   if (tipo && tipo !== 'oficial' && tipo !== 'graduado') {
     return c.json({ error: 'Tipo inválido' }, 400);
   }
   const now = new Date();
   const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const tipoFilter = tipo ? " AND ca.tipo = '" + tipo + "'" : '';
-  const tipoFilterPag = tipo ? ` AND cp.assinante_id IN (SELECT id FROM cafe_assinantes WHERE tipo = '${tipo}')` : '';
-
   const [totalAssinantes, recebidoMes, pendente, insumosAlerta] = await Promise.all([
-    c.env.DB.prepare(`SELECT COUNT(*) as valor FROM cafe_assinantes ca WHERE ativo = 1${tipoFilter}`).first<{ valor: number }>(),
-    c.env.DB.prepare(`SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos cp WHERE status = 'pago' AND referencia = ?${tipoFilterPag}`).bind(mesAtual).first<{ valor: number }>(),
-    c.env.DB.prepare(`SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos cp WHERE status = 'pendente'${tipoFilterPag}`).first<{ valor: number }>(),
+    tipo
+      ? c.env.DB.prepare('SELECT COUNT(*) as valor FROM cafe_assinantes WHERE ativo = 1 AND tipo = ?').bind(tipo).first<{ valor: number }>()
+      : c.env.DB.prepare('SELECT COUNT(*) as valor FROM cafe_assinantes WHERE ativo = 1').first<{ valor: number }>(),
+    tipo
+      ? c.env.DB.prepare("SELECT COALESCE(SUM(cp.valor), 0) as valor FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE cp.status = 'pago' AND cp.referencia = ? AND ca.tipo = ?").bind(mesAtual, tipo).first<{ valor: number }>()
+      : c.env.DB.prepare("SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos WHERE status = 'pago' AND referencia = ?").bind(mesAtual).first<{ valor: number }>(),
+    tipo
+      ? c.env.DB.prepare("SELECT COALESCE(SUM(cp.valor), 0) as valor FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE cp.status = 'pendente' AND ca.tipo = ?").bind(tipo).first<{ valor: number }>()
+      : c.env.DB.prepare("SELECT COALESCE(SUM(valor), 0) as valor FROM cafe_pagamentos WHERE status = 'pendente'").first<{ valor: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) as valor FROM cafe_insumos WHERE estoque <= estoque_min").first<{ valor: number }>(),
   ]);
 
