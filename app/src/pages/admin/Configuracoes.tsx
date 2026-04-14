@@ -43,11 +43,11 @@ export function Configuracoes() {
           <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Nomes dos Catálogos</h2>
           <div>
             <label className="block text-sm font-medium mb-1.5">Catálogo 1 (Oficiais)</label>
-            <input value={v('nome_sala_oficiais', 'Sala dos Oficiais')} onChange={(e) => set('nome_sala_oficiais', e.target.value)} className={inputClass} required />
+            <input value={v('nome_sala_oficiais', 'Cantina dos Oficiais')} onChange={(e) => set('nome_sala_oficiais', e.target.value)} className={inputClass} required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Catálogo 2 (Graduados)</label>
-            <input value={v('nome_sala_graduados', 'Sala dos Graduados')} onChange={(e) => set('nome_sala_graduados', e.target.value)} className={inputClass} required />
+            <input value={v('nome_sala_graduados', 'Cantina dos Graduados')} onChange={(e) => set('nome_sala_graduados', e.target.value)} className={inputClass} required />
           </div>
         </div>
 

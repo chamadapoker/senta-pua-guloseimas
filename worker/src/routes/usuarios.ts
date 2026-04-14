@@ -440,7 +440,12 @@ usuarios.delete('/me/foto', userAuthMiddleware, async (c) => {
 // Admin: listar usuarios
 usuarios.get('/admin/lista', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios ORDER BY trigrama'
+    `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at,
+            c.id AS cliente_id
+     FROM usuarios u
+     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     ORDER BY u.trigrama`
   ).all();
   return c.json(results);
 });
@@ -515,7 +520,12 @@ usuarios.put('/admin/:id/visitante', authMiddleware, async (c) => {
 usuarios.get('/admin/por-trigrama/:trigrama', authMiddleware, async (c) => {
   const trigrama = (c.req.param('trigrama') || '').toUpperCase();
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE trigrama = ? COLLATE NOCASE'
+    `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at,
+            c.id AS cliente_id
+     FROM usuarios u
+     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     WHERE u.trigrama = ? COLLATE NOCASE`
   ).bind(trigrama).first();
 
   if (!user) return c.json(null);

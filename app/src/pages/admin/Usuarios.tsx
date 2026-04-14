@@ -294,9 +294,13 @@ export function Usuarios() {
                 >
                   {u.ativo === 1 ? 'Desativar' : 'Reativar'}
                 </Button>
-                <Link to={`/admin/clientes`} className="ml-auto text-xs text-azul hover:underline self-center">
-                  Ver extrato financeiro →
-                </Link>
+                {u.cliente_id ? (
+                  <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto text-xs text-azul hover:underline self-center">
+                    Ver extrato financeiro →
+                  </Link>
+                ) : (
+                  <span className="ml-auto text-xs text-texto-fraco self-center">Sem histórico</span>
+                )}
               </div>
             </div>
           ))}
