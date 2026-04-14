@@ -5,7 +5,7 @@ export async function audit(
   c: Context<AppType>,
   acao: string,
   entidade: string,
-  entidade_id: string | null,
+  entidade_id: string | null | undefined,
   dados_antes: unknown = null,
   dados_depois: unknown = null
 ) {
@@ -19,7 +19,7 @@ export async function audit(
       email,
       acao,
       entidade,
-      entidade_id,
+      entidade_id ?? null,
       dados_antes ? JSON.stringify(dados_antes) : null,
       dados_depois ? JSON.stringify(dados_depois) : null,
       ip

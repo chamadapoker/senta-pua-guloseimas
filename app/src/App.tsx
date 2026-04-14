@@ -25,6 +25,7 @@ import { Admins } from './pages/admin/Admins';
 import { Comprovantes } from './pages/admin/Comprovantes';
 import { Auditoria } from './pages/admin/Auditoria';
 import { CafeDespesas } from './pages/admin/cafe/CafeDespesas';
+import { Lucratividade } from './pages/admin/Lucratividade';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
 import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
 import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
@@ -38,6 +39,7 @@ import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
+import { LojaMinhas } from './pages/LojaMinhas';
 import { XimbocaPublica } from './pages/XimbocaPublica';
 import { useAuth } from './hooks/useAuth';
 import { useUserAuth } from './hooks/useUserAuth';
@@ -96,6 +98,7 @@ export function App() {
         <Route path="/pix/:pedidoId" element={<VisitorGuard><PixPage /></VisitorGuard>} />
         <Route path="/obrigado" element={<Obrigado />} />
         <Route path="/loja" element={<VisitorGuard><LojaPublica /></VisitorGuard>} />
+        <Route path="/loja/minhas" element={<VisitorGuard><LojaMinhas /></VisitorGuard>} />
         <Route path="/cafe" element={<CafePublico />} />
         <Route path="/ximboca" element={<VisitorGuard><XimbocaPublica /></VisitorGuard>} />
         {/* User auth */}
@@ -120,6 +123,7 @@ export function App() {
         <Route path="/admin/comprovantes" element={<AdminGuard><Comprovantes /></AdminGuard>} />
         <Route path="/admin/auditoria" element={<AdminGuard><Auditoria /></AdminGuard>} />
         <Route path="/admin/cafe/despesas" element={<AdminGuard><CafeDespesas /></AdminGuard>} />
+        <Route path="/admin/lucratividade" element={<AdminGuard><Lucratividade /></AdminGuard>} />
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
         <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />

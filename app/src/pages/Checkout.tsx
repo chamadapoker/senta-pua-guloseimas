@@ -49,7 +49,7 @@ export function Checkout() {
     );
   }
 
-  const enviarPedido = async (metodo: 'pix' | 'fiado') => {
+  const enviarPedido = async (metodo: 'pix' | 'fiado' | 'dinheiro') => {
     setLoading(true);
     setErro('');
     try {
@@ -64,7 +64,7 @@ export function Checkout() {
       if (metodo === 'pix') {
         navigate(`/pix/${data.pedido_id}`);
       } else {
-        navigate('/obrigado', { state: { nome: user.trigrama, metodo } });
+        navigate('/obrigado', { state: { nome: user.trigrama, metodo, pedidoId: data.pedido_id } });
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao enviar pedido');
@@ -142,18 +142,24 @@ export function Checkout() {
 
       <div className="space-y-3 pb-4">
         <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={loading}>
-          Pagar via PIX
+          💠 Pagar via PIX
+        </Button>
+        <Button variant="primary" size="lg" className="w-full" onClick={() => enviarPedido('dinheiro')} disabled={loading}>
+          💵 Paguei em Dinheiro
         </Button>
         {user.permite_fiado !== 0 && (
           <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
-            Anotar no Fiado
+            📝 Anotar no Fiado
           </Button>
         )}
         {user.permite_fiado === 0 && user.is_visitante === 1 && (
           <p className="text-xs text-texto-fraco text-center">
-            Visitantes pagam à vista (PIX). Fiado não disponível.
+            Visitantes pagam à vista. Fiado não disponível.
           </p>
         )}
+        <p className="text-[10px] text-texto-fraco text-center">
+          💵 Dinheiro: o admin confirma quando receber. 💠 PIX: envie comprovante ao terminar.
+        </p>
       </div>
     </AppLayout>
   );

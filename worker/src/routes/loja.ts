@@ -49,7 +49,7 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; variacao_id?: string; quantidade: number }[];
-    metodo: 'pix' | 'fiado';
+    metodo: 'pix' | 'fiado' | 'dinheiro';
     whatsapp?: string;
     parcelas?: number;
     visitante?: boolean;
@@ -170,6 +170,48 @@ loja.get('/pedidos/:id', async (c) => {
   const pedido = await c.env.DB.prepare('SELECT * FROM loja_pedidos WHERE id = ?').bind(id).first();
   if (!pedido) return c.json({ error: 'Pedido não encontrado' }, 404);
   return c.json(pedido);
+});
+
+// USER: meus pedidos da loja
+loja.get('/meus-pedidos', userAuthMiddleware, async (c) => {
+  const trigrama = c.get('userTrigrama');
+
+  const { results: pedidos } = await c.env.DB.prepare(`
+    SELECT p.*, cl.nome_guerra
+    FROM loja_pedidos p
+    JOIN clientes cl ON cl.id = p.cliente_id
+    WHERE cl.nome_guerra = ? COLLATE NOCASE
+    ORDER BY p.created_at DESC
+    LIMIT 30
+  `).bind(trigrama).all<{ id: string; total: number; status: string; metodo_pagamento: string; parcelas: number; created_at: string }>();
+
+  if (pedidos.length === 0) return c.json([]);
+  const ids = pedidos.map(p => p.id);
+  const placeholders = ids.map(() => '?').join(',');
+
+  const [itensRes, parcelasRes] = await Promise.all([
+    c.env.DB.prepare(`SELECT pedido_id, nome_produto, nome_variacao, quantidade, subtotal FROM loja_itens_pedido WHERE pedido_id IN (${placeholders})`).bind(...ids).all<{ pedido_id: string; nome_produto: string; nome_variacao: string | null; quantidade: number; subtotal: number }>(),
+    c.env.DB.prepare(`SELECT id, pedido_id, numero, total_parcelas, valor, status FROM loja_parcelas WHERE pedido_id IN (${placeholders}) ORDER BY numero ASC`).bind(...ids).all<{ id: string; pedido_id: string; numero: number; total_parcelas: number; valor: number; status: string }>(),
+  ]);
+
+  const itensMap = new Map<string, unknown[]>();
+  for (const i of itensRes.results) {
+    const arr = itensMap.get(i.pedido_id) || [];
+    arr.push(i);
+    itensMap.set(i.pedido_id, arr);
+  }
+  const parcelasMap = new Map<string, unknown[]>();
+  for (const p of parcelasRes.results) {
+    const arr = parcelasMap.get(p.pedido_id) || [];
+    arr.push(p);
+    parcelasMap.set(p.pedido_id, arr);
+  }
+
+  return c.json(pedidos.map(p => ({
+    ...p,
+    itens: itensMap.get(p.id) || [],
+    parcelas_lista: parcelasMap.get(p.id) || [],
+  })));
 });
 
 // Auth: usuário sinaliza que pagou (aprovação final só por comprovante)

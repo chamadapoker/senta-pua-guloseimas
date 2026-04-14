@@ -25,7 +25,7 @@ export interface Pedido {
   cliente_id: string;
   total: number;
   status: 'pendente' | 'pago' | 'fiado';
-  metodo_pagamento: 'pix' | 'fiado';
+  metodo_pagamento: 'pix' | 'fiado' | 'dinheiro';
   pix_payment_id: string | null;
   created_at: string;
   paid_at: string | null;

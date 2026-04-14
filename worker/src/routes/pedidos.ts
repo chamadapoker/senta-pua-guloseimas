@@ -22,7 +22,7 @@ pedidos.post('/', checkVisitanteSeLogado, async (c) => {
   const { nome_guerra, itens, metodo, whatsapp, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; quantidade: number }[];
-    metodo: 'pix' | 'fiado';
+    metodo: 'pix' | 'fiado' | 'dinheiro';
     whatsapp?: string;
     visitante?: boolean;
     esquadrao_origem?: string;

@@ -57,7 +57,10 @@ const USER_NAV: NavItem[] = [
     { to: '/catalogo/oficiais', label: 'Cantina dos Oficiais' },
     { to: '/catalogo/graduados', label: 'Cantina dos Graduados' },
   ]},
-  { to: '/loja', label: 'Loja', icon: <IconBag /> },
+  { to: '/loja', label: 'Loja', icon: <IconBag />, children: [
+    { to: '/loja', label: 'Catálogo' },
+    { to: '/loja/minhas', label: 'Minhas Compras' },
+  ]},
   { to: '/cafe', label: 'Café', icon: <IconCoffee /> },
   { to: '/ximboca', label: 'Ximboca', icon: <IconFire /> },
   { to: '/perfil', label: 'Meu Perfil', icon: <IconUser /> },
@@ -70,6 +73,7 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/produtos', label: 'Produtos' },
     { to: '/admin/clientes', label: 'Militares' },
     { to: '/admin/relatorios', label: 'Relatórios' },
+    { to: '/admin/lucratividade', label: 'Lucratividade' },
   ]},
   { to: '/admin/loja', label: 'Loja', icon: <IconBag />, children: [
     { to: '/admin/loja', label: 'Dashboard' },
