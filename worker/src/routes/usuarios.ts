@@ -285,17 +285,40 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
     ).bind(cliente.id).first<{ total: number }>();
     debitoTotal = debitoRow?.total || 0;
 
-    const { results } = await c.env.DB.prepare(`
-      SELECT p.id, p.total, p.status, p.metodo_pagamento, p.created_at, p.paid_at,
-        GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
-      FROM pedidos p
-      LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
-      WHERE p.cliente_id = ?
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
+    const { results: pedidos } = await c.env.DB.prepare(`
+      SELECT id, total, status, metodo_pagamento, created_at, paid_at
+      FROM pedidos
+      WHERE cliente_id = ?
+      ORDER BY created_at DESC
       LIMIT 5
-    `).bind(cliente.id).all();
-    ultimosPedidos = results;
+    `).bind(cliente.id).all<{ id: string; total: number; status: string; metodo_pagamento: string; created_at: string; paid_at: string | null }>();
+
+    const pedidoIds = pedidos.map(p => p.id);
+    const itensMap = new Map<string, { nome_produto: string; quantidade: number; preco_unitario: number; subtotal: number }[]>();
+
+    if (pedidoIds.length > 0) {
+      const placeholders = pedidoIds.map(() => '?').join(',');
+      const { results: todosItens } = await c.env.DB.prepare(
+        `SELECT pedido_id, nome_produto, quantidade, preco_unitario, subtotal
+         FROM itens_pedido WHERE pedido_id IN (${placeholders})`
+      ).bind(...pedidoIds).all<{ pedido_id: string; nome_produto: string; quantidade: number; preco_unitario: number; subtotal: number }>();
+
+      for (const item of todosItens) {
+        const arr = itensMap.get(item.pedido_id) || [];
+        arr.push({
+          nome_produto: item.nome_produto,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario,
+          subtotal: item.subtotal,
+        });
+        itensMap.set(item.pedido_id, arr);
+      }
+    }
+
+    ultimosPedidos = pedidos.map(p => ({
+      ...p,
+      itens: itensMap.get(p.id) || [],
+    }));
   }
 
   let cafeStatus: { mes_atual: string; pago: boolean; valor: number | null; tem_assinatura: boolean } | null = null;

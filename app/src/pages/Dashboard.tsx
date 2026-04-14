@@ -11,6 +11,13 @@ function resolveImg(url: string | null): string | null {
   return url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
 }
 
+interface PedidoItem {
+  nome_produto: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+}
+
 interface PedidoResumo {
   id: string;
   total: number;
@@ -18,7 +25,7 @@ interface PedidoResumo {
   metodo_pagamento: string;
   created_at: string;
   paid_at: string | null;
-  itens_resumo: string | null;
+  itens: PedidoItem[];
 }
 
 interface CafeStatus {
@@ -153,17 +160,42 @@ export function Dashboard() {
             {data.ultimos_pedidos.length === 0 ? (
               <p className="text-sm text-texto-fraco text-center py-3">Nenhum pedido ainda</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {data.ultimos_pedidos.map(p => (
-                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-borda last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">{p.itens_resumo || 'Pedido'}</div>
+                  <div key={p.id} className="rounded-lg bg-fundo p-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="text-xs text-texto-fraco">
-                        {formatData(p.created_at)} · {p.status}
+                        {formatData(p.created_at)}
                       </div>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        p.status === 'pago' ? 'bg-green-100 text-verde-escuro' :
+                        p.status === 'fiado' ? 'bg-red-50 text-vermelho' :
+                        'bg-amber-50 text-amber-700'
+                      }`}>
+                        {p.status.toUpperCase()}
+                      </span>
                     </div>
-                    <div className="text-sm font-bold text-azul ml-3">
-                      R$ {p.total.toFixed(2)}
+                    {p.itens && p.itens.length > 0 ? (
+                      <div className="space-y-1">
+                        {p.itens.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs">
+                            <span className="flex-1 truncate">
+                              <span className="text-azul font-medium">{item.quantidade}×</span> {item.nome_produto}
+                            </span>
+                            <span className="text-texto-fraco ml-2">
+                              R$ {item.subtotal.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-texto-fraco">Sem detalhes</div>
+                    )}
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-borda">
+                      <span className="text-xs text-texto-fraco">Total</span>
+                      <span className="font-display text-base text-azul tracking-wider">
+                        R$ {p.total.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -171,22 +203,6 @@ export function Dashboard() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Link to="/catalogo/oficiais" className="bg-white rounded-xl border border-borda p-4 shadow-sm hover:border-azul transition-colors text-center">
-              <div className="font-display text-azul tracking-wider text-sm">Cantina dos Oficiais</div>
-            </Link>
-            <Link to="/catalogo/graduados" className="bg-white rounded-xl border border-borda p-4 shadow-sm hover:border-vermelho transition-colors text-center">
-              <div className="font-display text-vermelho tracking-wider text-sm">Cantina dos Graduados</div>
-            </Link>
-            {user.sala_cafe && (
-              <Link to="/cafe" className="bg-white rounded-xl border border-borda p-4 shadow-sm hover:border-azul transition-colors text-center">
-                <div className="font-display text-texto tracking-wider text-sm">Meu Café</div>
-              </Link>
-            )}
-            <Link to="/perfil" className="bg-white rounded-xl border border-borda p-4 shadow-sm hover:border-azul transition-colors text-center">
-              <div className="font-display text-texto tracking-wider text-sm">Meu Perfil</div>
-            </Link>
-          </div>
         </>
       )}
     </AppLayout>
