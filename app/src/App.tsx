@@ -27,6 +27,7 @@ import { Auditoria } from './pages/admin/Auditoria';
 import { CafeDespesas } from './pages/admin/cafe/CafeDespesas';
 import { Lucratividade } from './pages/admin/Lucratividade';
 import { Cobrancas } from './pages/admin/Cobrancas';
+import { CaixaConsolidado } from './pages/admin/CaixaConsolidado';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
 import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
 import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
@@ -126,6 +127,7 @@ export function App() {
         <Route path="/admin/cafe/despesas" element={<AdminGuard><CafeDespesas /></AdminGuard>} />
         <Route path="/admin/lucratividade" element={<AdminGuard><Lucratividade /></AdminGuard>} />
         <Route path="/admin/cobrancas" element={<AdminGuard><Cobrancas /></AdminGuard>} />
+        <Route path="/admin/caixa" element={<AdminGuard><CaixaConsolidado /></AdminGuard>} />
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
         <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />

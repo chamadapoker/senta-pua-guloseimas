@@ -134,13 +134,27 @@ comprovantes.get('/me/status', userAuthMiddleware, async (c) => {
   return c.json(results);
 });
 
-// ADMIN: lista comprovantes (filtro por status)
+// ADMIN: lista comprovantes (filtro por status + paginacao + busca)
 comprovantes.get('/', authMiddleware, async (c) => {
   const status = c.req.query('status') || 'aguardando';
+  const q = c.req.query('q');
+  const origem = c.req.query('origem');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
+  const offset = Math.max(parseInt(c.req.query('offset') || '0', 10), 0);
+
+  const conds = ['status = ?'];
+  const params: unknown[] = [status];
+  if (origem) { conds.push('origem = ?'); params.push(origem); }
+  if (q)      { conds.push('trigrama LIKE ? COLLATE NOCASE'); params.push(`%${q}%`); }
+
+  const where = conds.join(' AND ');
+  const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM comprovantes WHERE ${where}`).bind(...params).first<{ total: number }>();
+
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM comprovantes WHERE status = ? ORDER BY created_at DESC LIMIT 200'
-  ).bind(status).all();
-  return c.json(results);
+    `SELECT * FROM comprovantes WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+  ).bind(...params, limit, offset).all();
+
+  return c.json({ items: results, total: totalRow?.total || 0, limit, offset });
 });
 
 // ADMIN: aprovar → marca o item de origem como pago

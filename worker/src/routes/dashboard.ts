@@ -4,6 +4,69 @@ import type { AppType } from '../index';
 
 const dashboard = new Hono<AppType>();
 
+// Caixa consolidado de todo o negocio (cantina + loja + cafe + ximboca)
+dashboard.get('/caixa-consolidado', authMiddleware, async (c) => {
+  const de = c.req.query('de');
+  const ate = c.req.query('ate');
+
+  const filter = (col: string) => {
+    const conds: string[] = [];
+    const params: string[] = [];
+    if (de)  { conds.push(`${col} >= ?`); params.push(de); }
+    if (ate) { conds.push(`${col} <= ?`); params.push(ate + ' 23:59:59'); }
+    return { clause: conds.length ? ' AND ' + conds.join(' AND ') : '', params };
+  };
+
+  const f = filter('created_at');
+  const fx = filter('xe.data');
+  const fd = filter('data');
+
+  // ENTRADAS
+  const [cantinaPago, lojaPago, cafePago, ximbPago, cantinaPend, lojaPend, cafePend, ximbPend] = await Promise.all([
+    c.env.DB.prepare(`SELECT COALESCE(SUM(total),0) as v, COUNT(*) as n FROM pedidos WHERE status='pago'${f.clause}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(total),0) as v, COUNT(*) as n FROM loja_pedidos WHERE status='pago'${f.clause}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(valor),0) as v, COUNT(*) as n FROM cafe_pagamentos WHERE status='pago'${f.clause.replace(/created_at/g, 'paid_at')}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(COALESCE(xp.valor_individual, xe.valor_por_pessoa)),0) as v, COUNT(*) as n FROM ximboca_participantes xp JOIN ximboca_eventos xe ON xe.id=xp.evento_id WHERE xp.status='pago'${fx.clause}`).bind(...fx.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(total),0) as v, COUNT(*) as n FROM pedidos WHERE status IN ('pendente','fiado')${f.clause}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(total),0) as v, COUNT(*) as n FROM loja_pedidos WHERE status IN ('pendente','fiado')${f.clause}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(valor),0) as v, COUNT(*) as n FROM cafe_pagamentos WHERE status='pendente'${f.clause}`).bind(...f.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(COALESCE(xp.valor_individual, xe.valor_por_pessoa)),0) as v, COUNT(*) as n FROM ximboca_participantes xp JOIN ximboca_eventos xe ON xe.id=xp.evento_id WHERE xp.status!='pago'${fx.clause}`).bind(...fx.params).first<{ v: number; n: number }>(),
+  ]);
+
+  // SAIDAS
+  const [cafeDesp, ximbDesp] = await Promise.all([
+    c.env.DB.prepare(`SELECT COALESCE(SUM(valor),0) as v, COUNT(*) as n FROM cafe_despesas WHERE 1=1${fd.clause}`).bind(...fd.params).first<{ v: number; n: number }>(),
+    c.env.DB.prepare(`SELECT COALESCE(SUM(d.valor),0) as v, COUNT(*) as n FROM ximboca_despesas d JOIN ximboca_eventos xe ON xe.id=d.evento_id WHERE d.categoria != 'estoque'${fx.clause}`).bind(...fx.params).first<{ v: number; n: number }>(),
+  ]);
+
+  const entradas = {
+    cantina:  { pago: cantinaPago?.v ?? 0, pendente: cantinaPend?.v ?? 0, qtd_pago: cantinaPago?.n ?? 0 },
+    loja:     { pago: lojaPago?.v ?? 0,    pendente: lojaPend?.v ?? 0,    qtd_pago: lojaPago?.n ?? 0 },
+    cafe:     { pago: cafePago?.v ?? 0,    pendente: cafePend?.v ?? 0,    qtd_pago: cafePago?.n ?? 0 },
+    ximboca:  { pago: ximbPago?.v ?? 0,    pendente: ximbPend?.v ?? 0,    qtd_pago: ximbPago?.n ?? 0 },
+  };
+  const saidas = {
+    cafe:    { total: cafeDesp?.v ?? 0, qtd: cafeDesp?.n ?? 0 },
+    ximboca: { total: ximbDesp?.v ?? 0, qtd: ximbDesp?.n ?? 0 },
+  };
+
+  const totalEntrada = entradas.cantina.pago + entradas.loja.pago + entradas.cafe.pago + entradas.ximboca.pago;
+  const totalPendente = entradas.cantina.pendente + entradas.loja.pendente + entradas.cafe.pendente + entradas.ximboca.pendente;
+  const totalSaida = saidas.cafe.total + saidas.ximboca.total;
+
+  return c.json({
+    entradas, saidas,
+    totais: {
+      entrada: totalEntrada,
+      saida: totalSaida,
+      saldo: totalEntrada - totalSaida,
+      pendente: totalPendente,
+      previsto: totalEntrada + totalPendente - totalSaida,
+    },
+    periodo: { de: de || null, ate: ate || null },
+  });
+});
+
 // Devedores consolidados (cantina + loja + cafe + ximboca) para cobranca
 dashboard.get('/devedores-consolidados', authMiddleware, async (c) => {
   const minDias = parseInt(c.req.query('dias') || '0', 10);

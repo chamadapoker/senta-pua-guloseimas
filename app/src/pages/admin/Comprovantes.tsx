@@ -22,6 +22,13 @@ interface Comprovante {
   created_at: string;
 }
 
+interface Resp {
+  items: Comprovante[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 const ORIGEM_LABEL: Record<string, string> = {
   cantina: 'Cantina',
   loja: 'Loja',
@@ -30,21 +37,30 @@ const ORIGEM_LABEL: Record<string, string> = {
   ximboca: 'Ximboca',
 };
 
+const PAGE = 50;
+
 export function Comprovantes() {
   const [aba, setAba] = useState<'aguardando' | 'aprovado' | 'rejeitado'>('aguardando');
-  const [lista, setLista] = useState<Comprovante[]>([]);
+  const [origem, setOrigem] = useState('');
+  const [q, setQ] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<Comprovante | null>(null);
   const [motivo, setMotivo] = useState('');
 
   const carregar = () => {
     setLoading(true);
-    api.get<Comprovante[]>(`/api/comprovantes?status=${aba}`)
-      .then(setLista)
-      .finally(() => setLoading(false));
+    const qs = new URLSearchParams({ status: aba, limit: String(PAGE), offset: String(offset) });
+    if (origem) qs.set('origem', origem);
+    if (q.trim()) qs.set('q', q.trim());
+    api.get<Resp>(`/api/comprovantes?${qs}`).then(setData).finally(() => setLoading(false));
   };
 
-  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [aba]);
+  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [aba, offset, origem]);
+
+  const trocarAba = (novo: typeof aba) => { setAba(novo); setOffset(0); };
+  const buscar = (e: React.FormEvent) => { e.preventDefault(); setOffset(0); carregar(); };
 
   const resolverImg = (url: string) => url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
 
@@ -63,16 +79,19 @@ export function Comprovantes() {
     carregar();
   };
 
+  const totalPages = data ? Math.ceil(data.total / PAGE) : 0;
+  const currentPage = Math.floor(offset / PAGE) + 1;
+
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
       <h1 className="font-display text-2xl text-azul tracking-wider mb-4">COMPROVANTES</h1>
 
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-5">
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-3">
         {(['aguardando', 'aprovado', 'rejeitado'] as const).map(s => (
           <button
             key={s}
-            onClick={() => setAba(s)}
+            onClick={() => trocarAba(s)}
             className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
               aba === s ? 'bg-azul text-white shadow-sm' : 'text-texto-fraco'
             }`}
@@ -82,15 +101,39 @@ export function Comprovantes() {
         ))}
       </div>
 
+      <form onSubmit={buscar} className="flex gap-2 mb-4 flex-wrap">
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Buscar por trigrama..."
+          className="flex-1 min-w-[150px] bg-white border border-borda rounded-lg px-3 py-2 text-sm"
+        />
+        <select value={origem} onChange={e => { setOrigem(e.target.value); setOffset(0); }} className="bg-white border border-borda rounded-lg px-3 py-2 text-sm">
+          <option value="">Todas origens</option>
+          <option value="cantina">Cantina</option>
+          <option value="loja">Loja</option>
+          <option value="loja_parcela">Loja (parcela)</option>
+          <option value="cafe">Café</option>
+          <option value="ximboca">Ximboca</option>
+        </select>
+        <button type="submit" className="px-4 py-2 rounded-lg bg-azul text-white text-sm font-medium">Buscar</button>
+      </form>
+
+      {data && (
+        <div className="text-xs text-texto-fraco mb-3">
+          {data.total} comprovante(s) · Página {currentPage}/{totalPages || 1}
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-10 text-texto-fraco">Carregando...</div>
-      ) : lista.length === 0 ? (
+      ) : !data || data.items.length === 0 ? (
         <div className="bg-white rounded-xl border border-borda p-10 text-center text-texto-fraco">
-          Nenhum comprovante {aba === 'aguardando' ? 'pendente' : aba}.
+          Nenhum comprovante {aba}.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {lista.map(c => (
+          {data.items.map(c => (
             <button
               key={c.id}
               onClick={() => { setPreview(c); setMotivo(''); }}
@@ -109,6 +152,14 @@ export function Comprovantes() {
               {c.observacao && <div className="text-xs text-texto-fraco mt-1 italic">"{c.observacao}"</div>}
             </button>
           ))}
+        </div>
+      )}
+
+      {data && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">← Anterior</button>
+          <span className="text-sm text-texto-fraco">{currentPage}/{totalPages}</span>
+          <button disabled={offset + PAGE >= data.total} onClick={() => setOffset(offset + PAGE)} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">Próxima →</button>
         </div>
       )}
 
