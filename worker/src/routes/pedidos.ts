@@ -138,34 +138,45 @@ pedidos.get('/:id', async (c) => {
   return c.json(pedido);
 });
 
-// Admin: listar pedidos com filtros
+// Admin: listar pedidos com filtros + paginacao
 pedidos.get('/', authMiddleware, async (c) => {
   const status = c.req.query('status');
   const clienteId = c.req.query('cliente_id');
   const data = c.req.query('data');
+  const de = c.req.query('de');
+  const ate = c.req.query('ate');
+  const q = c.req.query('q');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
+  const offset = Math.max(parseInt(c.req.query('offset') || '0', 10), 0);
 
-  let sql = `
-    SELECT p.*, cl.nome_guerra,
-      GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
-    FROM pedidos p
-    JOIN clientes cl ON cl.id = p.cliente_id
-    LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
-    WHERE 1=1
-  `;
+  const conds: string[] = ['1=1'];
   const params: unknown[] = [];
+  if (status)    { conds.push('p.status = ?'); params.push(status); }
+  if (clienteId) { conds.push('p.cliente_id = ?'); params.push(clienteId); }
+  if (data)      { conds.push('DATE(p.created_at) = ?'); params.push(data); }
+  if (de)        { conds.push('p.created_at >= ?'); params.push(de); }
+  if (ate)       { conds.push('p.created_at <= ?'); params.push(ate + ' 23:59:59'); }
+  if (q)         { conds.push('cl.nome_guerra LIKE ? COLLATE NOCASE'); params.push(`%${q}%`); }
 
-  if (status) { sql += ' AND p.status = ?'; params.push(status); }
-  if (clienteId) { sql += ' AND p.cliente_id = ?'; params.push(clienteId); }
-  if (data) { sql += " AND DATE(p.created_at) = ?"; params.push(data); }
+  const where = conds.join(' AND ');
 
-  sql += ' GROUP BY p.id ORDER BY p.created_at DESC LIMIT 100';
+  const totalRow = await c.env.DB.prepare(
+    `SELECT COUNT(DISTINCT p.id) as total FROM pedidos p JOIN clientes cl ON cl.id = p.cliente_id WHERE ${where}`
+  ).bind(...params).first<{ total: number }>();
 
-  const stmt = params.length
-    ? c.env.DB.prepare(sql).bind(...params)
-    : c.env.DB.prepare(sql);
+  const { results } = await c.env.DB.prepare(
+    `SELECT p.*, cl.nome_guerra,
+       GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
+     FROM pedidos p
+     JOIN clientes cl ON cl.id = p.cliente_id
+     LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
+     WHERE ${where}
+     GROUP BY p.id
+     ORDER BY p.created_at DESC
+     LIMIT ? OFFSET ?`
+  ).bind(...params, limit, offset).all();
 
-  const { results } = await stmt.all();
-  return c.json(results);
+  return c.json({ items: results, total: totalRow?.total || 0, limit, offset });
 });
 
 // Auth: militar confirma que pagou (valida que o pedido é dele)

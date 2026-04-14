@@ -5,17 +5,43 @@ import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import type { Pedido } from '../../types';
 
+interface Resp {
+  items: Pedido[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+const PAGE = 50;
+
 export function Pedidos() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [data, setData] = useState<Resp | null>(null);
   const [filtroStatus, setFiltroStatus] = useState('');
+  const [q, setQ] = useState('');
+  const [de, setDe] = useState('');
+  const [ate, setAte] = useState('');
+  const [offset, setOffset] = useState(0);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
 
   const carregar = () => {
-    const params = filtroStatus ? `?status=${filtroStatus}` : '';
-    api.get<Pedido[]>(`/api/pedidos${params}`).then(setPedidos);
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+    if (filtroStatus) qs.set('status', filtroStatus);
+    if (q.trim()) qs.set('q', q.trim());
+    if (de) qs.set('de', de);
+    if (ate) qs.set('ate', ate);
+    api.get<Resp>(`/api/pedidos?${qs}`).then(setData);
   };
 
-  useEffect(() => { carregar(); }, [filtroStatus]);
+  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [filtroStatus, offset]);
+
+  const pedidos = data?.items || [];
+  const total = data?.total || 0;
+  const totalPages = Math.ceil(total / PAGE);
+  const currentPage = Math.floor(offset / PAGE) + 1;
+
+  const trocarStatus = (s: string) => { setFiltroStatus(s); setOffset(0); };
+  const aplicarFiltros = () => { setOffset(0); carregar(); };
+  const limparFiltros = () => { setQ(''); setDe(''); setAte(''); setOffset(0); setTimeout(carregar, 0); };
 
   const marcarPago = async (pedidoId: string) => {
     await api.put(`/api/pedidos/${pedidoId}/pagar`, {});
@@ -52,13 +78,13 @@ export function Pedidos() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">PEDIDOS</h1>
         <div className="flex gap-1">
           {['', 'pendente', 'fiado', 'pago'].map((s) => (
             <button
               key={s}
-              onClick={() => setFiltroStatus(s)}
+              onClick={() => trocarStatus(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 filtroStatus === s ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
               }`}
@@ -67,6 +93,27 @@ export function Pedidos() {
             </button>
           ))}
         </div>
+      </div>
+
+      <form onSubmit={e => { e.preventDefault(); aplicarFiltros(); }} className="bg-white rounded-xl border border-borda p-3 mb-4 flex flex-wrap gap-2 items-end">
+        <div className="flex-1 min-w-[150px]">
+          <label className="block text-[10px] text-texto-fraco uppercase mb-1">Buscar trigrama</label>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Ex: HÖE" className="w-full bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+        </div>
+        <div>
+          <label className="block text-[10px] text-texto-fraco uppercase mb-1">De</label>
+          <input type="date" value={de} onChange={e => setDe(e.target.value)} className="bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+        </div>
+        <div>
+          <label className="block text-[10px] text-texto-fraco uppercase mb-1">Até</label>
+          <input type="date" value={ate} onChange={e => setAte(e.target.value)} className="bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+        </div>
+        <button type="submit" className="px-4 py-1.5 rounded-lg bg-azul text-white text-sm font-medium">Aplicar</button>
+        <button type="button" onClick={limparFiltros} className="px-3 py-1.5 rounded-lg bg-fundo border border-borda text-sm">Limpar</button>
+      </form>
+
+      <div className="text-xs text-texto-fraco mb-2">
+        {total} pedido(s) · Página {currentPage}/{totalPages || 1}
       </div>
 
       {selecionados.size > 0 && (
@@ -141,6 +188,14 @@ export function Pedidos() {
           <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">← Anterior</button>
+          <span className="text-sm text-texto-fraco">{currentPage}/{totalPages}</span>
+          <button disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">Próxima →</button>
+        </div>
+      )}
     </AppLayout>
   );
 }
