@@ -6,8 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoUnificadoPDF } from '../../services/pdf';
+import { Link } from 'react-router-dom';
 import type { Cliente, Pedido } from '../../types';
-import { ContaMilitar } from '../../components/admin/ContaMilitar';
 
 interface CafePagamento { id: string; referencia: string; valor: number; status: string; cafe_tipo: string; cafe_plano: string; }
 interface XimbocaPart { id: string; nome: string; status: string; evento_nome: string; evento_data: string; valor_por_pessoa: number; valor_individual: number | null; }
@@ -103,10 +103,17 @@ export function ClienteExtrato() {
         </div>
       </div>
 
-      {/* Conta de usuario */}
+      {/* Link conta de usuario */}
       <div className="mb-5">
-        <h2 className="text-xs text-texto-fraco uppercase tracking-wider mb-2">Conta de Usuário</h2>
-        <ContaMilitar trigrama={cliente.nome_guerra} />
+        <Link
+          to={`/admin/usuarios?trigrama=${encodeURIComponent(cliente.nome_guerra)}`}
+          className="inline-flex items-center gap-2 text-sm text-azul hover:underline"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          </svg>
+          Gerenciar conta de usuário →
+        </Link>
       </div>
 
       {/* Summary cards */}

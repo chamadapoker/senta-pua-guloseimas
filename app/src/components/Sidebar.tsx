@@ -76,6 +76,7 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/ximboca/eventos', label: 'Eventos' },
     { to: '/admin/ximboca/estoque', label: 'Estoque' },
   ]},
+  { to: '/admin/usuarios', label: 'Usuários', icon: <IconUser /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];
 
