@@ -1,0 +1,25 @@
+name: Deploy App (Cloudflare Pages)
+on:
+  push:
+    branches: [main]
+    paths: ['app/**']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g pnpm && pnpm install
+      - name: Build app
+        run: pnpm --filter senta-pua-app build
+        env:
+          VITE_WORKER_URL: ${{ secrets.VITE_WORKER_URL }}
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: f42d3e9f5dc41befb6f50847257f5a09
+          command: pages deploy app/dist --project-name=app-senta-pua --branch=main
