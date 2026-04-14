@@ -402,11 +402,16 @@ usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
   if (!assinante) return c.json({ tem_assinatura: false, tipo: user.sala_cafe, sem_sala: false });
 
   const now = new Date();
-  const mesAtual = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const anoAtual = String(now.getUTCFullYear());
+  const mesAtual = `${anoAtual}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
-  const pagMes = await c.env.DB.prepare(
+  // Para plano anual: referencia e o ano (ex: "2026")
+  // Para plano mensal: referencia e o mes (ex: "2026-04")
+  const referenciaAtual = assinante.plano === 'anual' ? anoAtual : mesAtual;
+
+  const pagAtual = await c.env.DB.prepare(
     "SELECT status FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
-  ).bind(assinante.id, mesAtual).first<{ status: string }>();
+  ).bind(assinante.id, referenciaAtual).first<{ status: string }>();
 
   const pendRow = await c.env.DB.prepare(
     "SELECT COALESCE(SUM(valor), 0) as total FROM cafe_pagamentos WHERE assinante_id = ? AND status = 'pendente'"
@@ -421,8 +426,8 @@ usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
     tipo: assinante.tipo,
     plano: assinante.plano,
     valor_mensal: assinante.valor,
-    mes_atual: mesAtual,
-    mes_atual_pago: pagMes?.status === 'pago',
+    mes_atual: referenciaAtual,
+    mes_atual_pago: pagAtual?.status === 'pago',
     total_pendente: pendRow?.total || 0,
     historico,
   });

@@ -21,9 +21,13 @@ interface MeuCafeStatus {
 }
 
 function formatMesReferencia(ref: string): string {
+  // Se for só o ano (plano anual), retorna "Ano 2026"
+  if (/^\d{4}$/.test(ref)) return `Ano ${ref}`;
   const [ano, mes] = ref.split('-');
   const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  return `${nomes[parseInt(mes) - 1]}/${ano}`;
+  const mesIdx = parseInt(mes || '0') - 1;
+  if (mesIdx < 0 || mesIdx >= 12) return ref;
+  return `${nomes[mesIdx]}/${ano}`;
 }
 
 export function CafePublico() {
@@ -141,7 +145,10 @@ export function CafePublico() {
                 <div className="text-xs text-texto-fraco mt-1">
                   Plano {meuStatus.plano === 'anual' ? 'Anual' : 'Mensal'}
                   {meuStatus.plano === 'anual' && meuStatus.mes_atual_pago && (
-                    <span className="ml-2 text-verde-escuro font-medium">✓ Válido até Dez/{new Date().getFullYear()}</span>
+                    <span className="ml-2 text-verde-escuro font-medium">✓ Válido até 31/Dez/{new Date().getFullYear()}</span>
+                  )}
+                  {meuStatus.plano === 'anual' && !meuStatus.mes_atual_pago && (
+                    <span className="ml-2 text-vermelho font-medium">Anuidade pendente</span>
                   )}
                 </div>
               </div>
