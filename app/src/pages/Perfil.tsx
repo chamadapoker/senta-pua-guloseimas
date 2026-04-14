@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { MeuCafe } from '../components/perfil/MeuCafe';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -151,6 +152,10 @@ export function Perfil() {
             {salvando ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </form>
+
+        <div className="mt-5">
+          <MeuCafe />
+        </div>
 
         <button
           onClick={() => { logout(); navigate('/'); }}

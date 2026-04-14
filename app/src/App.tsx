@@ -7,6 +7,9 @@ import { PixPage } from './pages/PixPage';
 import { Obrigado } from './pages/Obrigado';
 import { UserLogin } from './pages/UserLogin';
 import { UserCadastro } from './pages/UserCadastro';
+import { CadastroEscolha } from './pages/CadastroEscolha';
+import { UserCadastroVisitante } from './pages/UserCadastroVisitante';
+import { AcessoExpirado } from './pages/AcessoExpirado';
 import { Perfil } from './pages/Perfil';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
@@ -68,21 +71,32 @@ function UserAuthLoader() {
   return null;
 }
 
+function VisitorGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useUserAuth();
+  if (user?.acesso_bloqueado) {
+    return <Navigate to="/acesso-expirado" replace />;
+  }
+  return <>{children}</>;
+}
+
 export function App() {
   return (
     <BrowserRouter>
       <UserAuthLoader />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/catalogo/:categoria" element={<Catalogo />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/pix/:pedidoId" element={<PixPage />} />
+        <Route path="/catalogo/:categoria" element={<VisitorGuard><Catalogo /></VisitorGuard>} />
+        <Route path="/checkout" element={<VisitorGuard><Checkout /></VisitorGuard>} />
+        <Route path="/pix/:pedidoId" element={<VisitorGuard><PixPage /></VisitorGuard>} />
         <Route path="/obrigado" element={<Obrigado />} />
-        <Route path="/loja" element={<LojaPublica />} />
+        <Route path="/loja" element={<VisitorGuard><LojaPublica /></VisitorGuard>} />
         <Route path="/cafe" element={<CafePublico />} />
         {/* User auth */}
         <Route path="/login" element={<UserLogin />} />
-        <Route path="/cadastro" element={<UserCadastro />} />
+        <Route path="/cadastro" element={<CadastroEscolha />} />
+        <Route path="/cadastro/militar" element={<UserCadastro />} />
+        <Route path="/cadastro/visitante" element={<UserCadastroVisitante />} />
+        <Route path="/acesso-expirado" element={<AcessoExpirado />} />
         <Route path="/perfil" element={<Perfil />} />
         {/* Admin */}
         <Route path="/admin/login" element={<Login />} />

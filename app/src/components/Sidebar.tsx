@@ -58,8 +58,8 @@ const USER_NAV: NavItem[] = [
   ]},
   { to: '/loja', label: 'Loja', icon: <IconBag /> },
   { to: '/cafe', label: 'Café', icon: <IconCoffee /> },
-  { to: '/perfil', label: 'Meu Perfil', icon: <IconUser /> },
   { to: '/ximboca', label: 'Ximboca', icon: <IconFire /> },
+  { to: '/perfil', label: 'Meu Perfil', icon: <IconUser /> },
 ];
 
 const ADMIN_NAV: NavItem[] = [

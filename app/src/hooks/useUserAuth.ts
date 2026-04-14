@@ -11,12 +11,17 @@ interface CadastroData {
   categoria: 'oficial' | 'graduado' | 'praca';
 }
 
+interface CadastroVisitanteData extends CadastroData {
+  esquadrao_origem: string;
+}
+
 interface UserAuthState {
   token: string | null;
   user: Usuario | null;
   loading: boolean;
   login: (email: string, senha: string) => Promise<void>;
   cadastrar: (dados: CadastroData) => Promise<void>;
+  cadastrarVisitante: (dados: CadastroVisitanteData) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
   updateProfile: (dados: { whatsapp?: string; saram?: string }) => Promise<void>;
@@ -49,6 +54,21 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
     try {
       const { token, user } = await api.post<{ token: string; user: Usuario }>(
         '/api/usuarios/cadastro',
+        dados
+      );
+      localStorage.setItem('user_token', token);
+      set({ token, user, loading: false });
+    } catch (e) {
+      set({ loading: false });
+      throw e;
+    }
+  },
+
+  cadastrarVisitante: async (dados) => {
+    set({ loading: true });
+    try {
+      const { token, user } = await api.post<{ token: string; user: Usuario }>(
+        '/api/usuarios/cadastro/visitante',
         dados
       );
       localStorage.setItem('user_token', token);

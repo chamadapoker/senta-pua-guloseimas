@@ -17,7 +17,7 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
   praca: 'Praça',
 };
 
-type Filtro = 'todos' | 'ativos' | 'desativados' | 'oficial' | 'graduado' | 'praca';
+type Filtro = 'todos' | 'ativos' | 'desativados' | 'oficial' | 'graduado' | 'praca' | 'visitantes' | 'expirados';
 
 export function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -45,6 +45,7 @@ export function Usuarios() {
   useEffect(() => { carregar(); }, []);
 
   const filtrados = useMemo(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
     return usuarios.filter(u => {
       if (busca) {
         const q = busca.toLowerCase();
@@ -53,9 +54,27 @@ export function Usuarios() {
       if (filtro === 'ativos') return u.ativo === 1;
       if (filtro === 'desativados') return u.ativo === 0;
       if (filtro === 'oficial' || filtro === 'graduado' || filtro === 'praca') return u.categoria === filtro;
+      if (filtro === 'visitantes') return u.is_visitante === 1;
+      if (filtro === 'expirados') return u.is_visitante === 1 && (
+        u.acesso_pausado === 1 || (!!u.expira_em && u.expira_em < hoje)
+      );
       return true;
     });
   }, [usuarios, filtro, busca]);
+
+  const salvarVisitante = async (u: Usuario, patch: { expira_em?: string; acesso_pausado?: number }) => {
+    setErro(''); setMsg('');
+    setAcaoLoading(u.id);
+    try {
+      await api.put(`/api/usuarios/admin/${u.id}/visitante`, patch);
+      setMsg(`${u.trigrama}: atualizado`);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setAcaoLoading(null);
+    }
+  };
 
   const trocarCategoria = async (u: Usuario, cat: Categoria) => {
     setErro(''); setMsg('');
@@ -136,6 +155,8 @@ export function Usuarios() {
           { id: 'oficial', label: 'Oficiais' },
           { id: 'graduado', label: 'Graduados' },
           { id: 'praca', label: 'Praças' },
+          { id: 'visitantes', label: 'Visitantes' },
+          { id: 'expirados', label: 'Visitantes expirados' },
         ] as const).map(f => (
           <button
             key={f.id}
@@ -183,6 +204,9 @@ export function Usuarios() {
                         Cantina {u.sala_cafe === 'oficiais' ? 'Oficiais' : 'Graduados'}
                       </span>
                     )}
+                    {u.is_visitante === 1 && (
+                      <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-medium">VISITANTE</span>
+                    )}
                     {u.ativo === 0 && (
                       <span className="text-[10px] text-vermelho bg-red-50 px-1.5 py-0.5 rounded font-medium">DESATIVADA</span>
                     )}
@@ -190,6 +214,54 @@ export function Usuarios() {
                   <div className="text-xs text-texto-fraco truncate">{u.email}</div>
                 </div>
               </div>
+
+              {/* Bloco visitante */}
+              {u.is_visitante === 1 && (
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="text-amber-800 font-semibold">VISITANTE</span>
+                    {u.esquadrao_origem && <span className="text-texto-fraco">— {u.esquadrao_origem}</span>}
+                    {u.expira_em && (() => {
+                      const hoje = new Date();
+                      const alvo = new Date(u.expira_em + 'T00:00:00');
+                      const dias = Math.ceil((alvo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <span className={`ml-auto px-2 py-0.5 rounded-full font-medium ${
+                          u.acesso_pausado === 1 ? 'bg-red-100 text-vermelho' :
+                          dias < 0 ? 'bg-red-100 text-vermelho' :
+                          dias <= 5 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-verde-escuro'
+                        }`}>
+                          {u.acesso_pausado === 1 ? 'Pausado' :
+                            dias < 0 ? `Expirou há ${-dias}d` :
+                            dias === 0 ? 'Expira hoje' : `${dias}d restantes`}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <label className="text-xs text-texto-fraco">Expira em:</label>
+                    <input
+                      type="date"
+                      defaultValue={u.expira_em || ''}
+                      onBlur={(e) => {
+                        if (e.target.value && e.target.value !== u.expira_em) {
+                          salvarVisitante(u, { expira_em: e.target.value });
+                        }
+                      }}
+                      className="bg-white border border-borda rounded-lg px-2 py-1 text-xs"
+                    />
+                    <label className="flex items-center gap-1 text-xs text-texto-fraco cursor-pointer ml-auto">
+                      <input
+                        type="checkbox"
+                        checked={u.acesso_pausado === 1}
+                        onChange={(e) => salvarVisitante(u, { acesso_pausado: e.target.checked ? 1 : 0 })}
+                        className="accent-vermelho"
+                      />
+                      Pausado
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Linha 2: categoria */}
               <div className="grid grid-cols-3 gap-2 mb-2">

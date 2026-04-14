@@ -1,12 +1,23 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { userAuthMiddleware } from '../middleware/userAuth';
+import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
 import type { AppType } from '../index';
 import type { Produto } from '../db/queries';
+import type { Context, Next } from 'hono';
+
+async function checkVisitanteSeLogado(c: Context<AppType>, next: Next) {
+  const header = c.req.header('Authorization');
+  if (!header?.startsWith('Bearer ')) return next();
+  return userAuthMiddleware(c, async () => {
+    await visitorActiveCheck(c, next);
+  });
+}
 
 const pedidos = new Hono<AppType>();
 
-// Público: criar pedido
-pedidos.post('/', async (c) => {
+// Público: criar pedido (bloqueia se visitante expirou)
+pedidos.post('/', checkVisitanteSeLogado, async (c) => {
   const { nome_guerra, itens, metodo, whatsapp, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; quantidade: number }[];

@@ -56,6 +56,11 @@ export interface Usuario {
   foto_url: string | null;
   categoria: Categoria;
   sala_cafe: SalaCafe;
+  is_visitante?: number;
+  esquadrao_origem?: string | null;
+  expira_em?: string | null;
+  acesso_pausado?: number;
+  acesso_bloqueado?: boolean;
   ativo?: number;
   created_at?: string;
 }

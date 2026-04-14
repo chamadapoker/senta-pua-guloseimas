@@ -126,6 +126,38 @@ export function Configuracoes() {
           </div>
         </div>
 
+        {/* Valores Cafe Visitante */}
+        <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4">
+          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Valores Café (Visitante)</h2>
+          <p className="text-xs text-texto-fraco">Valor pago por visitantes de outros esquadrões para usar o café.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Oficiais (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={v('cafe_visitante_oficial_valor', '20.00')}
+                onChange={(e) => set('cafe_visitante_oficial_valor', e.target.value)}
+                className={inputClass}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Graduados (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={v('cafe_visitante_graduado_valor', '20.00')}
+                onChange={(e) => set('cafe_visitante_graduado_valor', e.target.value)}
+                className={inputClass}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Loja Parcelamento */}
         <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4">
           <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">Loja - Parcelamento</h2>

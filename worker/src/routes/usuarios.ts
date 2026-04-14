@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from '../lib/password';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { authMiddleware } from '../middleware/auth';
 import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categoria';
+import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante';
 import type { AppType } from '../index';
 
 const usuarios = new Hono<AppType>();
@@ -17,24 +18,14 @@ usuarios.post('/cadastro', async (c) => {
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
     return c.json({ error: 'Todos os campos são obrigatórios' }, 400);
   }
-
-  if (!isCategoriaValida(categoria)) {
-    return c.json({ error: 'Categoria militar inválida' }, 400);
-  }
-
-  if (senha.length < 6) {
-    return c.json({ error: 'Senha deve ter no mínimo 6 caracteres' }, 400);
-  }
+  if (!isCategoriaValida(categoria)) return c.json({ error: 'Categoria militar inválida' }, 400);
+  if (senha.length < 6) return c.json({ error: 'Senha deve ter no mínimo 6 caracteres' }, 400);
 
   const trigramaClean = trigrama.trim().toUpperCase();
-  if (!/^[A-ZÀ-ÚÖ]{3}$/.test(trigramaClean)) {
-    return c.json({ error: 'Trigrama deve ter exatamente 3 letras' }, 400);
-  }
+  if (!/^[A-ZÀ-ÚÖ]{3}$/.test(trigramaClean)) return c.json({ error: 'Trigrama deve ter exatamente 3 letras' }, 400);
 
   const saramClean = saram.trim();
-  if (!/^\d+$/.test(saramClean)) {
-    return c.json({ error: 'SARAM deve conter apenas números' }, 400);
-  }
+  if (!/^\d+$/.test(saramClean)) return c.json({ error: 'SARAM deve conter apenas números' }, 400);
 
   const emailClean = email.trim().toLowerCase();
 
@@ -62,9 +53,8 @@ usuarios.post('/cadastro', async (c) => {
   ).bind(trigramaClean).first();
 
   if (!existCliente) {
-    await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?)'
-    ).bind(trigramaClean, whatsappClean).run();
+    await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?)')
+      .bind(trigramaClean, whatsappClean).run();
   } else {
     await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE nome_guerra = ? COLLATE NOCASE')
       .bind(whatsappClean, trigramaClean).run();
@@ -80,7 +70,81 @@ usuarios.post('/cadastro', async (c) => {
     token,
     user: {
       id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean,
-      whatsapp: whatsappClean, foto_url: null, categoria, sala_cafe: salaCafe
+      whatsapp: whatsappClean, foto_url: null, categoria, sala_cafe: salaCafe,
+      is_visitante: 0, esquadrao_origem: null, expira_em: null, acesso_pausado: 0, acesso_bloqueado: false,
+    }
+  }, 201);
+});
+
+// Publico: cadastro de visitante
+usuarios.post('/cadastro/visitante', async (c) => {
+  const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem } = await c.req.json<{
+    email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
+    categoria: string; esquadrao_origem: string;
+  }>();
+
+  if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria || !esquadrao_origem) {
+    return c.json({ error: 'Todos os campos são obrigatórios (inclusive esquadrão de origem)' }, 400);
+  }
+  if (!isCategoriaValida(categoria)) return c.json({ error: 'Categoria militar inválida' }, 400);
+  if (senha.length < 6) return c.json({ error: 'Senha deve ter no mínimo 6 caracteres' }, 400);
+
+  const trigramaClean = trigrama.trim().toUpperCase();
+  if (!/^[A-ZÀ-ÚÖ]{3}$/.test(trigramaClean)) return c.json({ error: 'Trigrama deve ter exatamente 3 letras' }, 400);
+
+  const saramClean = saram.trim();
+  if (!/^\d+$/.test(saramClean)) return c.json({ error: 'SARAM deve conter apenas números' }, 400);
+
+  const emailClean = email.trim().toLowerCase();
+  const esquadraoClean = esquadrao_origem.trim().toUpperCase();
+
+  const existEmail = await c.env.DB.prepare('SELECT id FROM usuarios WHERE email = ?').bind(emailClean).first();
+  if (existEmail) return c.json({ error: 'Email já cadastrado' }, 409);
+
+  const existTrigrama = await c.env.DB.prepare('SELECT id FROM usuarios WHERE trigrama = ?').bind(trigramaClean).first();
+  if (existTrigrama) return c.json({ error: 'Trigrama já cadastrado' }, 409);
+
+  const existSaram = await c.env.DB.prepare('SELECT id FROM usuarios WHERE saram = ?').bind(saramClean).first();
+  if (existSaram) return c.json({ error: 'SARAM já cadastrado' }, 409);
+
+  const senhaHash = await hashPassword(senha);
+  const whatsappClean = whatsapp.trim();
+  const salaCafe = derivarSalaCafe(categoria as Categoria);
+  const expiraEm = calcularExpiracaoVisitante(30);
+
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id'
+  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm).all<{ id: number }>();
+
+  const userId = results[0].id;
+
+  const existCliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(trigramaClean).first();
+
+  if (!existCliente) {
+    await c.env.DB.prepare(
+      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, 1, ?)'
+    ).bind(trigramaClean, whatsappClean, esquadraoClean).run();
+  } else {
+    await c.env.DB.prepare(
+      'UPDATE clientes SET whatsapp = ?, visitante = 1, esquadrao_origem = ? WHERE nome_guerra = ? COLLATE NOCASE'
+    ).bind(whatsappClean, esquadraoClean, trigramaClean).run();
+  }
+
+  const token = await sign(
+    { tipo: 'usuario', id: userId, email: emailClean, trigrama: trigramaClean },
+    c.env.JWT_SECRET,
+    720
+  );
+
+  return c.json({
+    token,
+    user: {
+      id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean,
+      whatsapp: whatsappClean, foto_url: null, categoria, sala_cafe: salaCafe,
+      is_visitante: 1, esquadrao_origem: esquadraoClean,
+      expira_em: expiraEm, acesso_pausado: 0, acesso_bloqueado: false,
     }
   }, 201);
 });
@@ -89,14 +153,15 @@ usuarios.post('/cadastro', async (c) => {
 usuarios.post('/login', async (c) => {
   const { email, senha } = await c.req.json<{ email: string; senha: string }>();
 
-  if (!email || !senha) {
-    return c.json({ error: 'Email e senha obrigatórios' }, 400);
-  }
+  if (!email || !senha) return c.json({ error: 'Email e senha obrigatórios' }, 400);
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe FROM usuarios WHERE email = ?'
+    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado FROM usuarios WHERE email = ?'
   ).bind(email.trim().toLowerCase()).first<{
-    id: number; email: string; senha_hash: string; trigrama: string; saram: string; whatsapp: string; foto_url: string | null; ativo: number; categoria: string; sala_cafe: string | null;
+    id: number; email: string; senha_hash: string; trigrama: string; saram: string;
+    whatsapp: string; foto_url: string | null; ativo: number;
+    categoria: string; sala_cafe: string | null;
+    is_visitante: number; esquadrao_origem: string | null; expira_em: string | null; acesso_pausado: number;
   }>();
 
   if (!user) return c.json({ error: 'Email ou senha incorretos' }, 401);
@@ -111,11 +176,19 @@ usuarios.post('/login', async (c) => {
     720
   );
 
+  const acesso_bloqueado = visitanteBloqueado({
+    is_visitante: user.is_visitante,
+    expira_em: user.expira_em,
+    acesso_pausado: user.acesso_pausado,
+  });
+
   return c.json({
     token,
     user: {
       id: user.id, email: user.email, trigrama: user.trigrama, saram: user.saram,
-      whatsapp: user.whatsapp, foto_url: user.foto_url, categoria: user.categoria, sala_cafe: user.sala_cafe
+      whatsapp: user.whatsapp, foto_url: user.foto_url, categoria: user.categoria, sala_cafe: user.sala_cafe,
+      is_visitante: user.is_visitante, esquadrao_origem: user.esquadrao_origem,
+      expira_em: user.expira_em, acesso_pausado: user.acesso_pausado, acesso_bloqueado,
     }
   });
 });
@@ -124,11 +197,21 @@ usuarios.post('/login', async (c) => {
 usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first();
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{
+    is_visitante: number; expira_em: string | null; acesso_pausado: number;
+    [k: string]: unknown;
+  }>();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
-  return c.json(user);
+
+  const acesso_bloqueado = visitanteBloqueado({
+    is_visitante: user.is_visitante,
+    expira_em: user.expira_em,
+    acesso_pausado: user.acesso_pausado,
+  });
+
+  return c.json({ ...user, acesso_bloqueado });
 });
 
 // Usuario logado: atualizar perfil
@@ -139,10 +222,7 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   const updates: string[] = [];
   const params: unknown[] = [];
 
-  if (whatsapp) {
-    updates.push('whatsapp = ?');
-    params.push(whatsapp.trim());
-  }
+  if (whatsapp) { updates.push('whatsapp = ?'); params.push(whatsapp.trim()); }
   if (saram) {
     const saramClean = saram.trim();
     if (!/^\d+$/.test(saramClean)) return c.json({ error: 'SARAM deve conter apenas números' }, 400);
@@ -165,9 +245,21 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first();
-  return c.json(user);
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{
+    is_visitante: number; expira_em: string | null; acesso_pausado: number;
+    [k: string]: unknown;
+  }>();
+
+  if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  const acesso_bloqueado = visitanteBloqueado({
+    is_visitante: user.is_visitante,
+    expira_em: user.expira_em,
+    acesso_pausado: user.acesso_pausado,
+  });
+
+  return c.json({ ...user, acesso_bloqueado });
 });
 
 // Usuario logado: dashboard
@@ -176,8 +268,8 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{ sala_cafe: string | null }>();
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number }>();
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
   const cliente = await c.env.DB.prepare(
@@ -232,11 +324,71 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
     }
   }
 
+  const acesso_bloqueado = visitanteBloqueado({
+    is_visitante: user.is_visitante,
+    expira_em: user.expira_em,
+    acesso_pausado: user.acesso_pausado,
+  });
+
   return c.json({
-    user,
+    user: { ...user, acesso_bloqueado },
     debito_total: debitoTotal,
     ultimos_pedidos: ultimosPedidos,
     cafe_status: cafeStatus,
+  });
+});
+
+// Usuario logado: status do cafe pessoal
+usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
+  const userId = c.get('userId');
+  const trigrama = c.get('userTrigrama');
+
+  const user = await c.env.DB.prepare(
+    'SELECT sala_cafe, categoria FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ sala_cafe: string | null; categoria: string }>();
+
+  if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  if (!user.sala_cafe) {
+    return c.json({ tem_assinatura: false, tipo: null, sem_sala: true });
+  }
+
+  const cliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(trigrama).first<{ id: string }>();
+
+  if (!cliente) return c.json({ tem_assinatura: false, tipo: user.sala_cafe, sem_sala: false });
+
+  const assinante = await c.env.DB.prepare(
+    "SELECT id, valor, tipo, plano FROM cafe_assinantes WHERE cliente_id = ? AND ativo = 1"
+  ).bind(cliente.id).first<{ id: string; valor: number; tipo: string; plano: string }>();
+
+  if (!assinante) return c.json({ tem_assinatura: false, tipo: user.sala_cafe, sem_sala: false });
+
+  const now = new Date();
+  const mesAtual = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+  const pagMes = await c.env.DB.prepare(
+    "SELECT status FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
+  ).bind(assinante.id, mesAtual).first<{ status: string }>();
+
+  const pendRow = await c.env.DB.prepare(
+    "SELECT COALESCE(SUM(valor), 0) as total FROM cafe_pagamentos WHERE assinante_id = ? AND status = 'pendente'"
+  ).bind(assinante.id).first<{ total: number }>();
+
+  const { results: historico } = await c.env.DB.prepare(
+    "SELECT referencia, valor, status, paid_at FROM cafe_pagamentos WHERE assinante_id = ? ORDER BY referencia DESC LIMIT 6"
+  ).bind(assinante.id).all();
+
+  return c.json({
+    tem_assinatura: true,
+    tipo: assinante.tipo,
+    plano: assinante.plano,
+    valor_mensal: assinante.valor,
+    mes_atual: mesAtual,
+    mes_atual_pago: pagMes?.status === 'pago',
+    total_pendente: pendRow?.total || 0,
+    historico,
   });
 });
 
@@ -288,7 +440,7 @@ usuarios.delete('/me/foto', userAuthMiddleware, async (c) => {
 // Admin: listar usuarios
 usuarios.get('/admin/lista', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, created_at FROM usuarios ORDER BY trigrama'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios ORDER BY trigrama'
   ).all();
   return c.json(results);
 });
@@ -310,14 +462,12 @@ usuarios.put('/admin/:id/senha', authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
-// Admin: atualizar categoria (recalcula sala_cafe)
+// Admin: atualizar categoria
 usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const { categoria } = await c.req.json<{ categoria: string }>();
 
-  if (!isCategoriaValida(categoria)) {
-    return c.json({ error: 'Categoria inválida' }, 400);
-  }
+  if (!isCategoriaValida(categoria)) return c.json({ error: 'Categoria inválida' }, 400);
 
   const salaCafe = derivarSalaCafe(categoria as Categoria);
 
@@ -329,11 +479,43 @@ usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
   return c.json({ ok: true, categoria, sala_cafe: salaCafe });
 });
 
+// Admin: atualizar campos de visitante
+usuarios.put('/admin/:id/visitante', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { expira_em, acesso_pausado } = await c.req.json<{ expira_em?: string; acesso_pausado?: number }>();
+
+  const u = await c.env.DB.prepare('SELECT is_visitante FROM usuarios WHERE id = ?').bind(id)
+    .first<{ is_visitante: number }>();
+  if (!u) return c.json({ error: 'Usuário não encontrado' }, 404);
+  if (u.is_visitante !== 1) return c.json({ error: 'Esse usuário não é visitante' }, 400);
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+
+  if (typeof expira_em === 'string') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expira_em)) return c.json({ error: 'Data inválida (use YYYY-MM-DD)' }, 400);
+    updates.push('expira_em = ?');
+    params.push(expira_em);
+  }
+
+  if (typeof acesso_pausado === 'number') {
+    updates.push('acesso_pausado = ?');
+    params.push(acesso_pausado ? 1 : 0);
+  }
+
+  if (!updates.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
+
+  params.push(id);
+  await c.env.DB.prepare(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  return c.json({ ok: true });
+});
+
 // Admin: buscar usuario pelo trigrama
 usuarios.get('/admin/por-trigrama/:trigrama', authMiddleware, async (c) => {
   const trigrama = (c.req.param('trigrama') || '').toUpperCase();
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, created_at FROM usuarios WHERE trigrama = ? COLLATE NOCASE'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE trigrama = ? COLLATE NOCASE'
   ).bind(trigrama).first();
 
   if (!user) return c.json(null);

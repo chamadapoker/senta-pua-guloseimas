@@ -4,18 +4,13 @@ function pickToken(path: string): string | null {
   const adminToken = localStorage.getItem('token');
   const userToken = localStorage.getItem('user_token');
 
-  // User-only routes
   if (path.startsWith('/api/usuarios/me')) return userToken;
-  if (path === '/api/usuarios/login' || path === '/api/usuarios/cadastro') return null;
+  if (path === '/api/usuarios/login' || path === '/api/usuarios/cadastro' || path === '/api/usuarios/cadastro/visitante') return null;
 
-  // Admin-only routes
   if (path.startsWith('/api/auth')) return adminToken;
   if (path.startsWith('/api/usuarios/admin')) return adminToken;
-
-  // Admin-prefixed routes (dashboard, etc)
   if (path.startsWith('/api/admin')) return adminToken;
 
-  // For other /api/* routes: prefer admin token if present (admin actions), else user token for public endpoints that can accept auth
   return adminToken || userToken;
 }
 
@@ -39,8 +34,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
-    throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
+    const body = await res.json().catch(() => ({ error: 'Erro desconhecido' })) as { error?: string; acesso_bloqueado?: boolean };
+    if (res.status === 403 && body.acesso_bloqueado) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/acesso-expirado')) {
+        window.location.href = '/acesso-expirado';
+      }
+    }
+    throw new Error(body.error || `HTTP ${res.status}`);
   }
 
   return res.json() as Promise<T>;
