@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PublicLayout } from '../components/Layout';
+import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { usePixPolling } from '../hooks/usePixPolling';
 import { api } from '../services/api';
@@ -84,7 +84,7 @@ export function PixPage() {
 
   if (mostrarConfirmacao) {
     return (
-      <PublicLayout>
+      <AppLayout>
         <div className="text-center py-8 animate-fade-in">
           <div className="w-20 h-20 mx-auto rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-5">
             <svg className="w-10 h-10 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,12 +117,12 @@ export function PixPage() {
             Voltar ao catálogo
           </button>
         </div>
-      </PublicLayout>
+      </AppLayout>
     );
   }
 
   return (
-    <PublicLayout>
+    <AppLayout>
       <div className="text-center py-6 animate-fade-in">
         {pago ? (
           <div className="animate-bounce">
@@ -204,6 +204,6 @@ export function PixPage() {
           </>
         )}
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }

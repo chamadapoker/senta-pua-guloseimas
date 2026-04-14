@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PublicLayout } from '../components/Layout';
+import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { NomeGuerraInput } from '../components/checkout/NomeGuerraInput';
@@ -159,7 +159,7 @@ export function LojaPublica() {
   if (pedidoCriado) {
     const valorParcela = Math.round((pedidoCriado.total / pedidoCriado.parcelas) * 100) / 100;
     return (
-      <PublicLayout>
+      <AppLayout>
         <div className="text-center py-8 animate-fade-in">
           <div className="w-20 h-20 mx-auto rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-5">
             <svg className="w-10 h-10 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,14 +197,14 @@ export function LojaPublica() {
             Voltar a loja
           </button>
         </div>
-      </PublicLayout>
+      </AppLayout>
     );
   }
 
   // Checkout view
   if (checkout) {
     return (
-      <PublicLayout>
+      <AppLayout>
         <div className="flex items-center gap-3 mb-4">
           <button onClick={() => setCheckout(false)} className="text-texto-fraco hover:text-texto">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -292,13 +292,13 @@ export function LojaPublica() {
             </Button>
           </div>
         </div>
-      </PublicLayout>
+      </AppLayout>
     );
   }
 
   // Product list view
   return (
-    <PublicLayout>
+    <AppLayout>
       <div className="flex items-center gap-3 mb-5">
         <h1 className="font-display text-2xl text-azul tracking-wider">LOJA</h1>
       </div>
@@ -438,6 +438,6 @@ export function LojaPublica() {
           </div>
         )}
       </Modal>
-    </PublicLayout>
+    </AppLayout>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { api } from '../../services/api';
 import type { Cliente } from '../../types';
@@ -37,7 +37,7 @@ export function Clientes() {
   });
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-5">
         <h1 className="font-display text-2xl text-azul tracking-wider">MILITARES</h1>
         <div className="flex gap-1 flex-wrap justify-end">
@@ -117,6 +117,6 @@ export function Clientes() {
           <div className="text-center py-10 text-texto-fraco">Nenhum militar encontrado</div>
         )}
       </div>
-    </AdminLayout>
+    </AppLayout>
   );
 }

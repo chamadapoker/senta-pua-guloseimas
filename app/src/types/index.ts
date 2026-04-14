@@ -41,6 +41,16 @@ export interface ItemCarrinho {
   quantidade: number;
 }
 
+export interface Usuario {
+  id: number;
+  email: string;
+  trigrama: string;
+  saram: string;
+  whatsapp: string;
+  foto_url: string | null;
+  created_at?: string;
+}
+
 export interface DashboardStats {
   vendido_mes: number;
   recebido_mes: number;

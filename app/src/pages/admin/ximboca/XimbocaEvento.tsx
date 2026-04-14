@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
@@ -80,7 +80,7 @@ export function XimbocaEvento() {
     carregar();
   };
 
-  if (!evento) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!evento) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   const valorEfetivo = (p: Participante) => p.valor_individual ?? evento.valor_por_pessoa;
   const totalPagos = participantes.filter(p => p.status === 'pago').length;
@@ -89,7 +89,7 @@ export function XimbocaEvento() {
   const saldo = totalArrecadado - totalDespesas;
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center gap-3 mb-2">
         <Link to="/admin/ximboca/eventos" className="text-texto-fraco hover:text-texto">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -256,6 +256,6 @@ export function XimbocaEvento() {
           <Button type="submit" className="w-full">Adicionar</Button>
         </form>
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

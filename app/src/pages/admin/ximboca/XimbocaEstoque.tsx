@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -43,7 +43,7 @@ export function XimbocaEstoque() {
   };
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl text-azul tracking-wider">ESTOQUE XIMBOCA</h1>
         <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
@@ -101,6 +101,6 @@ export function XimbocaEstoque() {
           <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Criar'}</Button>
         </form>
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

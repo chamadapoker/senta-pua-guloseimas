@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 
@@ -22,10 +22,10 @@ export function CafeDashboard() {
     api.get<CafeStats>(`/api/cafe/admin/stats?tipo=${tipo}`).then(setStats);
   }, [tipo]);
 
-  if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">CAIXINHA DO CAFE</h1>
       </div>
@@ -46,6 +46,6 @@ export function CafeDashboard() {
         <StatCard label="Pendente total" value={`R$ ${stats.pendente_total.toFixed(2)}`} color="text-vermelho" />
         <StatCard label="Insumos em alerta" value={String(stats.insumos_alerta)} color={stats.insumos_alerta > 0 ? 'text-vermelho' : 'text-verde'} />
       </div>
-    </AdminLayout>
+    </AppLayout>
   );
 }

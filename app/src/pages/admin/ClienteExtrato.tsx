@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
@@ -48,7 +48,7 @@ export function ClienteExtrato() {
     carregar();
   };
 
-  if (!data) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!data) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   const { cliente, guloseimas, loja, cafe, ximboca } = data;
 
@@ -84,7 +84,7 @@ export function ClienteExtrato() {
   ];
 
   return (
-    <AdminLayout>
+    <AppLayout>
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <div className="w-14 h-14 rounded-full bg-azul flex items-center justify-center text-white font-display text-xl tracking-wider">
@@ -230,6 +230,6 @@ export function ClienteExtrato() {
           {ximboca.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhuma participacao</div>}
         </div>
       )}
-    </AdminLayout>
+    </AppLayout>
   );
 }

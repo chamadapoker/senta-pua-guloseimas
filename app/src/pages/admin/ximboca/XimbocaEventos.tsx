@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
@@ -52,7 +52,7 @@ export function XimbocaEventos() {
   };
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl text-azul tracking-wider">EVENTOS</h1>
         <Button size="sm" onClick={() => setModalAberto(true)}>+ Novo Evento</Button>
@@ -129,6 +129,6 @@ export function XimbocaEventos() {
           <Button type="submit" className="w-full">Criar Evento</Button>
         </form>
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

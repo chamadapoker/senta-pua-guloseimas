@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { Modal } from '../../components/ui/Modal';
@@ -113,7 +113,7 @@ export function Produtos() {
   };
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl text-azul tracking-wider">PRODUTOS</h1>
         <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
@@ -259,6 +259,6 @@ export function Produtos() {
           </Button>
         </form>
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

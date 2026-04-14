@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Produto } from '../types';
-import { PublicLayout } from '../components/Layout';
+import { AppLayout } from '../components/AppLayout';
 import { ProductCard } from '../components/catalogo/ProductCard';
 import { CartBar } from '../components/catalogo/CartBar';
 
@@ -28,7 +28,7 @@ export function Catalogo() {
   }, [categoria]);
 
   return (
-    <PublicLayout>
+    <AppLayout>
       <div className="mb-5">
         <h1 className="font-display text-2xl text-azul tracking-wider">{titulo}</h1>
         <p className="text-sm text-texto-fraco mt-1">Toque no + para adicionar ao pedido</p>
@@ -59,6 +59,6 @@ export function Catalogo() {
       )}
 
       <CartBar />
-    </PublicLayout>
+    </AppLayout>
   );
 }

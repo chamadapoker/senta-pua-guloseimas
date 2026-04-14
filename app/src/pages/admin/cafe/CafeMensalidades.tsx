@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
@@ -79,7 +79,7 @@ export function CafeMensalidades() {
   const referencias = [...new Set(mensalidades.map(m => m.referencia))].sort().reverse();
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">MENSALIDADES</h1>
         <Button size="sm" onClick={() => setModalGerar(true)}>Gerar Mensalidades</Button>
@@ -167,6 +167,6 @@ export function CafeMensalidades() {
           </Button>
         </div>
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

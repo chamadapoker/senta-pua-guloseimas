@@ -5,6 +5,9 @@ import { Catalogo } from './pages/Catalogo';
 import { Checkout } from './pages/Checkout';
 import { PixPage } from './pages/PixPage';
 import { Obrigado } from './pages/Obrigado';
+import { UserLogin } from './pages/UserLogin';
+import { UserCadastro } from './pages/UserCadastro';
+import { Perfil } from './pages/Perfil';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
 import { Produtos } from './pages/admin/Produtos';
@@ -27,6 +30,7 @@ import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { useAuth } from './hooks/useAuth';
+import { useUserAuth } from './hooks/useUserAuth';
 import { api } from './services/api';
 import { setPixDefaults } from './services/pix';
 
@@ -54,9 +58,19 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function UserAuthLoader() {
+  const { token, checkAuth } = useUserAuth();
+  useEffect(() => {
+    if (token) checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 export function App() {
   return (
     <BrowserRouter>
+      <UserAuthLoader />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/catalogo/:categoria" element={<Catalogo />} />
@@ -64,6 +78,12 @@ export function App() {
         <Route path="/pix/:pedidoId" element={<PixPage />} />
         <Route path="/obrigado" element={<Obrigado />} />
         <Route path="/loja" element={<LojaPublica />} />
+        <Route path="/cafe" element={<CafePublico />} />
+        {/* User auth */}
+        <Route path="/login" element={<UserLogin />} />
+        <Route path="/cadastro" element={<UserCadastro />} />
+        <Route path="/perfil" element={<Perfil />} />
+        {/* Admin */}
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<AdminGuard><Dashboard /></AdminGuard>} />
         <Route path="/admin/produtos" element={<AdminGuard><Produtos /></AdminGuard>} />
@@ -72,22 +92,17 @@ export function App() {
         <Route path="/admin/pedidos" element={<AdminGuard><Pedidos /></AdminGuard>} />
         <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
         <Route path="/admin/relatorios" element={<AdminGuard><Relatorios /></AdminGuard>} />
-        {/* Loja Militar */}
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
         <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />
-        {/* Caixinha do Café */}
         <Route path="/admin/cafe" element={<AdminGuard><CafeDashboard /></AdminGuard>} />
         <Route path="/admin/cafe/mensalidades" element={<AdminGuard><CafeMensalidades /></AdminGuard>} />
         <Route path="/admin/cafe/insumos" element={<AdminGuard><CafeInsumos /></AdminGuard>} />
         <Route path="/admin/cafe/assinantes" element={<AdminGuard><CafeAssinantes /></AdminGuard>} />
-        {/* Ximboca */}
         <Route path="/admin/ximboca" element={<AdminGuard><XimbocaDashboard /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos" element={<AdminGuard><XimbocaEventos /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
         <Route path="/admin/ximboca/estoque" element={<AdminGuard><XimbocaEstoque /></AdminGuard>} />
-        {/* Cafe Publico */}
-        <Route path="/cafe" element={<CafePublico />} />
       </Routes>
     </BrowserRouter>
   );

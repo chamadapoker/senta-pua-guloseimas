@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard } from '../../components/admin/StatCard';
@@ -39,7 +39,7 @@ export function Relatorios() {
   })) || [];
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">RELATÓRIOS</h1>
 
       <div className="bg-white rounded-xl border border-borda shadow-sm p-5 mb-6">
@@ -164,6 +164,6 @@ export function Relatorios() {
           )}
         </div>
       )}
-    </AdminLayout>
+    </AppLayout>
   );
 }

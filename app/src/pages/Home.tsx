@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PublicLayout } from '../components/Layout';
+import { AppLayout } from '../components/AppLayout';
 import { api } from '../services/api';
 
 type Sistema = 'guloseimas' | 'loja' | 'cafe';
@@ -26,7 +26,7 @@ export function Home() {
   };
 
   return (
-    <PublicLayout>
+    <AppLayout>
       <div className="py-6 animate-fade-in">
         <div className="text-center mb-6">
           <img src="/logo.png" alt="1/10 GpAv" className="w-28 h-28 mx-auto mb-5 object-contain" />
@@ -123,6 +123,6 @@ export function Home() {
         )}
 
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }

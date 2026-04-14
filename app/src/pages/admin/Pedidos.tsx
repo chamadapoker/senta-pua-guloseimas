@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
@@ -51,7 +51,7 @@ export function Pedidos() {
   };
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">PEDIDOS</h1>
         <div className="flex gap-1">
@@ -131,6 +131,6 @@ export function Pedidos() {
           <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>
         )}
       </div>
-    </AdminLayout>
+    </AppLayout>
   );
 }

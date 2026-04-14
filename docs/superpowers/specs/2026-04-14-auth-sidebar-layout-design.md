@@ -110,6 +110,22 @@ Expandir `authMiddleware` para reconhecer ambos tipos de token:
 
 Criar `userMiddleware` para rotas que exigem usuario logado (checkout).
 
+### Endpoints Admin para Gerenciar Usuarios
+
+```
+PUT /api/admin/usuarios/:id/senha
+  Body: { nova_senha }
+  - Admin reseta a senha do usuario (minimo 6 caracteres)
+
+PUT /api/admin/usuarios/:id/desativar
+  - Desativa conta do usuario (militar deu baixa)
+  - Marca como inativo, impede login
+  - Nao deleta dados historicos (pedidos, debitos permanecem)
+
+PUT /api/admin/usuarios/:id/ativar
+  - Reativa conta caso necessario
+```
+
 ---
 
 ## 4. Sidebar
@@ -361,6 +377,7 @@ Expandir `api.ts` para suportar dois tokens:
 
 ## 11. Seguranca
 
+- Senha: minimo 6 caracteres, sem restricoes de complexidade (pode ser so numeros ou so letras)
 - Senhas nunca trafegam em texto puro no banco (PBKDF2 hash)
 - HTTPS obrigatorio (Cloudflare Pages ja fornece)
 - JWT com expiracao

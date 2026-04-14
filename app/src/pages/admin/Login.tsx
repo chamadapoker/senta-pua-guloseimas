@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PublicLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -18,7 +18,7 @@ export function Login() {
   };
 
   return (
-    <PublicLayout>
+    <AppLayout>
       <div className="max-w-sm mx-auto py-10 animate-fade-in">
         <h1 className="font-display text-3xl text-azul tracking-wider mb-6 text-center">ADMIN</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -36,6 +36,6 @@ export function Login() {
           <Button type="submit" size="lg" className="w-full" disabled={loading}>{loading ? 'Entrando...' : 'Entrar'}</Button>
         </form>
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }

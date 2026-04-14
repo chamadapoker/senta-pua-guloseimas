@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 
@@ -33,10 +33,10 @@ export function XimbocaDashboard() {
     api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
   }, []);
 
-  if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">XIMBOCA</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -77,6 +77,6 @@ export function XimbocaDashboard() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </AppLayout>
   );
 }

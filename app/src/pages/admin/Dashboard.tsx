@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
 import { montarLinkCobranca } from '../../services/whatsapp';
@@ -11,7 +11,7 @@ export function Dashboard() {
 
   useEffect(() => { api.get<DashboardStats>('/api/admin/stats').then(setStats); }, []);
 
-  if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   const chartData = stats.ultimos_7_dias.map((d) => ({
     data: new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
@@ -19,7 +19,7 @@ export function Dashboard() {
   }));
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">DASHBOARD</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -107,6 +107,6 @@ export function Dashboard() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </AppLayout>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
@@ -136,7 +136,7 @@ export function CafeAssinantes() {
   };
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <div className="flex items-center justify-between mb-2">
         <h1 className="font-display text-2xl text-azul tracking-wider">ASSINANTES</h1>
         <Button size="sm" onClick={() => { setEditando(null); setTipo(sala); setModalAberto(true); }}>+ Adicionar</Button>
@@ -312,6 +312,6 @@ export function CafeAssinantes() {
           </div>
         )}
       </Modal>
-    </AdminLayout>
+    </AppLayout>
   );
 }

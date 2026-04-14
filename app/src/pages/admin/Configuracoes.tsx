@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../components/Layout';
+import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 
@@ -33,7 +33,7 @@ export function Configuracoes() {
   const inputClass = "w-full bg-white border border-borda rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul";
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">CONFIGURAÇÕES</h1>
 
       <form onSubmit={salvar} className="max-w-md space-y-6">
@@ -146,6 +146,6 @@ export function Configuracoes() {
           {salvo && <span className="text-verde text-sm font-medium">Salvo com sucesso!</span>}
         </div>
       </form>
-    </AdminLayout>
+    </AppLayout>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../components/Layout';
+import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 
@@ -15,10 +15,10 @@ export function LojaDashboard() {
 
   useEffect(() => { api.get<LojaStats>('/api/loja/admin/stats').then(setStats); }, []);
 
-  if (!stats) return <AdminLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AdminLayout>;
+  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   return (
-    <AdminLayout>
+    <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">LOJA MILITAR</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard label="Vendido no mês" value={`R$ ${stats.vendido_mes.toFixed(2)}`} />
@@ -26,6 +26,6 @@ export function LojaDashboard() {
         <StatCard label="Pendente" value={`R$ ${stats.pendente_total.toFixed(2)}`} color="text-vermelho" />
         <StatCard label="Vendas hoje" value={String(stats.vendas_hoje)} color="text-azul" />
       </div>
-    </AdminLayout>
+    </AppLayout>
   );
 }
