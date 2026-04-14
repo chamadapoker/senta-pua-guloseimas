@@ -28,11 +28,11 @@ images.post('/upload', authMiddleware, async (c) => {
   return c.json({ url, key });
 });
 
-// Público: servir imagem
-images.get('/:prefix/:filename', async (c) => {
+// Público: servir imagem (suporta paths aninhados ex: usuarios/1/foto.jpg)
+images.get('/:prefix/:rest{.+}', async (c) => {
   const prefix = c.req.param('prefix');
-  const filename = c.req.param('filename');
-  const key = `${prefix}/${filename}`;
+  const rest = c.req.param('rest');
+  const key = `${prefix}/${rest}`;
 
   const object = await c.env.IMAGES.get(key);
   if (!object) return c.notFound();
@@ -45,10 +45,10 @@ images.get('/:prefix/:filename', async (c) => {
 });
 
 // Admin: deletar imagem
-images.delete('/:prefix/:filename', authMiddleware, async (c) => {
+images.delete('/:prefix/:rest{.+}', authMiddleware, async (c) => {
   const prefix = c.req.param('prefix');
-  const filename = c.req.param('filename');
-  const key = `${prefix}/${filename}`;
+  const rest = c.req.param('rest');
+  const key = `${prefix}/${rest}`;
 
   await c.env.IMAGES.delete(key);
   return c.json({ ok: true });

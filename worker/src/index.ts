@@ -11,6 +11,7 @@ import config from './routes/config';
 import loja from './routes/loja';
 import cafe from './routes/cafe';
 import ximboca from './routes/ximboca';
+import usuarios from './routes/usuarios';
 
 export type Env = {
   DB: D1Database;
@@ -22,9 +23,9 @@ export type Env = {
   AMBIENTE: string;
 };
 
-export type AppType = { Bindings: Env; Variables: { adminEmail: string } };
+export type AppType = { Bindings: Env; Variables: { adminEmail: string; userId: number; userEmail: string; userTrigrama: string } };
 
-const app = new Hono<{ Bindings: Env; Variables: { adminEmail: string } }>();
+const app = new Hono<AppType>();
 
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
@@ -46,6 +47,7 @@ app.route('/api/config', config);
 app.route('/api/loja', loja);
 app.route('/api/cafe', cafe);
 app.route('/api/ximboca', ximboca);
+app.route('/api/usuarios', usuarios);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
