@@ -85,7 +85,13 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/ximboca/eventos', label: 'Eventos' },
     { to: '/admin/ximboca/estoque', label: 'Estoque' },
   ]},
-  { to: '/admin/usuarios', label: 'Usuários', icon: <IconUser /> },
+  { to: '/admin/usuarios', label: 'Usuários', icon: <IconUser />, children: [
+    { to: '/admin/usuarios', label: 'Todos' },
+    { to: '/admin/usuarios?f=ativos', label: 'Ativos' },
+    { to: '/admin/usuarios?f=desativados', label: 'Desativados' },
+    { to: '/admin/usuarios?f=visitantes', label: 'Visitantes' },
+    { to: '/admin/usuarios?f=expirados', label: 'Expirados' },
+  ]},
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];
 
@@ -116,9 +122,17 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
     setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const isActive = (to: string) => location.pathname === to;
+  const currentPathQuery = location.pathname + (location.search || '');
+  const isActive = (to: string) => {
+    if (to.includes('?')) return currentPathQuery === to;
+    // Link sem query: so marca ativo se nao houver query atual
+    return location.pathname === to && !location.search;
+  };
   const isInSection = (item: NavItem) =>
-    location.pathname === item.to || !!item.children?.some(c => location.pathname === c.to);
+    location.pathname === item.to || !!item.children?.some(c => {
+      const [childPath] = c.to.split('?');
+      return location.pathname === childPath;
+    });
 
   const sidebarWidth = collapsed ? 'w-16' : 'w-64';
 

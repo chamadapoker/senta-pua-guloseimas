@@ -17,13 +17,19 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
   praca: 'Praça',
 };
 
-type Filtro = 'todos' | 'ativos' | 'desativados' | 'oficial' | 'graduado' | 'praca' | 'visitantes' | 'expirados';
+type FiltroStatus = 'todos' | 'ativos' | 'desativados' | 'visitantes' | 'expirados';
+type FiltroCategoria = 'todas' | 'oficial' | 'graduado' | 'praca';
 
 export function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<Filtro>('todos');
   const [searchParams] = useSearchParams();
+  const filtroStatus: FiltroStatus = (() => {
+    const f = searchParams.get('f');
+    if (f === 'ativos' || f === 'desativados' || f === 'visitantes' || f === 'expirados') return f;
+    return 'todos';
+  })();
+  const [filtroCategoria, setFiltroCategoria] = useState<FiltroCategoria>('todas');
   const [busca, setBusca] = useState(searchParams.get('trigrama') || '');
 
   const [senhaModal, setSenhaModal] = useState<Usuario | null>(null);
@@ -51,16 +57,21 @@ export function Usuarios() {
         const q = busca.toLowerCase();
         if (!u.trigrama.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
       }
-      if (filtro === 'ativos') return u.ativo === 1;
-      if (filtro === 'desativados') return u.ativo === 0;
-      if (filtro === 'oficial' || filtro === 'graduado' || filtro === 'praca') return u.categoria === filtro;
-      if (filtro === 'visitantes') return u.is_visitante === 1;
-      if (filtro === 'expirados') return u.is_visitante === 1 && (
-        u.acesso_pausado === 1 || (!!u.expira_em && u.expira_em < hoje)
-      );
+      // Filtro status (vindo do sidebar)
+      if (filtroStatus === 'ativos' && u.ativo !== 1) return false;
+      if (filtroStatus === 'desativados' && u.ativo !== 0) return false;
+      if (filtroStatus === 'visitantes' && u.is_visitante !== 1) return false;
+      if (filtroStatus === 'expirados') {
+        const expirado = u.is_visitante === 1 && (
+          u.acesso_pausado === 1 || (!!u.expira_em && u.expira_em < hoje)
+        );
+        if (!expirado) return false;
+      }
+      // Filtro categoria (in-page)
+      if (filtroCategoria !== 'todas' && u.categoria !== filtroCategoria) return false;
       return true;
     });
-  }, [usuarios, filtro, busca]);
+  }, [usuarios, filtroStatus, filtroCategoria, busca]);
 
   const salvarVisitante = async (u: Usuario, patch: { expira_em?: string; acesso_pausado?: number }) => {
     setErro(''); setMsg('');
@@ -133,7 +144,13 @@ export function Usuarios() {
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">USUÁRIOS</h1>
+      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">
+        {filtroStatus === 'visitantes' ? 'USUÁRIOS — VISITANTES' :
+          filtroStatus === 'expirados' ? 'USUÁRIOS — EXPIRADOS' :
+          filtroStatus === 'ativos' ? 'USUÁRIOS — ATIVOS' :
+          filtroStatus === 'desativados' ? 'USUÁRIOS — DESATIVADOS' :
+          'USUÁRIOS'}
+      </h1>
 
       {/* Busca */}
       <div className="mb-4">
@@ -146,23 +163,33 @@ export function Usuarios() {
         />
       </div>
 
-      {/* Filtros */}
+      {/* Indicador de filtro status (vindo do sidebar) */}
+      {filtroStatus !== 'todos' && (
+        <div className="mb-4 flex items-center gap-2 text-xs">
+          <span className="text-texto-fraco">Filtro:</span>
+          <span className="bg-azul text-white px-2 py-0.5 rounded-full font-medium">
+            {filtroStatus === 'ativos' ? 'Ativos' :
+              filtroStatus === 'desativados' ? 'Desativados' :
+              filtroStatus === 'visitantes' ? 'Visitantes' :
+              'Visitantes expirados'}
+          </span>
+          <Link to="/admin/usuarios" className="text-texto-fraco hover:text-azul underline">Limpar</Link>
+        </div>
+      )}
+
+      {/* Filtro categoria (in-page) */}
       <div className="flex gap-1 flex-wrap mb-5">
         {([
-          { id: 'todos', label: 'Todos' },
-          { id: 'ativos', label: 'Ativos' },
-          { id: 'desativados', label: 'Desativados' },
+          { id: 'todas', label: 'Todas categorias' },
           { id: 'oficial', label: 'Oficiais' },
           { id: 'graduado', label: 'Graduados' },
           { id: 'praca', label: 'Praças' },
-          { id: 'visitantes', label: 'Visitantes' },
-          { id: 'expirados', label: 'Visitantes expirados' },
         ] as const).map(f => (
           <button
             key={f.id}
-            onClick={() => setFiltro(f.id)}
+            onClick={() => setFiltroCategoria(f.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filtro === f.id ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
+              filtroCategoria === f.id ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
             }`}
           >
             {f.label}
