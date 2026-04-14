@@ -100,6 +100,7 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/usuarios?f=expirados', label: 'Expirados' },
   ]},
   { to: '/admin/comprovantes', label: 'Comprovantes', icon: <IconGift /> },
+  { to: '/admin/cobrancas', label: 'Cobranças', icon: <IconCart /> },
   { to: '/admin/auditoria', label: 'Auditoria', icon: <IconDashboard /> },
   { to: '/admin/admins', label: 'Administradores', icon: <IconSettings /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },

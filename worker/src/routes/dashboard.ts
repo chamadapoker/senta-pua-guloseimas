@@ -4,6 +4,86 @@ import type { AppType } from '../index';
 
 const dashboard = new Hono<AppType>();
 
+// Devedores consolidados (cantina + loja + cafe + ximboca) para cobranca
+dashboard.get('/devedores-consolidados', authMiddleware, async (c) => {
+  const minDias = parseInt(c.req.query('dias') || '0', 10);
+
+  const [gs, lj, cf, xb] = await Promise.all([
+    c.env.DB.prepare(`
+      SELECT cl.id as cliente_id, cl.nome_guerra, cl.whatsapp,
+             SUM(p.total) as total, COUNT(*) as qtd,
+             MIN(p.created_at) as mais_antigo
+      FROM pedidos p JOIN clientes cl ON cl.id = p.cliente_id
+      WHERE p.status IN ('pendente','fiado')
+      GROUP BY cl.id
+    `).all<{ cliente_id: string; nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string }>(),
+    c.env.DB.prepare(`
+      SELECT cl.id as cliente_id, cl.nome_guerra, cl.whatsapp,
+             SUM(p.total) as total, COUNT(*) as qtd,
+             MIN(p.created_at) as mais_antigo
+      FROM loja_pedidos p JOIN clientes cl ON cl.id = p.cliente_id
+      WHERE p.status IN ('pendente','fiado')
+      GROUP BY cl.id
+    `).all<{ cliente_id: string; nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string }>(),
+    c.env.DB.prepare(`
+      SELECT cl.id as cliente_id, cl.nome_guerra, cl.whatsapp,
+             SUM(cp.valor) as total, COUNT(*) as qtd,
+             MIN(cp.created_at) as mais_antigo
+      FROM cafe_pagamentos cp
+      JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+      JOIN clientes cl ON cl.id = ca.cliente_id
+      WHERE cp.status = 'pendente'
+      GROUP BY cl.id
+    `).all<{ cliente_id: string; nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string }>(),
+    c.env.DB.prepare(`
+      SELECT cl.id as cliente_id, cl.nome_guerra, cl.whatsapp,
+             SUM(COALESCE(xp.valor_individual, xe.valor_por_pessoa)) as total,
+             COUNT(*) as qtd, MIN(xp.created_at) as mais_antigo
+      FROM ximboca_participantes xp
+      JOIN ximboca_eventos xe ON xe.id = xp.evento_id
+      LEFT JOIN clientes cl ON cl.nome_guerra = xp.nome COLLATE NOCASE
+      WHERE xp.status != 'pago'
+      GROUP BY xp.nome
+    `).all<{ cliente_id: string | null; nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string }>(),
+  ]);
+
+  type Agreg = { nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string; cantina: number; loja: number; cafe: number; ximboca: number };
+  const map = new Map<string, Agreg>();
+  const add = (linhas: { nome_guerra: string; whatsapp: string | null; total: number; qtd: number; mais_antigo: string }[], campo: 'cantina' | 'loja' | 'cafe' | 'ximboca') => {
+    for (const r of linhas) {
+      const key = r.nome_guerra.toUpperCase();
+      const cur = map.get(key) || { nome_guerra: r.nome_guerra, whatsapp: r.whatsapp, total: 0, qtd: 0, mais_antigo: r.mais_antigo, cantina: 0, loja: 0, cafe: 0, ximboca: 0 };
+      cur.total += r.total || 0;
+      cur.qtd += r.qtd || 0;
+      cur[campo] += r.total || 0;
+      if (!cur.whatsapp && r.whatsapp) cur.whatsapp = r.whatsapp;
+      if (r.mais_antigo && (!cur.mais_antigo || r.mais_antigo < cur.mais_antigo)) cur.mais_antigo = r.mais_antigo;
+      map.set(key, cur);
+    }
+  };
+  add(gs.results, 'cantina');
+  add(lj.results, 'loja');
+  add(cf.results, 'cafe');
+  add(xb.results, 'ximboca');
+
+  const now = Date.now();
+  const lista = Array.from(map.values())
+    .map(d => {
+      const diasAtraso = d.mais_antigo ? Math.floor((now - new Date(d.mais_antigo + 'Z').getTime()) / 86400000) : 0;
+      return { ...d, dias_atraso: diasAtraso };
+    })
+    .filter(d => d.dias_atraso >= minDias && d.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const resumo = {
+    total_devedores: lista.length,
+    valor_total: lista.reduce((s, d) => s + d.total, 0),
+    sem_whatsapp: lista.filter(d => !d.whatsapp).length,
+  };
+
+  return c.json({ devedores: lista, resumo });
+});
+
 // Relatório de lucratividade (cantina + loja)
 dashboard.get('/lucratividade', authMiddleware, async (c) => {
   const de = c.req.query('de') || '';
