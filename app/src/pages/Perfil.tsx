@@ -12,7 +12,7 @@ function resolveImg(url: string | null): string | null {
 }
 
 export function Perfil() {
-  const { user, token, checkAuth, updateProfile, updateFoto, removeFoto, logout } = useUserAuth();
+  const { user, token, checkAuth, updateProfile, updateFoto, removeFoto, logout, excluirConta } = useUserAuth();
   const [whatsapp, setWhatsapp] = useState('');
   const [saram, setSaram] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -163,6 +163,29 @@ export function Perfil() {
         >
           Sair da conta
         </button>
+
+        <div className="mt-6 pt-6 border-t border-borda">
+          <button
+            onClick={async () => {
+              const confirmacao = window.prompt(
+                'Esta ação é IRREVERSÍVEL. Todos os seus dados serão apagados (perfil, histórico de pedidos, participações em ximboca, assinatura de café).\n\nDigite EXCLUIR para confirmar:'
+              );
+              if (confirmacao !== 'EXCLUIR') return;
+              try {
+                await excluirConta();
+                navigate('/');
+              } catch (err) {
+                setErro(err instanceof Error ? err.message : 'Erro ao excluir conta');
+              }
+            }}
+            className="w-full text-center text-vermelho text-xs py-3 hover:underline"
+          >
+            Excluir minha conta permanentemente (LGPD)
+          </button>
+          <p className="text-center text-[10px] text-texto-fraco mt-1">
+            Você tem o direito de solicitar a exclusão total dos seus dados.
+          </p>
+        </div>
       </div>
     </AppLayout>
   );

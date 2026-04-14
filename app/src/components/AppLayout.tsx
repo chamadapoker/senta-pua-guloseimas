@@ -87,8 +87,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <footer className={`transition-all duration-300 ${sidebarPl} text-center py-4 text-[10px] text-texto-fraco tracking-wider`}>
-        Desenvolvido pelo 3S TIN HÖEHR
+      <footer className={`transition-all duration-300 ${sidebarPl} text-center py-4 text-[10px] text-texto-fraco tracking-wider space-y-1`}>
+        <div>Desenvolvido pelo 3S TIN HÖEHR</div>
+        <Link to="/privacidade" className="hover:text-azul hover:underline">Política de Privacidade</Link>
       </footer>
     </div>
   );

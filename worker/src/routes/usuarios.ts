@@ -11,12 +11,16 @@ const usuarios = new Hono<AppType>();
 
 // Publico: cadastro
 usuarios.post('/cadastro', async (c) => {
-  const { email, senha, trigrama, saram, whatsapp, categoria } = await c.req.json<{
+  const { email, senha, trigrama, saram, whatsapp, categoria, aceite_lgpd } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string; categoria: string;
+    aceite_lgpd?: boolean;
   }>();
 
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
     return c.json({ error: 'Todos os campos são obrigatórios' }, 400);
+  }
+  if (!aceite_lgpd) {
+    return c.json({ error: 'Você precisa aceitar a Política de Privacidade para se cadastrar' }, 400);
   }
   if (!isCategoriaValida(categoria)) return c.json({ error: 'Categoria militar inválida' }, 400);
   if (senha.length < 6) return c.json({ error: 'Senha deve ter no mínimo 6 caracteres' }, 400);
@@ -43,7 +47,8 @@ usuarios.post('/cadastro', async (c) => {
   const salaCafe = derivarSalaCafe(categoria as Categoria);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+    `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, aceitou_lgpd_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now')) RETURNING id`
   ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe).all<{ id: number }>();
 
   const userId = results[0].id;
@@ -78,13 +83,16 @@ usuarios.post('/cadastro', async (c) => {
 
 // Publico: cadastro de visitante
 usuarios.post('/cadastro/visitante', async (c) => {
-  const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem } = await c.req.json<{
+  const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem, aceite_lgpd } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
-    categoria: string; esquadrao_origem: string;
+    categoria: string; esquadrao_origem: string; aceite_lgpd?: boolean;
   }>();
 
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria || !esquadrao_origem) {
     return c.json({ error: 'Todos os campos são obrigatórios (inclusive esquadrão de origem)' }, 400);
+  }
+  if (!aceite_lgpd) {
+    return c.json({ error: 'Você precisa aceitar a Política de Privacidade para se cadastrar' }, 400);
   }
   if (!isCategoriaValida(categoria)) return c.json({ error: 'Categoria militar inválida' }, 400);
   if (senha.length < 6) return c.json({ error: 'Senha deve ter no mínimo 6 caracteres' }, 400);
@@ -113,7 +121,9 @@ usuarios.post('/cadastro/visitante', async (c) => {
   const expiraEm = calcularExpiracaoVisitante(30);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, permite_fiado) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0) RETURNING id'
+    `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe,
+       is_visitante, esquadrao_origem, expira_em, permite_fiado, aceitou_lgpd_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, datetime('now')) RETURNING id`
   ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm).all<{ id: number }>();
 
   const userId = results[0].id;
@@ -446,6 +456,56 @@ usuarios.post('/me/foto', userAuthMiddleware, async (c) => {
   await c.env.DB.prepare('UPDATE usuarios SET foto_url = ? WHERE id = ?').bind(fotoUrl, userId).run();
 
   return c.json({ foto_url: fotoUrl });
+});
+
+// Usuario logado: excluir a propria conta (LGPD - direito ao esquecimento)
+usuarios.delete('/me', userAuthMiddleware, async (c) => {
+  const userId = c.get('userId');
+  const trigrama = c.get('userTrigrama');
+
+  // Apaga foto do R2 se existir
+  const current = await c.env.DB.prepare('SELECT foto_url FROM usuarios WHERE id = ?').bind(userId)
+    .first<{ foto_url: string | null }>();
+  if (current?.foto_url) {
+    const key = current.foto_url.replace('/api/images/', '');
+    await c.env.IMAGES.delete(key).catch(() => {});
+  }
+
+  // Apaga registros do cliente ligado (em cascata manual, seguindo padrao de DELETE /api/clientes/:id)
+  const cliente = await c.env.DB.prepare('SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE')
+    .bind(trigrama).first<{ id: string }>();
+
+  if (cliente) {
+    // Pedidos guloseimas
+    const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const p of pedidos) {
+      await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(p.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id).run();
+
+    // Cafe
+    const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const a of assinantes) {
+      await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind(a.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).run();
+
+    // Loja
+    const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const p of lojaPedidos) {
+      await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(p.id).run();
+      await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind(p.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).run();
+
+    // Cliente
+    await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id).run();
+  }
+
+  // Usuario
+  await c.env.DB.prepare('DELETE FROM usuarios WHERE id = ?').bind(userId).run();
+
+  return c.json({ ok: true });
 });
 
 // Usuario logado: remover foto

@@ -9,6 +9,7 @@ interface CadastroData {
   saram: string;
   whatsapp: string;
   categoria: 'oficial' | 'graduado' | 'praca';
+  aceite_lgpd: boolean;
 }
 
 interface CadastroVisitanteData extends CadastroData {
@@ -27,6 +28,7 @@ interface UserAuthState {
   updateProfile: (dados: { whatsapp?: string; saram?: string }) => Promise<void>;
   updateFoto: (file: File) => Promise<void>;
   removeFoto: () => Promise<void>;
+  excluirConta: () => Promise<void>;
 }
 
 export const useUserAuth = create<UserAuthState>((set, get) => ({
@@ -115,5 +117,11 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
     await api.delete('/api/usuarios/me/foto');
     const current = get().user;
     if (current) set({ user: { ...current, foto_url: null } });
+  },
+
+  excluirConta: async () => {
+    await api.delete('/api/usuarios/me');
+    localStorage.removeItem('user_token');
+    set({ token: null, user: null });
   },
 }));

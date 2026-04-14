@@ -10,6 +10,7 @@ import { UserCadastro } from './pages/UserCadastro';
 import { CadastroEscolha } from './pages/CadastroEscolha';
 import { UserCadastroVisitante } from './pages/UserCadastroVisitante';
 import { AcessoExpirado } from './pages/AcessoExpirado';
+import { PoliticaPrivacidade } from './pages/PoliticaPrivacidade';
 import { Perfil } from './pages/Perfil';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
@@ -97,6 +98,7 @@ export function App() {
         <Route path="/cadastro/militar" element={<UserCadastro />} />
         <Route path="/cadastro/visitante" element={<UserCadastroVisitante />} />
         <Route path="/acesso-expirado" element={<AcessoExpirado />} />
+        <Route path="/privacidade" element={<PoliticaPrivacidade />} />
         <Route path="/perfil" element={<Perfil />} />
         {/* Admin */}
         <Route path="/admin/login" element={<Login />} />

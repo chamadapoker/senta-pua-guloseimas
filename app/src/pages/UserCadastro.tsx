@@ -13,6 +13,7 @@ export function UserCadastro() {
   const [saram, setSaram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [categoria, setCategoria] = useState<Categoria | ''>('');
+  const [aceiteLgpd, setAceiteLgpd] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [erro, setErro] = useState('');
@@ -39,6 +40,10 @@ export function UserCadastro() {
 
     if (!categoria) {
       setErro('Selecione sua categoria militar');
+      return;
+    }
+    if (!aceiteLgpd) {
+      setErro('Você precisa aceitar a Política de Privacidade');
       return;
     }
     if (senha.length < 6) {
@@ -73,6 +78,7 @@ export function UserCadastro() {
         saram: saram.trim(),
         whatsapp: whatsapp.trim(),
         categoria,
+        aceite_lgpd: true,
       });
       if (foto) {
         try { await updateFoto(foto); } catch { /* foto opcional */ }
@@ -211,8 +217,24 @@ export function UserCadastro() {
             />
           </div>
 
+          <label className="flex items-start gap-2 text-xs text-texto-fraco bg-fundo rounded-xl p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={aceiteLgpd}
+              onChange={(e) => setAceiteLgpd(e.target.checked)}
+              className="mt-0.5 accent-azul"
+            />
+            <span>
+              Li e aceito a{' '}
+              <Link to="/privacidade" target="_blank" className="text-azul font-medium hover:underline">
+                Política de Privacidade
+              </Link>
+              . Autorizo o uso dos meus dados para os fins descritos.
+            </span>
+          </label>
+
           {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || !aceiteLgpd}>
             {loading ? 'Cadastrando...' : 'Cadastrar'}
           </Button>
         </form>

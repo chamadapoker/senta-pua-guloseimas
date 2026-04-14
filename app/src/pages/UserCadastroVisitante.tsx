@@ -14,6 +14,7 @@ export function UserCadastroVisitante() {
   const [whatsapp, setWhatsapp] = useState('');
   const [categoria, setCategoria] = useState<Categoria | ''>('');
   const [esquadraoOrigem, setEsquadraoOrigem] = useState('');
+  const [aceiteLgpd, setAceiteLgpd] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [erro, setErro] = useState('');
@@ -36,6 +37,7 @@ export function UserCadastroVisitante() {
     setErro('');
     if (!categoria) { setErro('Selecione sua categoria militar'); return; }
     if (!esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
+    if (!aceiteLgpd) { setErro('Você precisa aceitar a Política de Privacidade'); return; }
     if (senha.length < 6) { setErro('Senha deve ter no mínimo 6 caracteres'); return; }
     if (senha !== confirmarSenha) { setErro('Senhas não conferem'); return; }
 
@@ -53,6 +55,7 @@ export function UserCadastroVisitante() {
         whatsapp: whatsapp.trim(),
         categoria,
         esquadrao_origem: esquadraoOrigem.trim().toUpperCase(),
+        aceite_lgpd: true,
       });
       if (foto) { try { await updateFoto(foto); } catch { /* foto opcional */ } }
       navigate(returnTo, { replace: true });
@@ -155,8 +158,24 @@ export function UserCadastroVisitante() {
               className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul" required />
           </div>
 
+          <label className="flex items-start gap-2 text-xs text-texto-fraco bg-fundo rounded-xl p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={aceiteLgpd}
+              onChange={(e) => setAceiteLgpd(e.target.checked)}
+              className="mt-0.5 accent-azul"
+            />
+            <span>
+              Li e aceito a{' '}
+              <Link to="/privacidade" target="_blank" className="text-azul font-medium hover:underline">
+                Política de Privacidade
+              </Link>
+              . Autorizo o uso dos meus dados para os fins descritos.
+            </span>
+          </label>
+
           {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || !aceiteLgpd}>
             {loading ? 'Cadastrando...' : 'Cadastrar como Visitante'}
           </Button>
         </form>
