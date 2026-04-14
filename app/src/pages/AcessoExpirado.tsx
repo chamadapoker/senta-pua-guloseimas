@@ -33,11 +33,11 @@ export function AcessoExpirado() {
         <h1 className="font-display text-2xl text-azul tracking-wider mb-3">ACESSO EXPIRADO</h1>
         <p className="text-texto-fraco text-sm mb-8">
           Seu acesso de visitante chegou ao fim ou foi pausado pelo administrador.
-          Para renovar, fale com a Larissa.
+          Para renovar, fale com o responsável da cantina.
         </p>
         <div className="space-y-3">
           <Button variant="success" size="lg" className="w-full" onClick={abrirWhats} disabled={!whatsapp}>
-            Falar com Larissa (WhatsApp)
+            Falar no WhatsApp
           </Button>
           <Button variant="outline" size="lg" className="w-full" onClick={() => { logout(); navigate('/'); }}>
             Sair

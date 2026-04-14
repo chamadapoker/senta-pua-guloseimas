@@ -151,7 +151,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
           {!collapsed ? (
             <Link to={isAdmin ? '/admin' : '/'} className="flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-              <span className="font-display text-azul text-lg tracking-wider">APP RP</span>
+              <span className="font-display text-azul text-lg tracking-wider">SENTA PUA</span>
             </Link>
           ) : (
             <Link to={isAdmin ? '/admin' : '/'} className="mx-auto">

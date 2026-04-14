@@ -175,13 +175,13 @@ export function LojaPublica() {
           <div className="bg-white rounded-2xl p-5 mb-4 border border-borda shadow-sm text-left">
             <p className="text-xs text-texto-fraco mb-2 uppercase tracking-wider">PIX Copia e Cola {pedidoCriado.parcelas > 1 ? `(1a parcela: R$ ${valorParcela.toFixed(2)})` : ''}</p>
             <Button variant="success" size="lg" className="w-full" onClick={copiarPix}>
-              {copiadoPix ? 'PIX copiado!' : 'Copiar codigo PIX'}
+              {copiadoPix ? 'PIX copiado!' : 'Copiar código PIX'}
             </Button>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 text-left">
             <p className="text-sm font-medium text-amber-900 mb-1">Envie o comprovante para a RP</p>
-            <p className="text-xs text-amber-700">Pagamento so e validado com comprovante oficial do banco.</p>
+            <p className="text-xs text-amber-700">Pagamento só é validado com comprovante oficial do banco.</p>
           </div>
 
           <Button variant="success" size="lg" className="w-full mb-3" onClick={enviarComprovante}>

@@ -201,20 +201,26 @@ export function XimbocaPublica() {
                 </div>
 
                 {ev.meu_participante_id ? (
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-texto-fraco">
-                      Inscrito como <span className="font-medium">{categoriaLabel(ev.minha_categoria || 'padrao')}</span>
+                  <>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                      <div className="text-[10px] text-verde-escuro uppercase tracking-wider font-medium">Você vai pagar</div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-display text-2xl text-verde-escuro tracking-wider">
+                          R$ {valorCategoria(ev, (ev.minha_categoria as 'padrao' | 'cerveja' | 'refri') || 'padrao').toFixed(2)}
+                        </span>
+                        <span className="text-xs text-verde-escuro font-medium">{categoriaLabel(ev.minha_categoria || 'padrao')}</span>
+                      </div>
                     </div>
                     {ev.meu_status !== 'pago' && (
                       <button
                         onClick={() => cancelarParticipacao(ev.id)}
                         disabled={acaoLoading}
-                        className="text-xs text-vermelho hover:underline"
+                        className="w-full text-xs text-vermelho hover:underline py-1"
                       >
                         Cancelar participação
                       </button>
                     )}
-                  </div>
+                  </>
                 ) : (
                   <Button size="sm" className="w-full" onClick={() => abrirParticipar(ev)} disabled={acaoLoading}>
                     Participar
@@ -249,13 +255,18 @@ export function XimbocaPublica() {
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-borda">
-                    <span className="text-xs text-texto-fraco">
-                      {categoriaLabel(ev.categoria_consumo)}
-                    </span>
-                    <span className="font-display text-base text-azul tracking-wider">
-                      R$ {valorFinal.toFixed(2)}
-                    </span>
+                  <div className={`rounded-lg p-3 mt-2 ${ev.meu_status === 'pago' ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <div className={`text-[10px] uppercase tracking-wider font-medium ${ev.meu_status === 'pago' ? 'text-verde-escuro' : 'text-amber-700'}`}>
+                          {ev.meu_status === 'pago' ? 'Você pagou' : 'Você vai pagar'}
+                        </div>
+                        <div className="text-[10px] text-texto-fraco">{categoriaLabel(ev.categoria_consumo)}</div>
+                      </div>
+                      <span className={`font-display text-2xl tracking-wider ${ev.meu_status === 'pago' ? 'text-verde-escuro' : 'text-amber-700'}`}>
+                        R$ {valorFinal.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );

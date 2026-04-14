@@ -11,6 +11,8 @@ interface Evento {
   nome: string;
   data: string;
   valor_por_pessoa: number;
+  valor_cerveja: number | null;
+  valor_refri: number | null;
   descricao: string;
   status: string;
   total_participantes: number;
@@ -22,6 +24,7 @@ interface Evento {
 export function XimbocaEventos() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
+  const [editando, setEditando] = useState<Evento | null>(null);
   const [nome, setNome] = useState('');
   const [data, setData] = useState('');
   const [valorPessoa, setValorPessoa] = useState('');
@@ -32,17 +35,44 @@ export function XimbocaEventos() {
   const carregar = () => api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
   useEffect(() => { carregar(); }, []);
 
-  const criar = async (e: React.FormEvent) => {
+  const limparForm = () => {
+    setEditando(null);
+    setNome(''); setData(''); setValorPessoa('');
+    setValorCerveja(''); setValorRefri(''); setDescricao('');
+  };
+
+  const abrirEditar = (ev: Evento) => {
+    setEditando(ev);
+    setNome(ev.nome);
+    setData(ev.data);
+    setValorPessoa(ev.valor_por_pessoa?.toString() || '');
+    setValorCerveja(ev.valor_cerveja !== null ? ev.valor_cerveja.toString() : '');
+    setValorRefri(ev.valor_refri !== null ? ev.valor_refri.toString() : '');
+    setDescricao(ev.descricao || '');
+    setModalAberto(true);
+  };
+
+  const abrirCriar = () => {
+    limparForm();
+    setModalAberto(true);
+  };
+
+  const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/api/ximboca/eventos', {
+    const body = {
       nome, data,
       valor_por_pessoa: parseFloat(valorPessoa) || 0,
       valor_cerveja: valorCerveja ? parseFloat(valorCerveja) : null,
       valor_refri: valorRefri ? parseFloat(valorRefri) : null,
       descricao,
-    });
+    };
+    if (editando) {
+      await api.put(`/api/ximboca/eventos/${editando.id}`, body);
+    } else {
+      await api.post('/api/ximboca/eventos', body);
+    }
     setModalAberto(false);
-    setNome(''); setData(''); setValorPessoa(''); setValorCerveja(''); setValorRefri(''); setDescricao('');
+    limparForm();
     carregar();
   };
 
@@ -61,7 +91,7 @@ export function XimbocaEventos() {
     <AppLayout>
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl text-azul tracking-wider">EVENTOS</h1>
-        <Button size="sm" onClick={() => setModalAberto(true)}>+ Novo Evento</Button>
+        <Button size="sm" onClick={abrirCriar}>+ Novo Evento</Button>
       </div>
 
       <div className="space-y-3">
@@ -97,8 +127,9 @@ export function XimbocaEventos() {
                     <div className={`font-bold ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Link to={`/admin/ximboca/eventos/${ev.id}`} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">Gerenciar</Link>
+                  <button onClick={() => abrirEditar(ev)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200">Editar</button>
                   <button onClick={() => toggleStatus(ev)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100">
                     {ev.status === 'aberto' ? 'Fechar' : 'Reabrir'}
                   </button>
@@ -112,8 +143,8 @@ export function XimbocaEventos() {
 
       {eventos.length === 0 && <div className="text-center py-12 text-gray-400">Nenhum evento criado</div>}
 
-      <Modal open={modalAberto} onClose={() => setModalAberto(false)} title="Novo Evento">
-        <form onSubmit={criar} className="space-y-4">
+      <Modal open={modalAberto} onClose={() => { setModalAberto(false); limparForm(); }} title={editando ? 'Editar Evento' : 'Novo Evento'}>
+        <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome do evento</label>
             <input value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: Churrasco de Aniversario" />
@@ -145,7 +176,7 @@ export function XimbocaEventos() {
           <p className="text-xs text-texto-fraco">
             Se preencher Cerveja ou Refri, o participante poderá escolher entre essas opções. Caso contrário, usa o valor padrão.
           </p>
-          <Button type="submit" className="w-full">Criar Evento</Button>
+          <Button type="submit" className="w-full">{editando ? 'Salvar Alterações' : 'Criar Evento'}</Button>
         </form>
       </Modal>
     </AppLayout>

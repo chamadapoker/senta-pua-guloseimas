@@ -19,6 +19,9 @@ export function Perfil() {
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
   const [verificando, setVerificando] = useState(true);
+  const [modalExcluir, setModalExcluir] = useState(false);
+  const [confirmouExclusao, setConfirmouExclusao] = useState(false);
+  const [textoExclusao, setTextoExclusao] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -166,18 +169,7 @@ export function Perfil() {
 
         <div className="mt-6 pt-6 border-t border-borda">
           <button
-            onClick={async () => {
-              const confirmacao = window.prompt(
-                'Esta ação é IRREVERSÍVEL. Todos os seus dados serão apagados (perfil, histórico de pedidos, participações em ximboca, assinatura de café).\n\nDigite EXCLUIR para confirmar:'
-              );
-              if (confirmacao !== 'EXCLUIR') return;
-              try {
-                await excluirConta();
-                navigate('/');
-              } catch (err) {
-                setErro(err instanceof Error ? err.message : 'Erro ao excluir conta');
-              }
-            }}
+            onClick={() => { setModalExcluir(true); setConfirmouExclusao(false); setTextoExclusao(''); setErro(''); }}
             className="w-full text-center text-vermelho text-xs py-3 hover:underline"
           >
             Excluir minha conta permanentemente (LGPD)
@@ -186,6 +178,63 @@ export function Perfil() {
             Você tem o direito de solicitar a exclusão total dos seus dados.
           </p>
         </div>
+
+        {modalExcluir && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModalExcluir(false)}>
+            <div className="bg-white rounded-2xl p-5 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-display text-xl text-vermelho tracking-wider mb-2">EXCLUIR CONTA</h3>
+              <p className="text-sm text-texto mb-3">
+                Esta ação é <strong>irreversível</strong>. Serão apagados permanentemente:
+              </p>
+              <ul className="text-xs text-texto-fraco list-disc pl-5 mb-4 space-y-0.5">
+                <li>Sua conta de usuário e foto</li>
+                <li>Histórico de pedidos nas cantinas e loja</li>
+                <li>Assinatura e pagamentos do café</li>
+                <li>Participações em ximbocas</li>
+              </ul>
+
+              <label className="flex items-start gap-2 text-xs text-texto bg-red-50 rounded-lg p-3 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmouExclusao}
+                  onChange={(e) => setConfirmouExclusao(e.target.checked)}
+                  className="mt-0.5 accent-vermelho"
+                />
+                <span>Entendo que meus dados serão apagados e não poderão ser recuperados.</span>
+              </label>
+
+              <label className="block text-xs text-texto-fraco mb-1.5">Digite <strong>EXCLUIR</strong> para confirmar:</label>
+              <input
+                type="text"
+                value={textoExclusao}
+                onChange={(e) => setTextoExclusao(e.target.value)}
+                className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm mb-4"
+                placeholder="EXCLUIR"
+              />
+
+              {erro && <p className="text-vermelho text-xs mb-3">{erro}</p>}
+
+              <div className="flex gap-2">
+                <Button variant="ghost" className="flex-1" onClick={() => setModalExcluir(false)}>Cancelar</Button>
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  disabled={!confirmouExclusao || textoExclusao !== 'EXCLUIR'}
+                  onClick={async () => {
+                    try {
+                      await excluirConta();
+                      navigate('/');
+                    } catch (err) {
+                      setErro(err instanceof Error ? err.message : 'Erro ao excluir conta');
+                    }
+                  }}
+                >
+                  Excluir conta
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

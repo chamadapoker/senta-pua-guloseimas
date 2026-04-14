@@ -57,8 +57,10 @@ export function UserCadastroVisitante() {
         esquadrao_origem: esquadraoOrigem.trim().toUpperCase(),
         aceite_lgpd: true,
       });
-      if (foto) { try { await updateFoto(foto); } catch { /* foto opcional */ } }
-      navigate(returnTo, { replace: true });
+      let fotoErro = '';
+      if (foto) { try { await updateFoto(foto); } catch { fotoErro = ' Foto não pôde ser enviada, você pode tentar novamente no perfil.'; } }
+      if (fotoErro) setErro(fotoErro);
+      else navigate(returnTo, { replace: true });
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao cadastrar');
     }

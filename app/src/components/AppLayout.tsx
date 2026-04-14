@@ -48,7 +48,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Mobile logo */}
           <Link to={isAdmin ? '/admin' : '/'} className="flex items-center gap-2 lg:hidden">
             <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-            <span className="font-display text-azul text-base tracking-wider">APP RP POKER</span>
+            <span className="font-display text-azul text-base tracking-wider">SENTA PUA</span>
           </Link>
 
           {/* Desktop spacer */}

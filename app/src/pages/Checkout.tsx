@@ -105,9 +105,18 @@ export function Checkout() {
               <div className="text-azul text-sm font-bold">R$ {(produto.preco * quantidade).toFixed(2)}</div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => alterarQuantidade(produto.id, quantidade - 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">-</button>
-              <span className="w-6 text-center font-medium text-sm">{quantidade}</span>
-              <button onClick={() => alterarQuantidade(produto.id, quantidade + 1)} className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda">+</button>
+              <button
+                onClick={() => alterarQuantidade(produto.id, quantidade - 1)}
+                disabled={quantidade <= 1}
+                aria-label="Diminuir quantidade"
+                className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda disabled:opacity-40"
+              >-</button>
+              <span className="w-6 text-center font-medium text-sm" aria-live="polite">{quantidade}</span>
+              <button
+                onClick={() => alterarQuantidade(produto.id, quantidade + 1)}
+                aria-label="Aumentar quantidade"
+                className="w-9 h-9 rounded-lg bg-fundo text-base font-bold border border-borda"
+              >+</button>
               <button
                 onClick={() => remover(produto.id)}
                 className="ml-1 w-9 h-9 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-vermelho hover:bg-red-100 transition-colors"

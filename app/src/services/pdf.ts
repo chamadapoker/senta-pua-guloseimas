@@ -42,7 +42,7 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);
-  doc.text('APP RP POKER', pageWidth / 2, 16, { align: 'center' });
+  doc.text('SENTA PUA', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setTextColor(212, 168, 67);
@@ -170,7 +170,7 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Documento gerado automaticamente pelo APP RP POKER.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Documento gerado automaticamente pelo sistema Senta Pua.', pageWidth / 2, footerY, { align: 'center' });
   const pixChaveDoc = await getPixChave();
   doc.text(`PIX: ${pixChaveDoc}`, pageWidth / 2, footerY + 5, { align: 'center' });
 
