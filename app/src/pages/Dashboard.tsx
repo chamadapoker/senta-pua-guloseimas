@@ -35,11 +35,19 @@ interface CafeStatus {
   tem_assinatura: boolean;
 }
 
+interface Totais {
+  cantina: { gasto: number; pago: number; pendente: number; compras: number };
+  cafe: { pago: number; pendente: number };
+  ximboca: { pago: number; pendente: number };
+  geral: { pago: number; pendente: number };
+}
+
 interface DashboardData {
   user: Usuario;
   debito_total: number;
   ultimos_pedidos: PedidoResumo[];
   cafe_status: CafeStatus | null;
+  totais?: Totais;
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -145,15 +153,50 @@ export function Dashboard() {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-borda p-4 mb-4 shadow-sm">
-            <div className="text-sm font-medium text-texto-fraco mb-2">Débito Total (Cantina)</div>
-            <div className={`text-2xl font-display tracking-wider ${data.debito_total > 0 ? 'text-vermelho' : 'text-verde-escuro'}`}>
-              R$ {data.debito_total.toFixed(2)}
+          {data.totais && (
+            <div className="bg-white rounded-2xl border border-borda p-4 mb-4 shadow-sm">
+              <div className="text-sm font-medium text-texto-fraco mb-3">Resumo Financeiro</div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="rounded-lg bg-green-50 p-3">
+                  <div className="text-[10px] text-verde-escuro uppercase tracking-wider">Total Pago</div>
+                  <div className="font-display text-xl text-verde-escuro tracking-wider">
+                    R$ {data.totais.geral.pago.toFixed(2)}
+                  </div>
+                </div>
+                <div className={`rounded-lg p-3 ${data.totais.geral.pendente > 0 ? 'bg-red-50' : 'bg-fundo'}`}>
+                  <div className={`text-[10px] uppercase tracking-wider ${data.totais.geral.pendente > 0 ? 'text-vermelho' : 'text-texto-fraco'}`}>Total Pendente</div>
+                  <div className={`font-display text-xl tracking-wider ${data.totais.geral.pendente > 0 ? 'text-vermelho' : 'text-texto-fraco'}`}>
+                    R$ {data.totais.geral.pendente.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              <div className="list-zebra rounded-lg overflow-hidden border border-borda text-xs">
+                <div className="grid grid-cols-3 px-3 py-2 font-medium text-texto-fraco">
+                  <span>Origem</span>
+                  <span className="text-right">Pago</span>
+                  <span className="text-right">Pendente</span>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <span>Cantina ({data.totais.cantina.compras})</span>
+                  <span className="text-right text-verde-escuro">R$ {data.totais.cantina.pago.toFixed(2)}</span>
+                  <span className="text-right text-vermelho">R$ {data.totais.cantina.pendente.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <span>Café</span>
+                  <span className="text-right text-verde-escuro">R$ {data.totais.cafe.pago.toFixed(2)}</span>
+                  <span className="text-right text-vermelho">R$ {data.totais.cafe.pendente.toFixed(2)}</span>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <span>Ximboca</span>
+                  <span className="text-right text-verde-escuro">R$ {data.totais.ximboca.pago.toFixed(2)}</span>
+                  <span className="text-right text-vermelho">R$ {data.totais.ximboca.pendente.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-texto-fraco mt-2">
+                Total gasto na cantina: <span className="font-medium">R$ {data.totais.cantina.gasto.toFixed(2)}</span>
+              </div>
             </div>
-            {data.debito_total === 0 && (
-              <div className="text-xs text-texto-fraco mt-1">Sem pendências</div>
-            )}
-          </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-borda p-4 mb-4 shadow-sm">
             <div className="text-sm font-medium text-texto-fraco mb-3">Últimos Pedidos</div>

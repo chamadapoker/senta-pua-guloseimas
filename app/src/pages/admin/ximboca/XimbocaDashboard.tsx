@@ -52,7 +52,7 @@ export function XimbocaDashboard() {
             <h2 className="text-sm font-medium text-white uppercase tracking-wider">Eventos</h2>
             <Link to="/admin/ximboca/eventos" className="text-xs text-white/80 hover:text-white">Ver todos</Link>
           </div>
-          <div className="divide-y divide-borda/50">
+          <div className="divide-y divide-borda/50 list-zebra">
             {eventos.slice(0, 5).map(e => {
               const arrecadado = e.total_arrecadado;
               return (

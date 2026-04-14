@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { MeuCafe } from '../components/perfil/MeuCafe';
@@ -91,6 +92,7 @@ export function Perfil() {
   return (
     <AppLayout>
       <div className="max-w-sm mx-auto py-6 animate-fade-in">
+        <BackButton to="/" className="mb-3" />
         <h1 className="font-display text-3xl text-azul tracking-wider mb-6 text-center">MEU PERFIL</h1>
 
         <div className="flex flex-col items-center mb-6">

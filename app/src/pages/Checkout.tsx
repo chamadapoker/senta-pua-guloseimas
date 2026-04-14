@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { useCart } from '../hooks/useCart';
 import { useUserAuth } from '../hooks/useUserAuth';
@@ -74,6 +75,7 @@ export function Checkout() {
 
   return (
     <AppLayout>
+      <BackButton className="mb-3" />
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">FECHAR PEDIDO</h1>
 
       {/* Militar identificado */}

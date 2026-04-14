@@ -290,6 +290,9 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   ).bind(trigrama).first<{ id: string }>();
 
   let debitoTotal = 0;
+  let totalGastoCantina = 0;
+  let totalPagoCantina = 0;
+  let totalComprasCantina = 0;
   let ultimosPedidos: unknown[] = [];
 
   if (cliente) {
@@ -297,6 +300,17 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
       "SELECT COALESCE(SUM(total), 0) as total FROM pedidos WHERE cliente_id = ? AND status IN ('fiado', 'pendente')"
     ).bind(cliente.id).first<{ total: number }>();
     debitoTotal = debitoRow?.total || 0;
+
+    const totaisRow = await c.env.DB.prepare(
+      `SELECT
+         COALESCE(SUM(total), 0) as gasto,
+         COALESCE(SUM(CASE WHEN status = 'pago' THEN total ELSE 0 END), 0) as pago,
+         COUNT(*) as compras
+       FROM pedidos WHERE cliente_id = ?`
+    ).bind(cliente.id).first<{ gasto: number; pago: number; compras: number }>();
+    totalGastoCantina = totaisRow?.gasto || 0;
+    totalPagoCantina = totaisRow?.pago || 0;
+    totalComprasCantina = totaisRow?.compras || 0;
 
     const { results: pedidos } = await c.env.DB.prepare(`
       SELECT id, total, status, metodo_pagamento, created_at, paid_at
@@ -341,18 +355,19 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
     const mesAtual = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
     const assinante = await c.env.DB.prepare(
-      "SELECT id, valor FROM cafe_assinantes WHERE cliente_id = ? AND tipo = ? AND ativo = 1"
-    ).bind(cliente.id, user.sala_cafe === 'oficiais' ? 'oficial' : 'graduado').first<{ id: string; valor: number }>();
+      "SELECT id, valor, plano FROM cafe_assinantes WHERE cliente_id = ? AND tipo = ? AND ativo = 1"
+    ).bind(cliente.id, user.sala_cafe === 'oficiais' ? 'oficial' : 'graduado').first<{ id: string; valor: number; plano: string }>();
 
     if (!assinante) {
       cafeStatus = { mes_atual: mesAtual, pago: false, valor: null, tem_assinatura: false };
     } else {
+      const referencia = assinante.plano === 'anual' ? String(now.getUTCFullYear()) : mesAtual;
       const pag = await c.env.DB.prepare(
         "SELECT status, valor FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
-      ).bind(assinante.id, mesAtual).first<{ status: string; valor: number }>();
+      ).bind(assinante.id, referencia).first<{ status: string; valor: number }>();
 
       cafeStatus = {
-        mes_atual: mesAtual,
+        mes_atual: referencia,
         pago: pag?.status === 'pago',
         valor: pag?.valor ?? assinante.valor,
         tem_assinatura: true,
@@ -366,11 +381,50 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
     acesso_pausado: user.acesso_pausado,
   });
 
+  // Café totais
+  let cafePagoTotal = 0;
+  let cafePendenteTotal = 0;
+  if (user.sala_cafe && cliente) {
+    const row = await c.env.DB.prepare(
+      `SELECT
+         COALESCE(SUM(CASE WHEN p.status = 'pago' THEN p.valor ELSE 0 END), 0) as pago,
+         COALESCE(SUM(CASE WHEN p.status = 'pendente' THEN p.valor ELSE 0 END), 0) as pendente
+       FROM cafe_pagamentos p
+       INNER JOIN cafe_assinantes a ON a.id = p.assinante_id
+       WHERE a.cliente_id = ?`
+    ).bind(cliente.id).first<{ pago: number; pendente: number }>();
+    cafePagoTotal = row?.pago || 0;
+    cafePendenteTotal = row?.pendente || 0;
+  }
+
+  // Ximboca totais (match por nome = trigrama)
+  let ximbocaPagoTotal = 0;
+  let ximbocaPendenteTotal = 0;
+  const row = await c.env.DB.prepare(
+    `SELECT
+       COALESCE(SUM(CASE WHEN xp.status = 'pago' THEN COALESCE(xp.valor_individual, xe.valor_por_pessoa) ELSE 0 END), 0) as pago,
+       COALESCE(SUM(CASE WHEN xp.status != 'pago' THEN COALESCE(xp.valor_individual, xe.valor_por_pessoa) ELSE 0 END), 0) as pendente
+     FROM ximboca_participantes xp
+     INNER JOIN ximboca_eventos xe ON xe.id = xp.evento_id
+     WHERE xp.nome = ? COLLATE NOCASE`
+  ).bind(trigrama).first<{ pago: number; pendente: number }>();
+  ximbocaPagoTotal = row?.pago || 0;
+  ximbocaPendenteTotal = row?.pendente || 0;
+
+  const totalPagoGeral = totalPagoCantina + cafePagoTotal + ximbocaPagoTotal;
+  const totalPendenteGeral = debitoTotal + cafePendenteTotal + ximbocaPendenteTotal;
+
   return c.json({
     user: { ...user, acesso_bloqueado },
     debito_total: debitoTotal,
     ultimos_pedidos: ultimosPedidos,
     cafe_status: cafeStatus,
+    totais: {
+      cantina: { gasto: totalGastoCantina, pago: totalPagoCantina, pendente: debitoTotal, compras: totalComprasCantina },
+      cafe: { pago: cafePagoTotal, pendente: cafePendenteTotal },
+      ximboca: { pago: ximbocaPagoTotal, pendente: ximbocaPendenteTotal },
+      geral: { pago: totalPagoGeral, pendente: totalPendenteGeral },
+    },
   });
 });
 

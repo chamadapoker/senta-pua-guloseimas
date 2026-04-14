@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react';
 import { AppLayout } from '../../../components/AppLayout';
+import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
@@ -9,7 +11,7 @@ import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
-interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; descricao: string; status: string; }
+interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; }
 
 export function XimbocaEvento() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +25,19 @@ export function XimbocaEvento() {
   const [partWhats, setPartWhats] = useState('');
   const [partCategoria, setPartCategoria] = useState('padrao');
   const [partValor, setPartValor] = useState('');
+
+  // Edit event
+  const [modalEdit, setModalEdit] = useState(false);
+  const [edNome, setEdNome] = useState('');
+  const [edData, setEdData] = useState('');
+  const [edValor, setEdValor] = useState('');
+  const [edCerveja, setEdCerveja] = useState('');
+  const [edRefri, setEdRefri] = useState('');
+  const [edDescricao, setEdDescricao] = useState('');
+
+  // QR code
+  const [modalQR, setModalQR] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   // Add expense
   const [modalDesp, setModalDesp] = useState(false);
@@ -80,6 +95,42 @@ export function XimbocaEvento() {
     carregar();
   };
 
+  const abrirEdicao = () => {
+    if (!evento) return;
+    setEdNome(evento.nome);
+    setEdData(evento.data);
+    setEdValor(evento.valor_por_pessoa?.toString() || '');
+    setEdCerveja(evento.valor_cerveja !== null ? String(evento.valor_cerveja) : '');
+    setEdRefri(evento.valor_refri !== null ? String(evento.valor_refri) : '');
+    setEdDescricao(evento.descricao || '');
+    setModalEdit(true);
+  };
+
+  const salvarEdicao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await api.put(`/api/ximboca/eventos/${id}`, {
+      nome: edNome,
+      data: edData,
+      valor_por_pessoa: parseFloat(edValor) || 0,
+      valor_cerveja: edCerveja ? parseFloat(edCerveja) : null,
+      valor_refri: edRefri ? parseFloat(edRefri) : null,
+      descricao: edDescricao,
+    });
+    setModalEdit(false);
+    carregar();
+  };
+
+  const baixarQR = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas || !evento) return;
+    const link = document.createElement('a');
+    link.download = `qrcode-${evento.nome.replace(/\s+/g, '-').toLowerCase()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
+  const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/ximboca` : '';
+
   if (!evento) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
   const valorEfetivo = (p: Participante) => p.valor_individual ?? evento.valor_por_pessoa;
@@ -90,14 +141,16 @@ export function XimbocaEvento() {
 
   return (
     <AppLayout>
-      <div className="flex items-center gap-3 mb-2">
-        <Link to="/admin/ximboca/eventos" className="text-texto-fraco hover:text-texto">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        </Link>
+      <BackButton to="/admin/ximboca/eventos" className="mb-3" />
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
         <h1 className="font-display text-2xl text-azul tracking-wider">{evento.nome}</h1>
         <Badge variant={evento.status === 'aberto' ? 'success' : 'warning'}>{evento.status}</Badge>
       </div>
-      <p className="text-sm text-texto-fraco mb-5">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
+      <p className="text-sm text-texto-fraco mb-3">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
+      <div className="flex gap-2 flex-wrap mb-5">
+        <button onClick={abrirEdicao} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200">✏ Editar Evento</button>
+        <button onClick={() => setModalQR(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">📱 QR Code</button>
+      </div>
 
       {/* Financial summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -125,7 +178,7 @@ export function XimbocaEvento() {
           <h2 className="text-sm font-medium text-white uppercase tracking-wider">Participantes</h2>
           <Button size="sm" onClick={() => setModalPart(true)}>+ Adicionar</Button>
         </div>
-        <div className="divide-y divide-borda/50">
+        <div className="divide-y divide-borda/50 list-zebra">
           {participantes.map(p => (
             <div key={p.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
               <div>
@@ -161,7 +214,7 @@ export function XimbocaEvento() {
           <h2 className="text-sm font-medium text-white uppercase tracking-wider">Despesas</h2>
           <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
         </div>
-        <div className="divide-y divide-borda/50">
+        <div className="divide-y divide-borda/50 list-zebra">
           {despesas.map(d => (
             <div key={d.id} className="px-4 py-3 flex items-center justify-between">
               <div>
@@ -208,6 +261,56 @@ export function XimbocaEvento() {
           </div>
           <Button type="submit" className="w-full">Adicionar</Button>
         </form>
+      </Modal>
+
+      {/* Edit event modal */}
+      <Modal open={modalEdit} onClose={() => setModalEdit(false)} title="Editar Evento">
+        <form onSubmit={salvarEdicao} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nome</label>
+            <input value={edNome} onChange={e => setEdNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Data</label>
+              <input type="date" value={edData} onChange={e => setEdData(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">R$/pessoa</label>
+              <input type="number" step="0.01" value={edValor} onChange={e => setEdValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">🍺 Cerveja</label>
+              <input type="number" step="0.01" value={edCerveja} onChange={e => setEdCerveja(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Vazio = não oferece" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">🥤 Refri</label>
+              <input type="number" step="0.01" value={edRefri} onChange={e => setEdRefri(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Vazio = não oferece" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Descrição</label>
+            <input value={edDescricao} onChange={e => setEdDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+          </div>
+          <Button type="submit" className="w-full">Salvar Alterações</Button>
+        </form>
+      </Modal>
+
+      {/* QR Code modal */}
+      <Modal open={modalQR} onClose={() => setModalQR(false)} title="QR Code do Evento">
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-texto-fraco">Compartilhe com os participantes para se inscreverem</p>
+          <div ref={qrRef} className="inline-block bg-white p-4 rounded-xl border border-borda">
+            <QRCodeCanvas value={qrUrl} size={240} level="M" includeMargin />
+          </div>
+          <div className="text-xs text-texto-fraco break-all">{qrUrl}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={baixarQR}>📥 Baixar PNG</Button>
+            <Button variant="outline" onClick={() => window.print()}>🖨 Imprimir</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Add expense modal */}

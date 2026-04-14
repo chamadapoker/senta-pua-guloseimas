@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Produto } from '../types';
 import { AppLayout } from '../components/AppLayout';
+import { BackButton } from '../components/ui/BackButton';
 import { ProductCard } from '../components/catalogo/ProductCard';
 import { CartBar } from '../components/catalogo/CartBar';
 
@@ -29,6 +30,7 @@ export function Catalogo() {
 
   return (
     <AppLayout>
+      <BackButton to="/" className="mb-3" />
       <div className="mb-5">
         <h1 className="font-display text-2xl text-azul tracking-wider">{titulo}</h1>
         <p className="text-sm text-texto-fraco mt-1">Toque no + para adicionar ao pedido</p>

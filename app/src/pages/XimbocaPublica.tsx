@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import { useUserAuth } from '../hooks/useUserAuth';
@@ -131,6 +132,7 @@ export function XimbocaPublica() {
 
   return (
     <AppLayout>
+      <BackButton to="/" className="mb-3" />
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">XIMBOCA</h1>
 
       {/* Abas */}

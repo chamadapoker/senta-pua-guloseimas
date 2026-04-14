@@ -18,3 +18,12 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #eef1f5; }
 ::-webkit-scrollbar-thumb { background: #c5c9d1; border-radius: 3px; }
+
+/* Zebra striping: melhora leitura em listas longas */
+table tbody tr:nth-child(even) { background-color: #f7f8fa; }
+table tbody tr:nth-child(odd)  { background-color: #ffffff; }
+table tbody tr:hover            { background-color: #eef1f5; }
+
+/* Listas estilo "divide-y": aplicar zebra nos filhos diretos */
+.list-zebra > *:nth-child(even) { background-color: #f7f8fa; }
+.list-zebra > *:nth-child(odd)  { background-color: #ffffff; }

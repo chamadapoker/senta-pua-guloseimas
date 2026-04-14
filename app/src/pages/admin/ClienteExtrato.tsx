@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
+import { BackButton } from '../../components/ui/BackButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
@@ -86,6 +87,7 @@ export function ClienteExtrato() {
 
   return (
     <AppLayout>
+      <BackButton to="/admin/clientes" className="mb-3" />
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <div className="w-14 h-14 rounded-full bg-azul flex items-center justify-center text-white font-display text-xl tracking-wider">
