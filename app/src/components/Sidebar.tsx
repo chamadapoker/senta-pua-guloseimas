@@ -62,7 +62,7 @@ const USER_NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { to: '/admin', label: 'Guloseimas', icon: <IconGift />, children: [
+  { to: '/admin', label: 'Cantina', icon: <IconGift />, children: [
     { to: '/admin', label: 'Dashboard' },
     { to: '/admin/pedidos', label: 'Pedidos' },
     { to: '/admin/produtos', label: 'Produtos' },

@@ -74,7 +74,7 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...azul);
-    doc.text('GULOSEIMAS', 14, currentY);
+    doc.text('CANTINA', 14, currentY);
     currentY += 2;
 
     autoTable(doc, {
@@ -196,7 +196,7 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);
-  doc.text('SENTA PUA GULOSEIMAS', pageWidth / 2, 16, { align: 'center' });
+  doc.text('SENTA PUA', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setTextColor(212, 168, 67); // dourado
@@ -279,7 +279,7 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Documento gerado automaticamente pelo sistema Senta Pua Guloseimas.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Documento gerado automaticamente pelo sistema Senta Pua.', pageWidth / 2, footerY, { align: 'center' });
   const pixChaveExtrato = await getPixChave();
   doc.text(`Chave PIX: ${pixChaveExtrato}`, pageWidth / 2, footerY + 5, { align: 'center' });
 

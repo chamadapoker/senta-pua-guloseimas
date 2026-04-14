@@ -78,7 +78,7 @@ export function ClienteExtrato() {
   };
 
   const abas = [
-    { id: 'guloseimas' as const, label: 'Guloseimas', count: guloseimas.filter(p => p.status !== 'pago').length, valor: devidoGuloseimas },
+    { id: 'guloseimas' as const, label: 'Cantina', count: guloseimas.filter(p => p.status !== 'pago').length, valor: devidoGuloseimas },
     { id: 'loja' as const, label: 'Loja', count: loja.filter(p => p.status !== 'pago').length, valor: devidoLoja },
     { id: 'cafe' as const, label: 'Cafe', count: cafe.filter(p => p.status === 'pendente').length, valor: devidoCafe },
     { id: 'ximboca' as const, label: 'Ximboca', count: ximboca.filter(p => p.status !== 'pago').length, valor: devidoXimboca },

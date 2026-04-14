@@ -66,7 +66,7 @@ export function Configuracoes() {
 
         {/* PIX Guloseimas / Loja */}
         <div className="bg-white rounded-xl border border-borda shadow-sm p-5 space-y-4">
-          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">PIX - Guloseimas / Loja</h2>
+          <h2 className="font-medium text-sm text-texto-fraco uppercase tracking-wider">PIX - Cantina / Loja</h2>
           <div>
             <label className="block text-sm font-medium mb-1.5">Chave PIX (e-mail)</label>
             <input value={v('pix_guloseimas_chave')} onChange={(e) => set('pix_guloseimas_chave', e.target.value)} className={inputClass} required />
