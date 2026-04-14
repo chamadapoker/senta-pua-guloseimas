@@ -19,13 +19,13 @@ export function Home() {
           Bem-vindo ao app do 1/10 GpAv
         </p>
         <p className="text-texto-fraco text-sm mb-8">
-          Faça login para acessar seu dashboard, caixinha do café e histórico de pedidos.
+          Faça login para acessar seu dashboard, cantinas, loja, caixinha do café, ximbocas e histórico completo de pedidos.
         </p>
-        <div className="space-y-3">
-          <Link to="/login">
+        <div className="flex flex-col gap-3">
+          <Link to="/login" className="block">
             <Button size="lg" className="w-full">Entrar</Button>
           </Link>
-          <Link to="/cadastro">
+          <Link to="/cadastro" className="block">
             <Button variant="outline" size="lg" className="w-full">Cadastrar</Button>
           </Link>
         </div>
