@@ -12,6 +12,6 @@ jobs:
         with:
           node-version: '20'
       - run: npm install -g pnpm && pnpm install
-      - run: pnpm --filter worker run deploy
+      - run: pnpm --filter senta-pua-worker run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
