@@ -25,6 +25,8 @@ export function XimbocaEventos() {
   const [nome, setNome] = useState('');
   const [data, setData] = useState('');
   const [valorPessoa, setValorPessoa] = useState('');
+  const [valorCerveja, setValorCerveja] = useState('');
+  const [valorRefri, setValorRefri] = useState('');
   const [descricao, setDescricao] = useState('');
 
   const carregar = () => api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
@@ -33,10 +35,14 @@ export function XimbocaEventos() {
   const criar = async (e: React.FormEvent) => {
     e.preventDefault();
     await api.post('/api/ximboca/eventos', {
-      nome, data, valor_por_pessoa: parseFloat(valorPessoa) || 0, descricao,
+      nome, data,
+      valor_por_pessoa: parseFloat(valorPessoa) || 0,
+      valor_cerveja: valorCerveja ? parseFloat(valorCerveja) : null,
+      valor_refri: valorRefri ? parseFloat(valorRefri) : null,
+      descricao,
     });
     setModalAberto(false);
-    setNome(''); setData(''); setValorPessoa(''); setDescricao('');
+    setNome(''); setData(''); setValorPessoa(''); setValorCerveja(''); setValorRefri(''); setDescricao('');
     carregar();
   };
 
@@ -122,10 +128,23 @@ export function XimbocaEventos() {
               <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="0.00" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">🍺 Cerveja (opcional)</label>
+              <input type="number" step="0.01" value={valorCerveja} onChange={e => setValorCerveja(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio pra não oferecer" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">🥤 Refri (opcional)</label>
+              <input type="number" step="0.01" value={valorRefri} onChange={e => setValorRefri(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio pra não oferecer" />
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Descricao</label>
             <input value={descricao} onChange={e => setDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Opcional" />
           </div>
+          <p className="text-xs text-texto-fraco">
+            Se preencher Cerveja ou Refri, o participante poderá escolher entre essas opções. Caso contrário, usa o valor padrão.
+          </p>
           <Button type="submit" className="w-full">Criar Evento</Button>
         </form>
       </Modal>

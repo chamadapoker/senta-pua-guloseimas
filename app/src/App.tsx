@@ -34,6 +34,7 @@ import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
+import { XimbocaPublica } from './pages/XimbocaPublica';
 import { useAuth } from './hooks/useAuth';
 import { useUserAuth } from './hooks/useUserAuth';
 import { api } from './services/api';
@@ -92,6 +93,7 @@ export function App() {
         <Route path="/obrigado" element={<Obrigado />} />
         <Route path="/loja" element={<VisitorGuard><LojaPublica /></VisitorGuard>} />
         <Route path="/cafe" element={<CafePublico />} />
+        <Route path="/ximboca" element={<VisitorGuard><XimbocaPublica /></VisitorGuard>} />
         {/* User auth */}
         <Route path="/login" element={<UserLogin />} />
         <Route path="/cadastro" element={<CadastroEscolha />} />

@@ -1,10 +1,106 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { userAuthMiddleware } from '../middleware/userAuth';
+import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
 import type { AppType } from '../index';
 
 const ximboca = new Hono<AppType>();
 
-// All routes are admin-only
+// ============ ROTAS PUBLICAS (usuario logado) ============
+
+// Lista eventos abertos para participar (com valores por categoria)
+ximboca.get('/publico/eventos', userAuthMiddleware, visitorActiveCheck, async (c) => {
+  const trigrama = c.get('userTrigrama');
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT e.*,
+      (SELECT COUNT(*) FROM ximboca_participantes p WHERE p.evento_id = e.id) as total_participantes,
+      (SELECT id FROM ximboca_participantes p WHERE p.evento_id = e.id AND p.nome = ? COLLATE NOCASE LIMIT 1) as meu_participante_id,
+      (SELECT categoria_consumo FROM ximboca_participantes p WHERE p.evento_id = e.id AND p.nome = ? COLLATE NOCASE LIMIT 1) as minha_categoria,
+      (SELECT status FROM ximboca_participantes p WHERE p.evento_id = e.id AND p.nome = ? COLLATE NOCASE LIMIT 1) as meu_status
+    FROM ximboca_eventos e
+    WHERE e.status = 'aberto'
+    ORDER BY e.data ASC
+  `).bind(trigrama, trigrama, trigrama).all();
+
+  return c.json(results);
+});
+
+// Lista eventos que o usuario participa (qualquer status)
+ximboca.get('/publico/meus-eventos', userAuthMiddleware, async (c) => {
+  const trigrama = c.get('userTrigrama');
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT e.*, p.id as participante_id, p.categoria_consumo, p.valor_individual, p.status as meu_status, p.paid_at
+    FROM ximboca_participantes p
+    JOIN ximboca_eventos e ON e.id = p.evento_id
+    WHERE p.nome = ? COLLATE NOCASE
+    ORDER BY e.data DESC
+  `).bind(trigrama).all();
+
+  return c.json(results);
+});
+
+// Participar de um evento (auto-cria participante com dados do usuario)
+ximboca.post('/publico/eventos/:id/participar', userAuthMiddleware, visitorActiveCheck, async (c) => {
+  const eventoId = c.req.param('id');
+  const trigrama = c.get('userTrigrama');
+  const { categoria_consumo } = await c.req.json<{ categoria_consumo?: string }>();
+
+  // Busca whatsapp do usuario
+  const userId = c.get('userId');
+  const user = await c.env.DB.prepare('SELECT whatsapp FROM usuarios WHERE id = ?').bind(userId).first<{ whatsapp: string }>();
+  const whatsapp = user?.whatsapp || null;
+
+  // Verifica evento
+  const evento = await c.env.DB.prepare(
+    'SELECT id, status, valor_por_pessoa, valor_cerveja, valor_refri FROM ximboca_eventos WHERE id = ?'
+  ).bind(eventoId).first<{ id: string; status: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null }>();
+
+  if (!evento) return c.json({ error: 'Evento não encontrado' }, 404);
+  if (evento.status !== 'aberto') return c.json({ error: 'Evento está fechado' }, 400);
+
+  // Verifica se ja participa
+  const exist = await c.env.DB.prepare(
+    'SELECT id FROM ximboca_participantes WHERE evento_id = ? AND nome = ? COLLATE NOCASE'
+  ).bind(eventoId, trigrama).first();
+  if (exist) return c.json({ error: 'Você já está inscrito neste evento' }, 409);
+
+  // Determina valor individual baseado na categoria
+  const cat = (categoria_consumo || 'padrao').toLowerCase();
+  let valorIndividual: number | null = null;
+
+  if (cat === 'cerveja' && evento.valor_cerveja !== null) {
+    valorIndividual = evento.valor_cerveja;
+  } else if (cat === 'refri' && evento.valor_refri !== null) {
+    valorIndividual = evento.valor_refri;
+  }
+  // se categoria nao tem valor proprio, usa valor_por_pessoa (valor_individual = null)
+
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO ximboca_participantes (evento_id, nome, whatsapp, valor_individual, categoria_consumo) VALUES (?, ?, ?, ?, ?) RETURNING *'
+  ).bind(eventoId, trigrama, whatsapp, valorIndividual, cat).all();
+
+  return c.json(results[0], 201);
+});
+
+// Cancelar participacao (apenas se nao pago)
+ximboca.delete('/publico/eventos/:id/participar', userAuthMiddleware, async (c) => {
+  const eventoId = c.req.param('id');
+  const trigrama = c.get('userTrigrama');
+
+  const part = await c.env.DB.prepare(
+    'SELECT id, status FROM ximboca_participantes WHERE evento_id = ? AND nome = ? COLLATE NOCASE'
+  ).bind(eventoId, trigrama).first<{ id: string; status: string }>();
+
+  if (!part) return c.json({ error: 'Você não está inscrito' }, 404);
+  if (part.status === 'pago') return c.json({ error: 'Participação já paga não pode ser cancelada pelo app' }, 400);
+
+  await c.env.DB.prepare('DELETE FROM ximboca_participantes WHERE id = ?').bind(part.id).run();
+  return c.json({ ok: true });
+});
+
+// ============ ROTAS ADMIN (daqui em diante) ============
 ximboca.use('*', authMiddleware);
 
 // Dashboard stats (across all events)
@@ -41,12 +137,12 @@ ximboca.get('/eventos', async (c) => {
 
 // Create event
 ximboca.post('/eventos', async (c) => {
-  const { nome, data, valor_por_pessoa, descricao } = await c.req.json();
+  const { nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri } = await c.req.json();
   if (!nome || !data) return c.json({ error: 'Nome e data obrigatórios' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao) VALUES (?, ?, ?, ?) RETURNING *'
-  ).bind(nome, data, valor_por_pessoa ?? 0, descricao || '').all();
+    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, data, valor_por_pessoa ?? 0, descricao || '', valor_cerveja ?? null, valor_refri ?? null).all();
 
   return c.json(results[0], 201);
 });
@@ -80,6 +176,8 @@ ximboca.put('/eventos/:id', async (c) => {
   if ('valor_por_pessoa' in body) { fields.push('valor_por_pessoa = ?'); values.push(body.valor_por_pessoa); }
   if ('descricao' in body) { fields.push('descricao = ?'); values.push(body.descricao); }
   if ('status' in body) { fields.push('status = ?'); values.push(body.status); }
+  if ('valor_cerveja' in body) { fields.push('valor_cerveja = ?'); values.push(body.valor_cerveja ?? null); }
+  if ('valor_refri' in body) { fields.push('valor_refri = ?'); values.push(body.valor_refri ?? null); }
 
   if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
   values.push(id);
