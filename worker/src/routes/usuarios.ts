@@ -428,6 +428,45 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   });
 });
 
+// Usuario logado: meu extrato completo (self-service)
+usuarios.get('/me/extrato', userAuthMiddleware, async (c) => {
+  const trigrama = c.get('userTrigrama');
+  const cliente = await c.env.DB.prepare(
+    'SELECT * FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(trigrama).first<{ id: string }>();
+
+  const [gs, lj, cf, xb] = await Promise.all([
+    cliente ? c.env.DB.prepare(`
+      SELECT p.*, GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
+      FROM pedidos p LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
+      WHERE p.cliente_id = ? GROUP BY p.id ORDER BY p.created_at DESC
+    `).bind(cliente.id).all() : Promise.resolve({ results: [] as unknown[] }),
+    cliente ? c.env.DB.prepare(`
+      SELECT p.*, GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
+      FROM loja_pedidos p LEFT JOIN loja_itens_pedido ip ON ip.pedido_id = p.id
+      WHERE p.cliente_id = ? GROUP BY p.id ORDER BY p.created_at DESC
+    `).bind(cliente.id).all() : Promise.resolve({ results: [] as unknown[] }),
+    cliente ? c.env.DB.prepare(`
+      SELECT cp.*, ca.tipo as cafe_tipo, ca.plano as cafe_plano
+      FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+      WHERE ca.cliente_id = ? ORDER BY cp.referencia DESC
+    `).bind(cliente.id).all() : Promise.resolve({ results: [] as unknown[] }),
+    c.env.DB.prepare(`
+      SELECT xp.*, xe.nome as evento_nome, xe.data as evento_data, xe.valor_por_pessoa
+      FROM ximboca_participantes xp JOIN ximboca_eventos xe ON xe.id = xp.evento_id
+      WHERE xp.nome = ? COLLATE NOCASE ORDER BY xe.data DESC
+    `).bind(trigrama).all(),
+  ]);
+
+  return c.json({
+    cliente: cliente || { nome_guerra: trigrama },
+    guloseimas: gs.results,
+    loja: lj.results,
+    cafe: cf.results,
+    ximboca: xb.results,
+  });
+});
+
 // Usuario logado: status do cafe pessoal
 usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');

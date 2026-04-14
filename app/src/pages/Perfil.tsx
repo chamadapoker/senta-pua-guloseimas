@@ -5,6 +5,8 @@ import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { MeuCafe } from '../components/perfil/MeuCafe';
+import { api } from '../services/api';
+import { gerarExtratoUnificadoPDF } from '../services/pdf';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -163,8 +165,34 @@ export function Perfil() {
         </div>
 
         <button
+          onClick={async () => {
+            try {
+              type ExtData = { cliente: { nome_guerra: string }; guloseimas: { total: number; status: string; itens_resumo: string | null; created_at: string }[]; loja: { total: number; status: string; itens_resumo: string | null; created_at: string; parcelas: number }[]; cafe: { valor: number; status: string; referencia: string; cafe_tipo: string; cafe_plano: string }[]; ximboca: { status: string; evento_nome: string; evento_data: string; valor_por_pessoa: number; valor_individual: number | null }[] };
+              const d = await api.get<ExtData>('/api/usuarios/me/extrato');
+              const fmt = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
+              const total = d.guloseimas.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0)
+                + d.loja.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0)
+                + d.cafe.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0)
+                + d.ximboca.filter(p => p.status !== 'pago').reduce((s, p) => s + (p.valor_individual ?? p.valor_por_pessoa), 0);
+              const cafeGraduado = d.cafe.some(p => p.cafe_tipo === 'graduado');
+              await gerarExtratoUnificadoPDF(d.cliente.nome_guerra, {
+                guloseimas: d.guloseimas.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at) })),
+                loja: d.loja.filter(p => p.status !== 'pago').map(p => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at), parcelas: p.parcelas })),
+                cafe: d.cafe.filter(p => p.status === 'pendente').map(p => ({ referencia: p.referencia, valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
+                ximboca: d.ximboca.filter(p => p.status !== 'pago').map(p => ({ evento: p.evento_nome, data: fmt(p.evento_data + 'T12:00:00'), valor: p.valor_individual ?? p.valor_por_pessoa })),
+              }, total, cafeGraduado);
+            } catch (e) {
+              alert('Erro ao gerar extrato: ' + (e instanceof Error ? e.message : 'desconhecido'));
+            }
+          }}
+          className="w-full mt-4 bg-white border border-borda rounded-xl py-3 text-sm font-medium text-azul hover:bg-azul/5"
+        >
+          📄 Baixar meu extrato (PDF)
+        </button>
+
+        <button
           onClick={() => { logout(); navigate('/'); }}
-          className="w-full mt-4 text-center text-vermelho text-sm font-medium py-3 hover:underline"
+          className="w-full mt-2 text-center text-vermelho text-sm font-medium py-3 hover:underline"
         >
           Sair da conta
         </button>

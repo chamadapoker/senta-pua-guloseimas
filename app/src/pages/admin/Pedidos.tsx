@@ -86,6 +86,7 @@ export function Pedidos() {
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider hidden sm:table-cell">Itens</th>
                 <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Total</th>
+                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider hidden md:table-cell">Método</th>
                 <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
                 <th className="px-3 py-3"></th>
               </tr>
@@ -111,6 +112,15 @@ export function Pedidos() {
                     {p.itens_resumo}
                   </td>
                   <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
+                  <td className="px-3 py-3 text-center hidden md:table-cell">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      p.metodo_pagamento === 'pix' ? 'bg-blue-50 text-azul' :
+                      p.metodo_pagamento === 'dinheiro' ? 'bg-green-50 text-verde-escuro' :
+                      'bg-amber-50 text-amber-700'
+                    }`}>
+                      {p.metodo_pagamento === 'pix' ? '💠 PIX' : p.metodo_pagamento === 'dinheiro' ? '💵 CASH' : '📝 FIADO'}
+                    </span>
+                  </td>
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
                   <td className="px-3 py-3 flex items-center gap-2">
                     {p.status !== 'pago' && (

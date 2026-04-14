@@ -11,6 +11,7 @@ import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
+interface EstoqueItem { id: string; nome: string; quantidade: number; unidade: string; }
 interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; }
 
 export function XimbocaEvento() {
@@ -42,6 +43,12 @@ export function XimbocaEvento() {
   // QR code
   const [modalQR, setModalQR] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+
+  // Consumir estoque
+  const [modalEstoque, setModalEstoque] = useState(false);
+  const [estoqueLista, setEstoqueLista] = useState<EstoqueItem[]>([]);
+  const [estoqueId, setEstoqueId] = useState('');
+  const [estoqueQtd, setEstoqueQtd] = useState('');
 
   // Add expense
   const [modalDesp, setModalDesp] = useState(false);
@@ -91,6 +98,26 @@ export function XimbocaEvento() {
     await api.post(`/api/ximboca/eventos/${id}/despesas`, { descricao: despDescricao, valor: parseFloat(despValor), categoria: despCategoria, quantidade: parseFloat(despQtd) || null, unidade: despUnidade || null });
     setModalDesp(false); setDespDescricao(''); setDespValor(''); setDespCategoria('geral'); setDespQtd(''); setDespUnidade('');
     carregar();
+  };
+
+  const abrirEstoque = () => {
+    api.get<EstoqueItem[]>('/api/ximboca/estoque').then(setEstoqueLista);
+    setEstoqueId(''); setEstoqueQtd('');
+    setModalEstoque(true);
+  };
+
+  const consumirEstoque = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post(`/api/ximboca/eventos/${id}/consumir-estoque`, {
+        estoque_id: estoqueId,
+        quantidade: parseFloat(estoqueQtd),
+      });
+      setModalEstoque(false);
+      carregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao consumir estoque');
+    }
   };
 
   const removerDespesa = async (did: string) => {
@@ -222,9 +249,12 @@ export function XimbocaEvento() {
 
       {/* Expenses */}
       <div className="bg-white rounded-xl border border-borda shadow-sm">
-        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl">
+        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl flex-wrap gap-2">
           <h2 className="text-sm font-medium text-white uppercase tracking-wider">Despesas</h2>
-          <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={abrirEstoque}>📦 Do Estoque</Button>
+            <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
+          </div>
         </div>
         <div className="divide-y divide-borda/50 list-zebra">
           {despesas.map(d => (
@@ -272,6 +302,33 @@ export function XimbocaEvento() {
             </div>
           </div>
           <Button type="submit" className="w-full">Adicionar</Button>
+        </form>
+      </Modal>
+
+      {/* Consumir estoque modal */}
+      <Modal open={modalEstoque} onClose={() => setModalEstoque(false)} title="Consumir do Estoque">
+        <form onSubmit={consumirEstoque} className="space-y-4">
+          <p className="text-xs text-texto-fraco">Debita a quantidade do estoque central da Ximboca e registra como despesa neste evento (R$ 0 — custo já foi pago ao adquirir).</p>
+          {estoqueLista.length === 0 ? (
+            <p className="text-sm text-texto-fraco text-center py-4">Nenhum item no estoque. Cadastre em Ximboca → Estoque.</p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Item</label>
+                <select value={estoqueId} onChange={e => setEstoqueId(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required>
+                  <option value="">Selecione...</option>
+                  {estoqueLista.map(it => (
+                    <option key={it.id} value={it.id}>{it.nome} — {it.quantidade} {it.unidade} disponível</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Quantidade a consumir</label>
+                <input type="number" step="0.01" min="0.01" value={estoqueQtd} onChange={e => setEstoqueQtd(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              </div>
+              <Button type="submit" className="w-full" disabled={!estoqueId || !estoqueQtd}>Confirmar Consumo</Button>
+            </>
+          )}
         </form>
       </Modal>
 

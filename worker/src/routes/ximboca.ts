@@ -208,6 +208,28 @@ ximboca.delete('/eventos/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// Consumir item do estoque em um evento (debita estoque + lanca despesa zerada como consumo)
+ximboca.post('/eventos/:id/consumir-estoque', async (c) => {
+  const evento_id = c.req.param('id');
+  const { estoque_id, quantidade } = await c.req.json<{ estoque_id: string; quantidade: number }>();
+  if (!estoque_id || !quantidade || quantidade <= 0) return c.json({ error: 'estoque_id e quantidade > 0 obrigatorios' }, 400);
+
+  const item = await c.env.DB.prepare('SELECT * FROM ximboca_estoque WHERE id = ?').bind(estoque_id).first<{ id: string; nome: string; quantidade: number; unidade: string }>();
+  if (!item) return c.json({ error: 'Item de estoque nao encontrado' }, 404);
+  if (item.quantidade < quantidade) return c.json({ error: `Estoque insuficiente. Disponivel: ${item.quantidade} ${item.unidade}` }, 400);
+
+  // Debita estoque
+  await c.env.DB.prepare('UPDATE ximboca_estoque SET quantidade = quantidade - ? WHERE id = ?').bind(quantidade, estoque_id).run();
+
+  // Lanca despesa com valor 0 (custo ja foi pago ao adquirir o estoque)
+  const { results } = await c.env.DB.prepare(
+    `INSERT INTO ximboca_despesas (evento_id, descricao, valor, categoria, quantidade, unidade)
+     VALUES (?, ?, 0, 'estoque', ?, ?) RETURNING *`
+  ).bind(evento_id, `[Estoque] ${item.nome}`, quantidade, item.unidade).all();
+
+  return c.json(results[0], 201);
+});
+
 // Add participant
 ximboca.post('/eventos/:id/participantes', async (c) => {
   const evento_id = c.req.param('id');
