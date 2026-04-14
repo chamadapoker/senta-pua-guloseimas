@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
+import { EnviarComprovante } from '../components/ui/EnviarComprovante';
 import { api } from '../services/api';
 import { useUserAuth } from '../hooks/useUserAuth';
 import type { Usuario } from '../types';
@@ -240,6 +241,11 @@ export function Dashboard() {
                         R$ {p.total.toFixed(2)}
                       </span>
                     </div>
+                    {p.status !== 'pago' && (
+                      <div className="mt-2">
+                        <EnviarComprovante origem="cantina" referenciaId={p.id} onEnviado={() => window.location.reload()} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

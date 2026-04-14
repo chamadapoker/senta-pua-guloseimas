@@ -14,6 +14,7 @@ import ximboca from './routes/ximboca';
 import usuarios from './routes/usuarios';
 import admins from './routes/admins';
 import comprovantes from './routes/comprovantes';
+import auditoria from './routes/auditoria';
 
 export type Env = {
   DB: D1Database;
@@ -52,7 +53,59 @@ app.route('/api/ximboca', ximboca);
 app.route('/api/usuarios', usuarios);
 app.route('/api/admins', admins);
 app.route('/api/comprovantes', comprovantes);
+app.route('/api/auditoria', auditoria);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
-export default app;
+// Cron handler: gera mensalidades e anuais automaticamente
+async function gerarCobrancasAutomaticas(env: Env) {
+  const now = new Date();
+  const ano = String(now.getUTCFullYear());
+  const mes = `${ano}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+  const { results: mensais } = await env.DB.prepare(
+    "SELECT id, valor FROM cafe_assinantes WHERE ativo = 1 AND plano = 'mensal'"
+  ).all<{ id: string; valor: number }>();
+  const { results: anuais } = await env.DB.prepare(
+    "SELECT id, valor FROM cafe_assinantes WHERE ativo = 1 AND plano = 'anual'"
+  ).all<{ id: string; valor: number }>();
+
+  const { results: existMes } = await env.DB.prepare(
+    'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
+  ).bind(mes).all<{ assinante_id: string }>();
+  const { results: existAno } = await env.DB.prepare(
+    'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
+  ).bind(ano).all<{ assinante_id: string }>();
+
+  const jaMes = new Set(existMes.map(e => e.assinante_id));
+  const jaAno = new Set(existAno.map(e => e.assinante_id));
+
+  const batch: D1PreparedStatement[] = [];
+  for (const a of mensais) {
+    if (!jaMes.has(a.id)) {
+      batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
+    }
+  }
+  // Só gera anual em janeiro (mes 01)
+  if (now.getUTCMonth() === 0) {
+    for (const a of anuais) {
+      if (!jaAno.has(a.id)) {
+        batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
+      }
+    }
+  }
+  if (batch.length) await env.DB.batch(batch);
+
+  await env.DB.prepare(
+    `INSERT INTO audit_log (admin_email, acao, entidade, entidade_id, dados_depois) VALUES ('cron', 'gerar_cobrancas_auto', 'cafe_pagamentos', NULL, ?)`
+  ).bind(JSON.stringify({ mes, ano, mensais_criados: batch.length, data: now.toISOString() })).run();
+
+  return { mes, ano, total_criado: batch.length };
+}
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(gerarCobrancasAutomaticas(env));
+  },
+};

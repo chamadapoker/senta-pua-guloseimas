@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, superAdminMiddleware } from '../middleware/auth';
 import { hashPassword } from '../lib/password';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const admins = new Hono<AppType>();
@@ -32,6 +33,7 @@ admins.post('/', superAdminMiddleware, async (c) => {
     'INSERT INTO admins (email, senha_hash, nome, role, created_by) VALUES (?, ?, ?, ?, ?) RETURNING id, email, nome, role, ativo, created_at'
   ).bind(email.toLowerCase(), hash, nome, finalRole, createdBy || null).all();
 
+  await audit(c, 'criar_admin', 'admins', (results[0] as { id: string }).id, null, { email, nome, role: finalRole });
   return c.json(results[0], 201);
 });
 
@@ -81,8 +83,10 @@ admins.delete('/:id', superAdminMiddleware, async (c) => {
   const selfId = c.get('adminId');
   if (id === selfId) return c.json({ error: 'Não é possível remover a si mesmo' }, 400);
 
+  const antes = await c.env.DB.prepare('SELECT email, nome, role FROM admins WHERE id = ?').bind(id).first();
   const result = await c.env.DB.prepare('DELETE FROM admins WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Admin não encontrado' }, 404);
+  await audit(c, 'excluir_admin', 'admins', id, antes, null);
   return c.json({ ok: true });
 });
 

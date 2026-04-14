@@ -327,4 +327,77 @@ cafe.get('/admin/stats', authMiddleware, async (c) => {
   });
 });
 
+// ============ DESPESAS DA CAIXINHA (saida de caixa) ============
+
+// GET lista despesas com filtros opcionais
+cafe.get('/admin/despesas', authMiddleware, async (c) => {
+  const tipo = c.req.query('tipo');
+  const de = c.req.query('de');
+  const ate = c.req.query('ate');
+
+  let sql = 'SELECT * FROM cafe_despesas WHERE 1=1';
+  const params: unknown[] = [];
+  if (tipo) { sql += ' AND tipo = ?'; params.push(tipo); }
+  if (de)   { sql += ' AND data >= ?'; params.push(de); }
+  if (ate)  { sql += ' AND data <= ?'; params.push(ate); }
+  sql += ' ORDER BY data DESC, created_at DESC LIMIT 500';
+
+  const stmt = params.length ? c.env.DB.prepare(sql).bind(...params) : c.env.DB.prepare(sql);
+  const { results } = await stmt.all();
+  return c.json(results);
+});
+
+// POST criar despesa
+cafe.post('/admin/despesas', authMiddleware, async (c) => {
+  const { tipo, descricao, categoria, valor, data, nota_fiscal, observacao } = await c.req.json();
+  if (!tipo || !descricao || !valor) return c.json({ error: 'tipo, descricao e valor obrigatorios' }, 400);
+  if (!['oficial', 'graduado'].includes(tipo)) return c.json({ error: 'tipo inválido' }, 400);
+
+  const createdBy = c.get('adminEmail');
+  const { results } = await c.env.DB.prepare(
+    `INSERT INTO cafe_despesas (tipo, descricao, categoria, valor, data, nota_fiscal, observacao, created_by)
+     VALUES (?, ?, ?, ?, COALESCE(?, date('now')), ?, ?, ?) RETURNING *`
+  ).bind(tipo, descricao, categoria || 'geral', valor, data || null, nota_fiscal || null, observacao || '', createdBy).all();
+  return c.json(results[0], 201);
+});
+
+// DELETE remover despesa
+cafe.delete('/admin/despesas/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const result = await c.env.DB.prepare('DELETE FROM cafe_despesas WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return c.json({ error: 'Despesa nao encontrada' }, 404);
+  return c.json({ ok: true });
+});
+
+// GET saldo consolidado (entrou - saiu = saldo) por tipo
+cafe.get('/admin/saldo', authMiddleware, async (c) => {
+  const tipo = c.req.query('tipo');
+
+  const entradaSql = tipo
+    ? "SELECT COALESCE(SUM(cp.valor), 0) as v FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE cp.status = 'pago' AND ca.tipo = ?"
+    : "SELECT COALESCE(SUM(valor), 0) as v FROM cafe_pagamentos WHERE status = 'pago'";
+  const saidaSql = tipo
+    ? 'SELECT COALESCE(SUM(valor), 0) as v FROM cafe_despesas WHERE tipo = ?'
+    : 'SELECT COALESCE(SUM(valor), 0) as v FROM cafe_despesas';
+  const pendenteSql = tipo
+    ? "SELECT COALESCE(SUM(cp.valor), 0) as v FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE cp.status = 'pendente' AND ca.tipo = ?"
+    : "SELECT COALESCE(SUM(valor), 0) as v FROM cafe_pagamentos WHERE status = 'pendente'";
+
+  const [entrada, saida, pendente] = await Promise.all([
+    tipo ? c.env.DB.prepare(entradaSql).bind(tipo).first<{ v: number }>() : c.env.DB.prepare(entradaSql).first<{ v: number }>(),
+    tipo ? c.env.DB.prepare(saidaSql).bind(tipo).first<{ v: number }>() : c.env.DB.prepare(saidaSql).first<{ v: number }>(),
+    tipo ? c.env.DB.prepare(pendenteSql).bind(tipo).first<{ v: number }>() : c.env.DB.prepare(pendenteSql).first<{ v: number }>(),
+  ]);
+
+  const e = entrada?.v ?? 0;
+  const s = saida?.v ?? 0;
+  return c.json({
+    total_entrada: e,
+    total_saida: s,
+    saldo_atual: e - s,
+    total_pendente: pendente?.v ?? 0,
+    saldo_previsto: e + (pendente?.v ?? 0) - s,
+  });
+});
+
 export default cafe;

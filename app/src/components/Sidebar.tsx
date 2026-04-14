@@ -78,6 +78,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: '/admin/cafe', label: 'Café', icon: <IconCoffee />, children: [
     { to: '/admin/cafe', label: 'Dashboard' },
     { to: '/admin/cafe/mensalidades', label: 'Mensalidades' },
+    { to: '/admin/cafe/despesas', label: 'Despesas' },
     { to: '/admin/cafe/insumos', label: 'Insumos' },
     { to: '/admin/cafe/assinantes', label: 'Assinantes' },
   ]},
@@ -94,6 +95,7 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/usuarios?f=expirados', label: 'Expirados' },
   ]},
   { to: '/admin/comprovantes', label: 'Comprovantes', icon: <IconGift /> },
+  { to: '/admin/auditoria', label: 'Auditoria', icon: <IconDashboard /> },
   { to: '/admin/admins', label: 'Administradores', icon: <IconSettings /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];

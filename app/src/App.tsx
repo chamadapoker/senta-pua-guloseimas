@@ -23,6 +23,8 @@ import { Relatorios } from './pages/admin/Relatorios';
 import { Usuarios } from './pages/admin/Usuarios';
 import { Admins } from './pages/admin/Admins';
 import { Comprovantes } from './pages/admin/Comprovantes';
+import { Auditoria } from './pages/admin/Auditoria';
+import { CafeDespesas } from './pages/admin/cafe/CafeDespesas';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
 import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
 import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
@@ -116,6 +118,8 @@ export function App() {
         <Route path="/admin/usuarios" element={<AdminGuard><Usuarios /></AdminGuard>} />
         <Route path="/admin/admins" element={<AdminGuard><Admins /></AdminGuard>} />
         <Route path="/admin/comprovantes" element={<AdminGuard><Comprovantes /></AdminGuard>} />
+        <Route path="/admin/auditoria" element={<AdminGuard><Auditoria /></AdminGuard>} />
+        <Route path="/admin/cafe/despesas" element={<AdminGuard><CafeDespesas /></AdminGuard>} />
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
         <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />
