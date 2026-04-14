@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { api } from '../services/api';
 
 // ---- Icons (Heroicons outline, 24px) ----
 const I = ({ d, children }: { d?: string; children?: ReactNode }) => (
@@ -115,6 +116,15 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
 
   const isAdmin = !!adminToken;
   const isUser = !!user;
+  const [compPendentes, setCompPendentes] = useState(0);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchCount = () => api.get<{ total: number }>('/api/comprovantes/pendentes/count').then(r => setCompPendentes(r.total)).catch(() => {});
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    return () => clearInterval(interval);
+  }, [isAdmin, location.pathname]);
 
   const nav = isAdmin ? ADMIN_NAV : isUser ? USER_NAV : VISITOR_NAV;
 
@@ -215,12 +225,17 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                 <Link
                   to={item.to}
                   title={collapsed ? item.label : undefined}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 relative
                     ${isActive(item.to) ? 'bg-azul text-white' : 'text-texto-fraco hover:bg-fundo hover:text-texto'}
                   `}
                 >
                   {item.icon}
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
+                  {item.to === '/admin/comprovantes' && compPendentes > 0 && (
+                    <span className={`${collapsed ? 'absolute -top-1 -right-1' : ''} text-[10px] font-bold bg-vermelho text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center`}>
+                      {compPendentes}
+                    </span>
+                  )}
                 </Link>
               )}
             </div>

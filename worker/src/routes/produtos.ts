@@ -36,15 +36,15 @@ produtos.get('/todos', authMiddleware, async (c) => {
 
 // Admin: criar produto
 produtos.post('/', authMiddleware, async (c) => {
-  const { nome, emoji, preco, disponivel, ordem, imagem_url, categoria, estoque } = await c.req.json();
+  const { nome, emoji, preco, preco_custo, disponivel, ordem, imagem_url, categoria, estoque } = await c.req.json();
 
   if (!nome || preco == null) {
     return c.json({ error: 'Nome e preço obrigatórios' }, 400);
   }
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO produtos (nome, emoji, preco, disponivel, ordem, imagem_url, categoria, estoque) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
-  ).bind(nome, emoji || '🍬', preco, disponivel ?? 1, ordem ?? 0, imagem_url || null, categoria || 'geral', estoque ?? null).all<Produto>();
+    'INSERT INTO produtos (nome, emoji, preco, preco_custo, disponivel, ordem, imagem_url, categoria, estoque) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, emoji || '🍬', preco, preco_custo ?? null, disponivel ?? 1, ordem ?? 0, imagem_url || null, categoria || 'geral', estoque ?? null).all<Produto>();
 
   return c.json(results[0], 201);
 });
@@ -61,6 +61,7 @@ produtos.put('/:id', authMiddleware, async (c) => {
   if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
   if ('emoji' in body) { fields.push('emoji = ?'); values.push(body.emoji); }
   if ('preco' in body) { fields.push('preco = ?'); values.push(body.preco); }
+  if ('preco_custo' in body) { fields.push('preco_custo = ?'); values.push(body.preco_custo); }
   if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
   if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
   if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }

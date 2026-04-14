@@ -215,12 +215,12 @@ loja.get('/admin/produtos', authMiddleware, async (c) => {
 loja.post('/admin/produtos', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { nome, descricao, preco, imagem_url, ordem, variacoes, imagens } = body;
+    const { nome, descricao, preco, preco_custo, imagem_url, ordem, variacoes, imagens } = body;
     if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
 
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO loja_produtos (nome, descricao, preco, imagem_url, ordem, disponivel) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-    ).bind(nome, descricao || '', preco, imagem_url || null, ordem ?? 0, body.disponivel ?? 1).all();
+      'INSERT INTO loja_produtos (nome, descricao, preco, preco_custo, imagem_url, ordem, disponivel) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    ).bind(nome, descricao || '', preco, preco_custo ?? null, imagem_url || null, ordem ?? 0, body.disponivel ?? 1).all();
 
     const produto = results[0] as any;
 
@@ -265,6 +265,7 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
     if ('descricao' in body) { fields.push('descricao = ?'); values.push(body.descricao); }
     if ('preco' in body) { fields.push('preco = ?'); values.push(body.preco); }
+    if ('preco_custo' in body) { fields.push('preco_custo = ?'); values.push(body.preco_custo); }
     if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
     if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
     if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }

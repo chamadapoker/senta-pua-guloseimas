@@ -34,6 +34,7 @@ export function Produtos() {
   const [nome, setNome] = useState('');
   const [emoji, setEmoji] = useState('🍬');
   const [preco, setPreco] = useState('');
+  const [precoCusto, setPrecoCusto] = useState('');
   const [ordem, setOrdem] = useState('0');
   const [categoria, setCategoria] = useState<'oficiais' | 'graduados' | 'geral'>('geral');
   const [disponivel, setDisponivel] = useState(true);
@@ -48,7 +49,7 @@ export function Produtos() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setNome(''); setEmoji('🍬'); setPreco(''); setOrdem('0'); setCategoria('geral'); setDisponivel(true);
+    setNome(''); setEmoji('🍬'); setPreco(''); setPrecoCusto(''); setOrdem('0'); setCategoria('geral'); setDisponivel(true);
     setEstoque('');
     setImagemUrl(''); setPreviewImg('');
     setModalAberto(true);
@@ -56,7 +57,7 @@ export function Produtos() {
 
   const abrirEditar = (p: Produto) => {
     setEditando(p);
-    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral'); setDisponivel(!!p.disponivel);
+    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setPrecoCusto(p.preco_custo != null ? String(p.preco_custo) : ''); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral'); setDisponivel(!!p.disponivel);
     setEstoque(p.estoque != null ? String(p.estoque) : '');
     setImagemUrl(p.imagem_url || '');
     setPreviewImg(resolveImg(p.imagem_url) || '');
@@ -86,6 +87,7 @@ export function Produtos() {
       nome,
       emoji,
       preco: parseFloat(preco),
+      preco_custo: precoCusto !== '' ? parseFloat(precoCusto) : null,
       ordem: parseInt(ordem),
       imagem_url: imagemUrl || null,
       categoria,
@@ -209,8 +211,16 @@ export function Produtos() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Preço (R$)</label>
+            <label className="block text-sm font-medium mb-1">Preço venda (R$)</label>
             <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <label className="block text-sm font-medium mb-1 mt-3">Preço custo (R$) <span className="text-texto-fraco font-normal">— opcional, para calcular margem</span></label>
+            <input type="number" step="0.01" value={precoCusto} onChange={(e) => setPrecoCusto(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio se não souber" />
+            {preco && precoCusto && parseFloat(preco) > 0 && parseFloat(precoCusto) > 0 && (
+              <div className="text-xs text-texto-fraco mt-1">
+                Margem: <span className="font-medium text-verde-escuro">R$ {(parseFloat(preco) - parseFloat(precoCusto)).toFixed(2)}</span>
+                {' '}({(((parseFloat(preco) - parseFloat(precoCusto)) / parseFloat(preco)) * 100).toFixed(1)}%)
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

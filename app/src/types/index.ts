@@ -3,6 +3,7 @@ export interface Produto {
   nome: string;
   emoji: string;
   preco: number;
+  preco_custo?: number | null;
   disponivel: number;
   ordem: number;
   imagem_url: string | null;
