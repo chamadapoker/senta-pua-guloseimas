@@ -24,9 +24,13 @@ clientes.get('/', authMiddleware, async (c) => {
       COALESCE(SUM(p.total), 0) as total_comprado,
       COALESCE(SUM(CASE WHEN p.status = 'pago' THEN p.total ELSE 0 END), 0) as total_pago,
       COALESCE(SUM(CASE WHEN p.status IN ('pendente', 'fiado') THEN p.total ELSE 0 END), 0) as saldo_devedor,
-      MAX(p.created_at) as ultima_compra
+      MAX(p.created_at) as ultima_compra,
+      u.id as usuario_id,
+      u.categoria as usuario_categoria,
+      u.ativo as usuario_ativo
     FROM clientes cl
     LEFT JOIN pedidos p ON p.cliente_id = cl.id
+    LEFT JOIN usuarios u ON u.trigrama = cl.nome_guerra COLLATE NOCASE
     GROUP BY cl.id
     ORDER BY cl.nome_guerra ASC
   `).all();

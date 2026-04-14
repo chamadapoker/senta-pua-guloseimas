@@ -8,6 +8,7 @@ interface CadastroData {
   trigrama: string;
   saram: string;
   whatsapp: string;
+  categoria: 'oficial' | 'graduado' | 'praca';
 }
 
 interface UserAuthState {

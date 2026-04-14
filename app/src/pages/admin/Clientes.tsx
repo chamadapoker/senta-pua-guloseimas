@@ -76,6 +76,12 @@ export function Clientes() {
               >
                 <td className="px-4 py-3 font-medium text-texto">
                   {c.nome_guerra}
+                  {c.usuario_id && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-verde-escuro font-medium bg-green-100 px-1.5 py-0.5 rounded-full">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      CONTA
+                    </span>
+                  )}
                   {!c.ativo && <span className="ml-2 text-[10px] text-vermelho font-medium">BLOQUEADO</span>}
                   {c.visitante ? (
                     <span className="ml-2 text-[10px] text-azul font-medium bg-azul/10 px-1.5 py-0.5 rounded">VISITANTE{c.esquadrao_origem ? ` - ${c.esquadrao_origem}` : ''}</span>

@@ -3,18 +3,23 @@ import { sign } from '../lib/jwt';
 import { hashPassword, verifyPassword } from '../lib/password';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { authMiddleware } from '../middleware/auth';
+import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categoria';
 import type { AppType } from '../index';
 
 const usuarios = new Hono<AppType>();
 
 // Publico: cadastro
 usuarios.post('/cadastro', async (c) => {
-  const { email, senha, trigrama, saram, whatsapp } = await c.req.json<{
-    email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
+  const { email, senha, trigrama, saram, whatsapp, categoria } = await c.req.json<{
+    email: string; senha: string; trigrama: string; saram: string; whatsapp: string; categoria: string;
   }>();
 
-  if (!email || !senha || !trigrama || !saram || !whatsapp) {
+  if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
     return c.json({ error: 'Todos os campos são obrigatórios' }, 400);
+  }
+
+  if (!isCategoriaValida(categoria)) {
+    return c.json({ error: 'Categoria militar inválida' }, 400);
   }
 
   if (senha.length < 6) {
@@ -44,14 +49,14 @@ usuarios.post('/cadastro', async (c) => {
 
   const senhaHash = await hashPassword(senha);
   const whatsappClean = whatsapp.trim();
+  const salaCafe = derivarSalaCafe(categoria as Categoria);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp) VALUES (?, ?, ?, ?, ?) RETURNING id'
-  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean).all<{ id: number }>();
+    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe).all<{ id: number }>();
 
   const userId = results[0].id;
 
-  // Create or link cliente
   const existCliente = await c.env.DB.prepare(
     'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
   ).bind(trigramaClean).first();
@@ -68,12 +73,15 @@ usuarios.post('/cadastro', async (c) => {
   const token = await sign(
     { tipo: 'usuario', id: userId, email: emailClean, trigrama: trigramaClean },
     c.env.JWT_SECRET,
-    720 // 30 dias
+    720
   );
 
   return c.json({
     token,
-    user: { id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean, whatsapp: whatsappClean, foto_url: null }
+    user: {
+      id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean,
+      whatsapp: whatsappClean, foto_url: null, categoria, sala_cafe: salaCafe
+    }
   }, 201);
 });
 
@@ -86,9 +94,9 @@ usuarios.post('/login', async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo FROM usuarios WHERE email = ?'
+    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe FROM usuarios WHERE email = ?'
   ).bind(email.trim().toLowerCase()).first<{
-    id: number; email: string; senha_hash: string; trigrama: string; saram: string; whatsapp: string; foto_url: string | null; ativo: number;
+    id: number; email: string; senha_hash: string; trigrama: string; saram: string; whatsapp: string; foto_url: string | null; ativo: number; categoria: string; sala_cafe: string | null;
   }>();
 
   if (!user) return c.json({ error: 'Email ou senha incorretos' }, 401);
@@ -105,7 +113,10 @@ usuarios.post('/login', async (c) => {
 
   return c.json({
     token,
-    user: { id: user.id, email: user.email, trigrama: user.trigrama, saram: user.saram, whatsapp: user.whatsapp, foto_url: user.foto_url }
+    user: {
+      id: user.id, email: user.email, trigrama: user.trigrama, saram: user.saram,
+      whatsapp: user.whatsapp, foto_url: user.foto_url, categoria: user.categoria, sala_cafe: user.sala_cafe
+    }
   });
 });
 
@@ -113,7 +124,7 @@ usuarios.post('/login', async (c) => {
 usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
@@ -147,7 +158,6 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   params.push(userId);
   await c.env.DB.prepare(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
-  // Also update whatsapp in clientes
   if (whatsapp) {
     const trigrama = c.get('userTrigrama');
     await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE nome_guerra = ? COLLATE NOCASE')
@@ -155,9 +165,79 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first();
   return c.json(user);
+});
+
+// Usuario logado: dashboard
+usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
+  const userId = c.get('userId');
+  const trigrama = c.get('userTrigrama');
+
+  const user = await c.env.DB.prepare(
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, created_at FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ sala_cafe: string | null }>();
+  if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  const cliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(trigrama).first<{ id: string }>();
+
+  let debitoTotal = 0;
+  let ultimosPedidos: unknown[] = [];
+
+  if (cliente) {
+    const debitoRow = await c.env.DB.prepare(
+      "SELECT COALESCE(SUM(total), 0) as total FROM pedidos WHERE cliente_id = ? AND status IN ('fiado', 'pendente')"
+    ).bind(cliente.id).first<{ total: number }>();
+    debitoTotal = debitoRow?.total || 0;
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT p.id, p.total, p.status, p.metodo_pagamento, p.created_at, p.paid_at,
+        GROUP_CONCAT(ip.nome_produto || ' x' || ip.quantidade, ', ') as itens_resumo
+      FROM pedidos p
+      LEFT JOIN itens_pedido ip ON ip.pedido_id = p.id
+      WHERE p.cliente_id = ?
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+      LIMIT 5
+    `).bind(cliente.id).all();
+    ultimosPedidos = results;
+  }
+
+  let cafeStatus: { mes_atual: string; pago: boolean; valor: number | null; tem_assinatura: boolean } | null = null;
+
+  if (user.sala_cafe && cliente) {
+    const now = new Date();
+    const mesAtual = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const assinante = await c.env.DB.prepare(
+      "SELECT id, valor FROM cafe_assinantes WHERE cliente_id = ? AND tipo = ? AND ativo = 1"
+    ).bind(cliente.id, user.sala_cafe === 'oficiais' ? 'oficial' : 'graduado').first<{ id: string; valor: number }>();
+
+    if (!assinante) {
+      cafeStatus = { mes_atual: mesAtual, pago: false, valor: null, tem_assinatura: false };
+    } else {
+      const pag = await c.env.DB.prepare(
+        "SELECT status, valor FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
+      ).bind(assinante.id, mesAtual).first<{ status: string; valor: number }>();
+
+      cafeStatus = {
+        mes_atual: mesAtual,
+        pago: pag?.status === 'pago',
+        valor: pag?.valor ?? assinante.valor,
+        tem_assinatura: true,
+      };
+    }
+  }
+
+  return c.json({
+    user,
+    debito_total: debitoTotal,
+    ultimos_pedidos: ultimosPedidos,
+    cafe_status: cafeStatus,
+  });
 });
 
 // Usuario logado: upload foto
@@ -174,7 +254,6 @@ usuarios.post('/me/foto', userAuthMiddleware, async (c) => {
     return c.json({ error: 'Formato não suportado. Use: jpg, png, webp' }, 400);
   }
 
-  // Delete old photo
   const current = await c.env.DB.prepare('SELECT foto_url FROM usuarios WHERE id = ?').bind(userId)
     .first<{ foto_url: string | null }>();
   if (current?.foto_url) {
@@ -209,7 +288,7 @@ usuarios.delete('/me/foto', userAuthMiddleware, async (c) => {
 // Admin: listar usuarios
 usuarios.get('/admin/lista', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, ativo, created_at FROM usuarios ORDER BY trigrama'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, created_at FROM usuarios ORDER BY trigrama'
   ).all();
   return c.json(results);
 });
@@ -229,6 +308,36 @@ usuarios.put('/admin/:id/senha', authMiddleware, async (c) => {
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
   return c.json({ ok: true });
+});
+
+// Admin: atualizar categoria (recalcula sala_cafe)
+usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { categoria } = await c.req.json<{ categoria: string }>();
+
+  if (!isCategoriaValida(categoria)) {
+    return c.json({ error: 'Categoria inválida' }, 400);
+  }
+
+  const salaCafe = derivarSalaCafe(categoria as Categoria);
+
+  const result = await c.env.DB.prepare(
+    'UPDATE usuarios SET categoria = ?, sala_cafe = ? WHERE id = ?'
+  ).bind(categoria, salaCafe, id).run();
+
+  if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  return c.json({ ok: true, categoria, sala_cafe: salaCafe });
+});
+
+// Admin: buscar usuario pelo trigrama
+usuarios.get('/admin/por-trigrama/:trigrama', authMiddleware, async (c) => {
+  const trigrama = (c.req.param('trigrama') || '').toUpperCase();
+  const user = await c.env.DB.prepare(
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, ativo, created_at FROM usuarios WHERE trigrama = ? COLLATE NOCASE'
+  ).bind(trigrama).first();
+
+  if (!user) return c.json(null);
+  return c.json(user);
 });
 
 // Admin: desativar usuario

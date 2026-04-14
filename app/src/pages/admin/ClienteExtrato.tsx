@@ -7,6 +7,7 @@ import { api } from '../../services/api';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoUnificadoPDF } from '../../services/pdf';
 import type { Cliente, Pedido } from '../../types';
+import { ContaMilitar } from '../../components/admin/ContaMilitar';
 
 interface CafePagamento { id: string; referencia: string; valor: number; status: string; cafe_tipo: string; cafe_plano: string; }
 interface XimbocaPart { id: string; nome: string; status: string; evento_nome: string; evento_data: string; valor_por_pessoa: number; valor_individual: number | null; }
@@ -100,6 +101,12 @@ export function ClienteExtrato() {
             <span className="text-vermelho font-bold font-display tracking-wide">Total pendente: R$ {totalDevido.toFixed(2)}</span>
           )}
         </div>
+      </div>
+
+      {/* Conta de usuario */}
+      <div className="mb-5">
+        <h2 className="text-xs text-texto-fraco uppercase tracking-wider mb-2">Conta de Usuário</h2>
+        <ContaMilitar trigrama={cliente.nome_guerra} />
       </div>
 
       {/* Summary cards */}

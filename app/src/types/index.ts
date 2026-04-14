@@ -21,6 +21,9 @@ export interface Cliente {
   total_pago?: number;
   saldo_devedor?: number;
   ultima_compra?: string;
+  usuario_id?: number | null;
+  usuario_categoria?: string | null;
+  usuario_ativo?: number | null;
 }
 
 export interface Pedido {
@@ -41,6 +44,9 @@ export interface ItemCarrinho {
   quantidade: number;
 }
 
+export type Categoria = 'oficial' | 'graduado' | 'praca';
+export type SalaCafe = 'oficiais' | 'graduados' | null;
+
 export interface Usuario {
   id: number;
   email: string;
@@ -48,6 +54,9 @@ export interface Usuario {
   saram: string;
   whatsapp: string;
   foto_url: string | null;
+  categoria: Categoria;
+  sala_cafe: SalaCafe;
+  ativo?: number;
   created_at?: string;
 }
 

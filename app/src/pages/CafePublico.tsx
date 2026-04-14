@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import { gerarPayloadPix } from '../services/pix';
+import { useUserAuth } from '../hooks/useUserAuth';
 
 interface Devedor {
   id: string;
@@ -21,8 +22,17 @@ type Sala = null | 'oficial' | 'graduado';
 
 export function CafePublico() {
   const [searchParams] = useSearchParams();
+  const { user } = useUserAuth();
+
+  const userSala: Sala = user?.sala_cafe === 'oficiais' ? 'oficial'
+    : user?.sala_cafe === 'graduados' ? 'graduado'
+    : null;
+
   const salaParam = searchParams.get('sala');
-  const [sala, setSala] = useState<Sala>(salaParam === 'oficial' || salaParam === 'graduado' ? salaParam : null);
+  const salaInicial: Sala = userSala
+    || (salaParam === 'oficial' || salaParam === 'graduado' ? salaParam : null);
+
+  const [sala, setSala] = useState<Sala>(salaInicial);
   const [devedores, setDevedores] = useState<Devedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiadoCodigo, setCopiadoCodigo] = useState<string | null>(null);
@@ -90,6 +100,24 @@ export function CafePublico() {
   const emDia = filtrados.filter(d => d.total_devido === 0);
   const devendo = filtrados.filter(d => d.total_devido > 0);
 
+  // Praca logado: nao participa de caixinha
+  if (user && !user.sala_cafe) {
+    return (
+      <AppLayout>
+        <div className="max-w-sm mx-auto py-16 text-center animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-fundo flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-texto-fraco" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 21h9m-9 0a2.25 2.25 0 0 1-2.25-2.25V6.75A.75.75 0 0 1 4.5 6h12a.75.75 0 0 1 .75.75V9M6 21h9a2.25 2.25 0 0 0 2.25-2.25V14.25m0-5.25h1.875A2.625 2.625 0 0 1 22.5 11.625v0A2.625 2.625 0 0 1 19.875 14.25H17.25m0-5.25v5.25M9 3v2m3-2v2m-6 14.25V6.75" />
+            </svg>
+          </div>
+          <h1 className="font-display text-2xl text-azul tracking-wider mb-3">SEM CAIXINHA</h1>
+          <p className="text-texto-fraco text-sm mb-8">Como Praça, você não participa de caixinha do café. Você pode comprar normalmente nas cantinas.</p>
+          <Link to="/" className="inline-block text-azul font-medium hover:underline">Voltar para o início</Link>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!sala) {
     return (
       <AppLayout>
@@ -138,9 +166,11 @@ export function CafePublico() {
   return (
     <AppLayout>
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => setSala(null)} className="text-texto-fraco hover:text-texto transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        </button>
+        {!userSala && (
+          <button onClick={() => setSala(null)} className="text-texto-fraco hover:text-texto transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+        )}
         <h1 className="font-display text-2xl text-azul tracking-wider uppercase">
           {sala === 'oficial' ? nomes.nome_cafe_oficiais : nomes.nome_cafe_graduados}
         </h1>

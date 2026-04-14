@@ -2,23 +2,33 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { api } from '../services/api';
+import { useUserAuth } from '../hooks/useUserAuth';
+import { Dashboard } from './Dashboard';
 
 type Sistema = 'guloseimas' | 'loja' | 'cafe';
 
 const SISTEMAS: { id: Sistema; label: string }[] = [
-  { id: 'guloseimas', label: 'Guloseimas' },
+  { id: 'guloseimas', label: 'Cantinas' },
   { id: 'loja', label: 'Loja' },
   { id: 'cafe', label: 'Caixinha do Café' },
 ];
 
 export function Home() {
+  const { user } = useUserAuth();
   const [sistema, setSistema] = useState<Sistema>('guloseimas');
-  const [nomes, setNomes] = useState({ nome_sala_oficiais: 'Sala dos Oficiais', nome_sala_graduados: 'Sala dos Graduados', nome_cafe_oficiais: 'Sala dos Oficiais', nome_cafe_graduados: 'Sala do Lange' });
+  const [nomes, setNomes] = useState({
+    nome_sala_oficiais: 'Cantina dos Oficiais',
+    nome_sala_graduados: 'Cantina dos Graduados',
+    nome_cafe_oficiais: 'Cantina dos Oficiais',
+    nome_cafe_graduados: 'Sala do Lange'
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
     api.get<Record<string, string>>('/api/config').then((c) => setNomes((n) => ({ ...n, ...c }))).catch(() => {});
   }, []);
+
+  if (user) return <Dashboard />;
 
   const selecionarSistema = (s: Sistema) => {
     if (s === 'loja') { navigate('/loja'); return; }
@@ -34,7 +44,6 @@ export function Home() {
           <div className="w-16 h-[2px] bg-azul mx-auto mt-4" />
         </div>
 
-        {/* Abas dos sistemas */}
         <div className="flex gap-1 bg-white rounded-2xl p-1.5 border border-borda shadow-sm mb-8 max-w-sm mx-auto">
           {SISTEMAS.map((s) => (
             <button
@@ -51,10 +60,9 @@ export function Home() {
           ))}
         </div>
 
-        {/* Conteúdo do sistema selecionado */}
         {sistema === 'guloseimas' && (
           <div className="space-y-4 max-w-sm mx-auto animate-fade-in">
-            <p className="text-texto-fraco text-sm text-center mb-2">Escolha sua sala</p>
+            <p className="text-texto-fraco text-sm text-center mb-2">Escolha a cantina</p>
             <Link
               to="/catalogo/oficiais"
               className="group block bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all duration-300"
@@ -121,7 +129,6 @@ export function Home() {
             </Link>
           </div>
         )}
-
       </div>
     </AppLayout>
   );

@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
+import type { Categoria } from '../types';
 
 export function UserCadastro() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export function UserCadastro() {
   const [trigrama, setTrigrama] = useState('');
   const [saram, setSaram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [categoria, setCategoria] = useState<Categoria | ''>('');
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [erro, setErro] = useState('');
@@ -35,6 +37,10 @@ export function UserCadastro() {
     e.preventDefault();
     setErro('');
 
+    if (!categoria) {
+      setErro('Selecione sua categoria militar');
+      return;
+    }
     if (senha.length < 6) {
       setErro('Senha deve ter no mínimo 6 caracteres');
       return;
@@ -66,6 +72,7 @@ export function UserCadastro() {
         trigrama: trigramaClean,
         saram: saram.trim(),
         whatsapp: whatsapp.trim(),
+        categoria,
       });
       if (foto) {
         try { await updateFoto(foto); } catch { /* foto opcional */ }
@@ -102,6 +109,30 @@ export function UserCadastro() {
             </button>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} className="hidden" />
             <span className="text-xs text-texto-fraco mt-1">Opcional</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Categoria Militar</label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { v: 'oficial', label: 'Oficial' },
+                { v: 'graduado', label: 'Graduado/SO' },
+                { v: 'praca', label: 'Praça' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setCategoria(opt.v)}
+                  className={`py-3 px-2 rounded-xl text-sm font-medium border transition-all
+                    ${categoria === opt.v
+                      ? 'bg-azul text-white border-azul shadow-sm'
+                      : 'bg-white text-texto-fraco border-borda hover:border-azul/50'}
+                  `}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
