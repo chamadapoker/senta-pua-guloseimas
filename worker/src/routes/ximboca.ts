@@ -137,12 +137,16 @@ ximboca.get('/eventos', async (c) => {
 
 // Create event
 ximboca.post('/eventos', async (c) => {
-  const { nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri } = await c.req.json();
+  const { nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp } = await c.req.json();
   if (!nome || !data) return c.json({ error: 'Nome e data obrigatórios' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri) VALUES (?, ?, ?, ?, ?, ?) RETURNING *'
-  ).bind(nome, data, valor_por_pessoa ?? 0, descricao || '', valor_cerveja ?? null, valor_refri ?? null).all();
+    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(
+    nome, data, valor_por_pessoa ?? 0, descricao || '',
+    valor_cerveja ?? null, valor_refri ?? null,
+    pix_chave || null, pix_tipo || null, pix_nome || null, pix_whatsapp || null
+  ).all();
 
   return c.json(results[0], 201);
 });
@@ -178,6 +182,10 @@ ximboca.put('/eventos/:id', async (c) => {
   if ('status' in body) { fields.push('status = ?'); values.push(body.status); }
   if ('valor_cerveja' in body) { fields.push('valor_cerveja = ?'); values.push(body.valor_cerveja ?? null); }
   if ('valor_refri' in body) { fields.push('valor_refri = ?'); values.push(body.valor_refri ?? null); }
+  if ('pix_chave' in body) { fields.push('pix_chave = ?'); values.push(body.pix_chave || null); }
+  if ('pix_tipo' in body) { fields.push('pix_tipo = ?'); values.push(body.pix_tipo || null); }
+  if ('pix_nome' in body) { fields.push('pix_nome = ?'); values.push(body.pix_nome || null); }
+  if ('pix_whatsapp' in body) { fields.push('pix_whatsapp = ?'); values.push(body.pix_whatsapp || null); }
 
   if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
   values.push(id);

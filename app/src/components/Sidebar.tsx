@@ -93,6 +93,8 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/usuarios?f=visitantes', label: 'Visitantes' },
     { to: '/admin/usuarios?f=expirados', label: 'Expirados' },
   ]},
+  { to: '/admin/comprovantes', label: 'Comprovantes', icon: <IconGift /> },
+  { to: '/admin/admins', label: 'Administradores', icon: <IconSettings /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];
 

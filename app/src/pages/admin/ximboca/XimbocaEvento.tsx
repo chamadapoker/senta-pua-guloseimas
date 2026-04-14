@@ -11,7 +11,7 @@ import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
-interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; }
+interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; }
 
 export function XimbocaEvento() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +34,10 @@ export function XimbocaEvento() {
   const [edCerveja, setEdCerveja] = useState('');
   const [edRefri, setEdRefri] = useState('');
   const [edDescricao, setEdDescricao] = useState('');
+  const [edPixChave, setEdPixChave] = useState('');
+  const [edPixTipo, setEdPixTipo] = useState('aleatoria');
+  const [edPixNome, setEdPixNome] = useState('');
+  const [edPixWhatsapp, setEdPixWhatsapp] = useState('');
 
   // QR code
   const [modalQR, setModalQR] = useState(false);
@@ -103,6 +107,10 @@ export function XimbocaEvento() {
     setEdCerveja(evento.valor_cerveja !== null ? String(evento.valor_cerveja) : '');
     setEdRefri(evento.valor_refri !== null ? String(evento.valor_refri) : '');
     setEdDescricao(evento.descricao || '');
+    setEdPixChave(evento.pix_chave || '');
+    setEdPixTipo(evento.pix_tipo || 'aleatoria');
+    setEdPixNome(evento.pix_nome || '');
+    setEdPixWhatsapp(evento.pix_whatsapp || '');
     setModalEdit(true);
   };
 
@@ -115,6 +123,10 @@ export function XimbocaEvento() {
       valor_cerveja: edCerveja ? parseFloat(edCerveja) : null,
       valor_refri: edRefri ? parseFloat(edRefri) : null,
       descricao: edDescricao,
+      pix_chave: edPixChave.trim() || null,
+      pix_tipo: edPixChave.trim() ? edPixTipo : null,
+      pix_nome: edPixNome.trim() || null,
+      pix_whatsapp: edPixWhatsapp.replace(/\D/g, '') || null,
     });
     setModalEdit(false);
     carregar();
@@ -294,6 +306,34 @@ export function XimbocaEvento() {
             <label className="block text-sm font-medium mb-1">Descrição</label>
             <input value={edDescricao} onChange={e => setEdDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
           </div>
+
+          <div className="border-t border-borda pt-3 space-y-3">
+            <p className="text-xs font-medium text-texto uppercase tracking-wider">PIX do Responsável (opcional)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipo</label>
+                <select value={edPixTipo} onChange={e => setEdPixTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                  <option value="cpf">CPF</option>
+                  <option value="email">E-mail</option>
+                  <option value="telefone">Telefone</option>
+                  <option value="aleatoria">Aleatória</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Chave PIX</label>
+                <input value={edPixChave} onChange={e => setEdPixChave(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
+              <input value={edPixNome} onChange={e => setEdPixNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
+              <input type="tel" value={edPixWhatsapp} onChange={e => setEdPixWhatsapp(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+            </div>
+          </div>
+
           <Button type="submit" className="w-full">Salvar Alterações</Button>
         </form>
       </Modal>

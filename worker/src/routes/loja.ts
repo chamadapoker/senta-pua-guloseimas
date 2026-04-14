@@ -172,14 +172,18 @@ loja.get('/pedidos/:id', async (c) => {
   return c.json(pedido);
 });
 
-// PUBLIC: confirm payment
-loja.put('/pedidos/:id/confirmar-pagamento', async (c) => {
+// Auth: usuário sinaliza que pagou (aprovação final só por comprovante)
+loja.put('/pedidos/:id/confirmar-pagamento', userAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
-  if (!results.length) return c.json({ error: 'Pedido não encontrado ou já processado' }, 404);
-  return c.json(results[0]);
+  const trigrama = c.get('userTrigrama');
+  const pedido = await c.env.DB.prepare(
+    `SELECT p.id, p.status FROM loja_pedidos p
+     JOIN clientes cl ON cl.id = p.cliente_id
+     WHERE p.id = ? AND cl.nome_guerra = ? COLLATE NOCASE`
+  ).bind(id, trigrama).first<{ id: string; status: string }>();
+  if (!pedido) return c.json({ error: 'Pedido não encontrado ou não pertence a você' }, 404);
+  if (pedido.status === 'pago') return c.json({ error: 'Pedido já está pago' }, 400);
+  return c.json({ ok: true, mensagem: 'Envie o comprovante para aprovação' });
 });
 
 // ADMIN: list all products (including unavailable)
@@ -364,27 +368,19 @@ loja.get('/pedidos/:id/parcelas', async (c) => {
   return c.json(results);
 });
 
-// PUBLIC: confirm parcela payment
-loja.put('/parcelas/:id/confirmar', async (c) => {
+// Auth: usuário sinaliza que pagou a parcela (aprovação final só por comprovante)
+loja.put('/parcelas/:id/confirmar', userAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE loja_parcelas SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
-  if (!results.length) return c.json({ error: 'Parcela não encontrada' }, 404);
-
-  // Check if all parcelas are paid, then mark order as pago
-  const parcela = results[0] as any;
-  const pendentes = await c.env.DB.prepare(
-    "SELECT COUNT(*) as total FROM loja_parcelas WHERE pedido_id = ? AND status = 'pendente'"
-  ).bind(parcela.pedido_id).first<{ total: number }>();
-
-  if (pendentes?.total === 0) {
-    await c.env.DB.prepare(
-      "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ?"
-    ).bind(parcela.pedido_id).run();
-  }
-
-  return c.json(results[0]);
+  const trigrama = c.get('userTrigrama');
+  const parcela = await c.env.DB.prepare(
+    `SELECT lp.id, lp.status FROM loja_parcelas lp
+     JOIN loja_pedidos ped ON ped.id = lp.pedido_id
+     JOIN clientes cl ON cl.id = ped.cliente_id
+     WHERE lp.id = ? AND cl.nome_guerra = ? COLLATE NOCASE`
+  ).bind(id, trigrama).first<{ id: string; status: string }>();
+  if (!parcela) return c.json({ error: 'Parcela não encontrada ou não pertence a você' }, 404);
+  if (parcela.status === 'pago') return c.json({ error: 'Parcela já está paga' }, 400);
+  return c.json({ ok: true, mensagem: 'Envie o comprovante para aprovação' });
 });
 
 // ADMIN: list parcelas for an order

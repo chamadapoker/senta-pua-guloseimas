@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { userAuthMiddleware } from '../middleware/userAuth';
 import type { AppType } from '../index';
 
 const cafe = new Hono<AppType>();
@@ -27,14 +28,19 @@ cafe.get('/devedores', async (c) => {
   return c.json(mapped);
 });
 
-// PUBLIC: confirm payment from military
-cafe.put('/pagamentos/:id/confirmar', async (c) => {
+// Auth: usuário sinaliza que pagou (aprovação final só por comprovante)
+cafe.put('/pagamentos/:id/confirmar', userAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE cafe_pagamentos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
-  if (!results.length) return c.json({ error: 'Pagamento não encontrado' }, 404);
-  return c.json(results[0]);
+  const trigrama = c.get('userTrigrama');
+  const pag = await c.env.DB.prepare(
+    `SELECT cp.id, cp.status FROM cafe_pagamentos cp
+     JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+     JOIN clientes cl ON cl.id = ca.cliente_id
+     WHERE cp.id = ? AND cl.nome_guerra = ? COLLATE NOCASE`
+  ).bind(id, trigrama).first<{ id: string; status: string }>();
+  if (!pag) return c.json({ error: 'Pagamento não encontrado ou não pertence a você' }, 404);
+  if (pag.status === 'pago') return c.json({ error: 'Já está pago' }, 400);
+  return c.json({ ok: true, mensagem: 'Envie o comprovante para aprovação' });
 });
 
 // ADMIN: list all subscribers with payment status

@@ -15,5 +15,13 @@ export async function authMiddleware(c: Context<AppType>, next: Next) {
   }
 
   c.set('adminEmail', payload.email as string);
+  if (payload.role) c.set('adminRole', payload.role as string);
+  if (payload.id) c.set('adminId', payload.id as string);
+  await next();
+}
+
+export async function superAdminMiddleware(c: Context<AppType>, next: Next) {
+  const role = c.get('adminRole');
+  if (role !== 'super_admin') return c.json({ error: 'Apenas super admin pode executar esta ação' }, 403);
   await next();
 }

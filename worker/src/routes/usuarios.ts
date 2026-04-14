@@ -472,7 +472,7 @@ usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
   ).bind(assinante.id).first<{ total: number }>();
 
   const { results: historico } = await c.env.DB.prepare(
-    "SELECT referencia, valor, status, paid_at FROM cafe_pagamentos WHERE assinante_id = ? ORDER BY referencia DESC LIMIT 6"
+    "SELECT id, referencia, valor, status, paid_at FROM cafe_pagamentos WHERE assinante_id = ? ORDER BY referencia DESC LIMIT 6"
   ).bind(assinante.id).all();
 
   return c.json({

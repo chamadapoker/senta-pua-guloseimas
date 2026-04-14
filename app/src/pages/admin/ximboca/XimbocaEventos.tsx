@@ -15,6 +15,10 @@ interface Evento {
   valor_refri: number | null;
   descricao: string;
   status: string;
+  pix_chave: string | null;
+  pix_tipo: string | null;
+  pix_nome: string | null;
+  pix_whatsapp: string | null;
   total_participantes: number;
   total_pagos: number;
   total_arrecadado: number;
@@ -31,6 +35,10 @@ export function XimbocaEventos() {
   const [valorCerveja, setValorCerveja] = useState('');
   const [valorRefri, setValorRefri] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [pixChave, setPixChave] = useState('');
+  const [pixTipo, setPixTipo] = useState('aleatoria');
+  const [pixNome, setPixNome] = useState('');
+  const [pixWhatsapp, setPixWhatsapp] = useState('');
 
   const carregar = () => api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
   useEffect(() => { carregar(); }, []);
@@ -39,6 +47,7 @@ export function XimbocaEventos() {
     setEditando(null);
     setNome(''); setData(''); setValorPessoa('');
     setValorCerveja(''); setValorRefri(''); setDescricao('');
+    setPixChave(''); setPixTipo('aleatoria'); setPixNome(''); setPixWhatsapp('');
   };
 
   const abrirEditar = (ev: Evento) => {
@@ -49,6 +58,10 @@ export function XimbocaEventos() {
     setValorCerveja(ev.valor_cerveja !== null ? ev.valor_cerveja.toString() : '');
     setValorRefri(ev.valor_refri !== null ? ev.valor_refri.toString() : '');
     setDescricao(ev.descricao || '');
+    setPixChave(ev.pix_chave || '');
+    setPixTipo(ev.pix_tipo || 'aleatoria');
+    setPixNome(ev.pix_nome || '');
+    setPixWhatsapp(ev.pix_whatsapp || '');
     setModalAberto(true);
   };
 
@@ -65,6 +78,10 @@ export function XimbocaEventos() {
       valor_cerveja: valorCerveja ? parseFloat(valorCerveja) : null,
       valor_refri: valorRefri ? parseFloat(valorRefri) : null,
       descricao,
+      pix_chave: pixChave.trim() || null,
+      pix_tipo: pixChave.trim() ? pixTipo : null,
+      pix_nome: pixNome.trim() || null,
+      pix_whatsapp: pixWhatsapp.replace(/\D/g, '') || null,
     };
     if (editando) {
       await api.put(`/api/ximboca/eventos/${editando.id}`, body);
@@ -176,6 +193,34 @@ export function XimbocaEventos() {
           <p className="text-xs text-texto-fraco">
             Se preencher Cerveja ou Refri, o participante poderá escolher entre essas opções. Caso contrário, usa o valor padrão.
           </p>
+
+          <div className="border-t border-borda pt-3 space-y-3">
+            <p className="text-xs font-medium text-texto uppercase tracking-wider">PIX do Responsável (opcional)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipo da chave</label>
+                <select value={pixTipo} onChange={e => setPixTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                  <option value="cpf">CPF</option>
+                  <option value="email">E-mail</option>
+                  <option value="telefone">Telefone</option>
+                  <option value="aleatoria">Chave aleatória</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Chave PIX</label>
+                <input value={pixChave} onChange={e => setPixChave(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Digite a chave" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
+              <input value={pixNome} onChange={e => setPixNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: JOAO SILVA" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
+              <input type="tel" value={pixWhatsapp} onChange={e => setPixWhatsapp(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+            </div>
+          </div>
+
           <Button type="submit" className="w-full">{editando ? 'Salvar Alterações' : 'Criar Evento'}</Button>
         </form>
       </Modal>

@@ -21,6 +21,8 @@ import { Pedidos } from './pages/admin/Pedidos';
 import { Configuracoes } from './pages/admin/Configuracoes';
 import { Relatorios } from './pages/admin/Relatorios';
 import { Usuarios } from './pages/admin/Usuarios';
+import { Admins } from './pages/admin/Admins';
+import { Comprovantes } from './pages/admin/Comprovantes';
 import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
 import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
 import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
@@ -112,6 +114,8 @@ export function App() {
         <Route path="/admin/config" element={<AdminGuard><Configuracoes /></AdminGuard>} />
         <Route path="/admin/relatorios" element={<AdminGuard><Relatorios /></AdminGuard>} />
         <Route path="/admin/usuarios" element={<AdminGuard><Usuarios /></AdminGuard>} />
+        <Route path="/admin/admins" element={<AdminGuard><Admins /></AdminGuard>} />
+        <Route path="/admin/comprovantes" element={<AdminGuard><Comprovantes /></AdminGuard>} />
         <Route path="/admin/loja" element={<AdminGuard><LojaDashboard /></AdminGuard>} />
         <Route path="/admin/loja/produtos" element={<AdminGuard><LojaProdutos /></AdminGuard>} />
         <Route path="/admin/loja/pedidos" element={<AdminGuard><LojaPedidos /></AdminGuard>} />

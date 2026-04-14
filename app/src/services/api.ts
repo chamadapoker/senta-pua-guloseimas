@@ -1,6 +1,6 @@
 const BASE_URL = import.meta.env.VITE_WORKER_URL || '';
 
-function pickToken(path: string): string | null {
+function pickToken(path: string, method?: string): string | null {
   const adminToken = localStorage.getItem('token');
   const userToken = localStorage.getItem('user_token');
 
@@ -10,6 +10,14 @@ function pickToken(path: string): string | null {
   if (path.startsWith('/api/auth')) return adminToken;
   if (path.startsWith('/api/usuarios/admin')) return adminToken;
   if (path.startsWith('/api/admin')) return adminToken;
+  if (path.startsWith('/api/admins')) return adminToken;
+
+  // Comprovantes: user para upload/próprios, admin para fila/aprovação
+  if (path === '/api/comprovantes' && (method === 'POST' || !method)) {
+    // Upload é do usuário; listagem (GET) é admin — só que GET admin cai no else abaixo
+    if (method === 'POST') return userToken || adminToken;
+  }
+  if (path === '/api/comprovantes/me') return userToken;
 
   return adminToken || userToken;
 }
@@ -23,7 +31,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = pickToken(path);
+  const token = pickToken(path, options?.method);
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

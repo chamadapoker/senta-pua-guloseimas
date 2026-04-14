@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
+import { EnviarComprovante } from '../components/ui/EnviarComprovante';
 import { api } from '../services/api';
+import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
 
 interface EventoPublico {
@@ -32,6 +34,10 @@ interface MeuEvento {
   valor_por_pessoa: number;
   meu_status: string;
   paid_at: string | null;
+  pix_chave: string | null;
+  pix_tipo: string | null;
+  pix_nome: string | null;
+  pix_whatsapp: string | null;
 }
 
 function formatData(iso: string): string {
@@ -56,6 +62,29 @@ export function XimbocaPublica() {
   const [acaoLoading, setAcaoLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
+
+  const copiarPixEvento = async (ev: MeuEvento) => {
+    if (!ev.pix_chave || !ev.pix_nome) {
+      setErro('Este evento ainda não tem PIX configurado. Fale com o responsável.');
+      return;
+    }
+    const valor = ev.valor_individual ?? ev.valor_por_pessoa;
+    const payload = gerarPayloadPix(valor, { chave: ev.pix_chave, nome: ev.pix_nome });
+    await navigator.clipboard.writeText(payload);
+    setCopiadoId(ev.id);
+    setTimeout(() => setCopiadoId(null), 3000);
+  };
+
+  const enviarComprovanteEvento = (ev: MeuEvento) => {
+    if (!ev.pix_whatsapp) {
+      setErro('Este evento não tem WhatsApp do responsável. Fale com o admin.');
+      return;
+    }
+    const valor = ev.valor_individual ?? ev.valor_por_pessoa;
+    const texto = `Comprovante Ximboca\n${ev.nome}\nValor: R$ ${valor.toFixed(2)}\n\n_Anexe o comprovante abaixo_`;
+    window.open(`https://wa.me/55${ev.pix_whatsapp}?text=${encodeURIComponent(texto)}`, '_blank');
+  };
 
   useEffect(() => {
     if (!user) {
@@ -270,6 +299,33 @@ export function XimbocaPublica() {
                       </span>
                     </div>
                   </div>
+
+                  {ev.meu_status !== 'pago' && (
+                    <div className="mt-3 space-y-2">
+                      {ev.pix_chave ? (
+                        <>
+                          <div className="bg-fundo rounded-lg p-2 text-xs">
+                            <div className="text-texto-fraco">Chave PIX ({ev.pix_tipo || '—'})</div>
+                            <div className="font-medium text-azul break-all">{ev.pix_chave}</div>
+                            {ev.pix_nome && <div className="text-[10px] text-texto-fraco mt-0.5">Recebedor: {ev.pix_nome}</div>}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button variant="primary" size="sm" onClick={() => copiarPixEvento(ev)}>
+                              {copiadoId === ev.id ? 'Copiado!' : 'Copiar PIX'}
+                            </Button>
+                            <Button variant="success" size="sm" onClick={() => enviarComprovanteEvento(ev)} disabled={!ev.pix_whatsapp}>
+                              WhatsApp
+                            </Button>
+                          </div>
+                          <EnviarComprovante origem="ximboca" referenciaId={ev.participante_id} onEnviado={carregar} />
+                        </>
+                      ) : (
+                        <div className="text-xs text-texto-fraco bg-fundo rounded-lg p-2 text-center">
+                          Aguardando PIX do responsável. Pague no local ou fale com o admin.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

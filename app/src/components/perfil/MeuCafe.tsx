@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { EnviarComprovante } from '../ui/EnviarComprovante';
 import { api } from '../../services/api';
 import { gerarPayloadPix } from '../../services/pix';
+
+interface HistoricoItem { id?: string; referencia: string; valor: number; status: string; paid_at: string | null }
 
 interface CafeStatus {
   tem_assinatura: boolean;
@@ -11,7 +14,7 @@ interface CafeStatus {
   mes_atual?: string;
   mes_atual_pago?: boolean;
   total_pendente?: number;
-  historico?: { referencia: string; valor: number; status: string; paid_at: string | null }[];
+  historico?: HistoricoItem[];
   sem_sala?: boolean;
 }
 
@@ -96,10 +99,13 @@ export function MeuCafe() {
           <div className="text-xs text-texto-fraco mb-1.5 mt-2">Histórico</div>
           <div className="space-y-1">
             {status.historico.map(h => (
-              <div key={h.referencia} className="flex items-center justify-between text-xs py-1 border-b border-borda last:border-0">
+              <div key={h.id || h.referencia} className="flex items-center justify-between text-xs py-1 border-b border-borda last:border-0 gap-2">
                 <span>{h.referencia}</span>
                 <span className="text-texto-fraco">R$ {h.valor.toFixed(2)}</span>
                 <span className={h.status === 'pago' ? 'text-verde-escuro' : 'text-vermelho'}>{h.status}</span>
+                {h.status === 'pendente' && h.id && (
+                  <EnviarComprovante origem="cafe" referenciaId={h.id} />
+                )}
               </div>
             ))}
           </div>

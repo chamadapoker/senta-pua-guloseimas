@@ -12,6 +12,8 @@ import loja from './routes/loja';
 import cafe from './routes/cafe';
 import ximboca from './routes/ximboca';
 import usuarios from './routes/usuarios';
+import admins from './routes/admins';
+import comprovantes from './routes/comprovantes';
 
 export type Env = {
   DB: D1Database;
@@ -23,7 +25,7 @@ export type Env = {
   AMBIENTE: string;
 };
 
-export type AppType = { Bindings: Env; Variables: { adminEmail: string; userId: number; userEmail: string; userTrigrama: string } };
+export type AppType = { Bindings: Env; Variables: { adminEmail: string; adminRole: string; adminId: string; userId: number; userEmail: string; userTrigrama: string } };
 
 const app = new Hono<AppType>();
 
@@ -48,6 +50,8 @@ app.route('/api/loja', loja);
 app.route('/api/cafe', cafe);
 app.route('/api/ximboca', ximboca);
 app.route('/api/usuarios', usuarios);
+app.route('/api/admins', admins);
+app.route('/api/comprovantes', comprovantes);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 

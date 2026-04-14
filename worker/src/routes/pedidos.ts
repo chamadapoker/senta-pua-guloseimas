@@ -168,15 +168,23 @@ pedidos.get('/', authMiddleware, async (c) => {
   return c.json(results);
 });
 
-// Público: militar confirma que pagou (botão "Já Paguei")
-pedidos.put('/:id/confirmar-pagamento', async (c) => {
+// Auth: militar confirma que pagou (valida que o pedido é dele)
+pedidos.put('/:id/confirmar-pagamento', userAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
+  const trigrama = c.get('userTrigrama');
 
-  if (!results.length) return c.json({ error: 'Pedido não encontrado ou já processado' }, 404);
-  return c.json(results[0]);
+  const pedido = await c.env.DB.prepare(
+    `SELECT p.id, p.status FROM pedidos p
+     JOIN clientes cl ON cl.id = p.cliente_id
+     WHERE p.id = ? AND cl.nome_guerra = ? COLLATE NOCASE`
+  ).bind(id, trigrama).first<{ id: string; status: string }>();
+
+  if (!pedido) return c.json({ error: 'Pedido não encontrado ou não pertence a você' }, 404);
+  if (pedido.status === 'pago') return c.json({ error: 'Pedido já está pago' }, 400);
+
+  // Marca como aguardando_confirmacao (requer aprovação via comprovante) —
+  // mantém status 'pendente' mas registra intent. A aprovação oficial vem pelo comprovante.
+  return c.json({ ok: true, mensagem: 'Envie o comprovante para aprovação' });
 });
 
 // Admin: marcar como pago
