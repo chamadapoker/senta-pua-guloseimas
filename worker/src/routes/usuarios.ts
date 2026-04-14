@@ -113,7 +113,7 @@ usuarios.post('/cadastro/visitante', async (c) => {
   const expiraEm = calcularExpiracaoVisitante(30);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?) RETURNING id'
+    'INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, permite_fiado) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0) RETURNING id'
   ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm).all<{ id: number }>();
 
   const userId = results[0].id;
@@ -145,6 +145,7 @@ usuarios.post('/cadastro/visitante', async (c) => {
       whatsapp: whatsappClean, foto_url: null, categoria, sala_cafe: salaCafe,
       is_visitante: 1, esquadrao_origem: esquadraoClean,
       expira_em: expiraEm, acesso_pausado: 0, acesso_bloqueado: false,
+      permite_fiado: 0,
     }
   }, 201);
 });
@@ -156,12 +157,13 @@ usuarios.post('/login', async (c) => {
   if (!email || !senha) return c.json({ error: 'Email e senha obrigatórios' }, 400);
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado FROM usuarios WHERE email = ?'
+    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado FROM usuarios WHERE email = ?'
   ).bind(email.trim().toLowerCase()).first<{
     id: number; email: string; senha_hash: string; trigrama: string; saram: string;
     whatsapp: string; foto_url: string | null; ativo: number;
     categoria: string; sala_cafe: string | null;
     is_visitante: number; esquadrao_origem: string | null; expira_em: string | null; acesso_pausado: number;
+    permite_fiado: number;
   }>();
 
   if (!user) return c.json({ error: 'Email ou senha incorretos' }, 401);
@@ -189,6 +191,7 @@ usuarios.post('/login', async (c) => {
       whatsapp: user.whatsapp, foto_url: user.foto_url, categoria: user.categoria, sala_cafe: user.sala_cafe,
       is_visitante: user.is_visitante, esquadrao_origem: user.esquadrao_origem,
       expira_em: user.expira_em, acesso_pausado: user.acesso_pausado, acesso_bloqueado,
+      permite_fiado: user.permite_fiado,
     }
   });
 });
@@ -197,7 +200,7 @@ usuarios.post('/login', async (c) => {
 usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first<{
     is_visitante: number; expira_em: string | null; acesso_pausado: number;
     [k: string]: unknown;
@@ -245,7 +248,7 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first<{
     is_visitante: number; expira_em: string | null; acesso_pausado: number;
     [k: string]: unknown;
@@ -268,7 +271,7 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first<{ sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number }>();
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
@@ -505,6 +508,23 @@ usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
   return c.json({ ok: true, categoria, sala_cafe: salaCafe });
+});
+
+// Admin: atualizar permite_fiado
+usuarios.put('/admin/:id/fiado', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { permite_fiado } = await c.req.json<{ permite_fiado: number }>();
+
+  if (permite_fiado !== 0 && permite_fiado !== 1) {
+    return c.json({ error: 'permite_fiado deve ser 0 ou 1' }, 400);
+  }
+
+  const result = await c.env.DB.prepare(
+    'UPDATE usuarios SET permite_fiado = ? WHERE id = ?'
+  ).bind(permite_fiado, id).run();
+
+  if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  return c.json({ ok: true, permite_fiado });
 });
 
 // Admin: atualizar campos de visitante

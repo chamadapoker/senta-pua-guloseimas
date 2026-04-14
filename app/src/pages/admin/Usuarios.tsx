@@ -87,6 +87,21 @@ export function Usuarios() {
     }
   };
 
+  const toggleFiado = async (u: Usuario) => {
+    const novo = u.permite_fiado === 1 ? 0 : 1;
+    setErro(''); setMsg('');
+    setAcaoLoading(u.id);
+    try {
+      await api.put(`/api/usuarios/admin/${u.id}/fiado`, { permite_fiado: novo });
+      setMsg(`${u.trigrama}: fiado ${novo === 1 ? 'liberado' : 'bloqueado'}`);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setAcaoLoading(null);
+    }
+  };
+
   const trocarCategoria = async (u: Usuario, cat: Categoria) => {
     setErro(''); setMsg('');
     setAcaoLoading(u.id);
@@ -306,6 +321,27 @@ export function Usuarios() {
                     {CATEGORIA_LABEL[cat]}
                   </button>
                 ))}
+              </div>
+
+              {/* Toggle Fiado */}
+              <div className="mb-3 flex items-center justify-between text-xs py-2 px-3 bg-fundo rounded-lg">
+                <span className="text-texto-fraco">
+                  Fiado: {u.permite_fiado === 1 ? (
+                    <span className="text-verde-escuro font-medium">Liberado</span>
+                  ) : (
+                    <span className="text-vermelho font-medium">Bloqueado</span>
+                  )}
+                </span>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={u.permite_fiado === 1}
+                    onChange={() => toggleFiado(u)}
+                    disabled={acaoLoading === u.id}
+                    className="sr-only peer"
+                  />
+                  <div className="relative w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-verde"></div>
+                </label>
               </div>
 
               {/* Linha 3: acoes */}

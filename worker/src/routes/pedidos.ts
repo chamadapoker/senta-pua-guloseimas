@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
+import { podeFazerFiado } from '../lib/fiado';
 import type { AppType } from '../index';
 import type { Produto } from '../db/queries';
 import type { Context, Next } from 'hono';
@@ -30,6 +31,10 @@ pedidos.post('/', checkVisitanteSeLogado, async (c) => {
   if (!nome_guerra || !itens?.length || !metodo) {
     return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
   }
+
+  // Valida permissao de fiado
+  const fiadoCheck = await podeFazerFiado(c, metodo);
+  if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);
 
   // Buscar ou criar cliente
   let cliente = await c.env.DB.prepare(

@@ -1,6 +1,18 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { userAuthMiddleware } from '../middleware/userAuth';
+import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
+import { podeFazerFiado } from '../lib/fiado';
 import type { AppType } from '../index';
+import type { Context, Next } from 'hono';
+
+async function checkVisitanteSeLogado(c: Context<AppType>, next: Next) {
+  const header = c.req.header('Authorization');
+  if (!header?.startsWith('Bearer ')) return next();
+  return userAuthMiddleware(c, async () => {
+    await visitorActiveCheck(c, next);
+  });
+}
 
 const loja = new Hono<AppType>();
 
@@ -33,7 +45,7 @@ loja.get('/produtos', async (c) => {
 });
 
 // PUBLIC: create order (same trigrama flow as guloseimas)
-loja.post('/pedidos', async (c) => {
+loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; variacao_id?: string; quantidade: number }[];
@@ -47,6 +59,10 @@ loja.post('/pedidos', async (c) => {
   if (!nome_guerra || !itens?.length || !metodo) {
     return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
   }
+
+  // Valida permissao de fiado
+  const fiadoCheck = await podeFazerFiado(c, metodo);
+  if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);
 
   // Reuse same client table
   let cliente = await c.env.DB.prepare(

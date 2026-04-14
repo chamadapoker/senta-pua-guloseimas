@@ -133,9 +133,16 @@ export function Checkout() {
         <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={loading}>
           Pagar via PIX
         </Button>
-        <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
-          Anotar no Fiado
-        </Button>
+        {user.permite_fiado !== 0 && (
+          <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
+            Anotar no Fiado
+          </Button>
+        )}
+        {user.permite_fiado === 0 && user.is_visitante === 1 && (
+          <p className="text-xs text-texto-fraco text-center">
+            Visitantes pagam à vista (PIX). Fiado não disponível.
+          </p>
+        )}
       </div>
     </AppLayout>
   );

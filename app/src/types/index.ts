@@ -61,6 +61,7 @@ export interface Usuario {
   expira_em?: string | null;
   acesso_pausado?: number;
   acesso_bloqueado?: boolean;
+  permite_fiado?: number;
   ativo?: number;
   cliente_id?: string | null;
   created_at?: string;
