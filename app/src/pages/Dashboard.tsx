@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { EnviarComprovante } from '../components/ui/EnviarComprovante';
+import { StatusComprovante } from '../components/ui/StatusComprovante';
+import { useComprovantesStatus } from '../hooks/useComprovantesStatus';
 import { api } from '../services/api';
 import { useUserAuth } from '../hooks/useUserAuth';
 import type { Usuario } from '../types';
@@ -72,6 +74,7 @@ export function Dashboard() {
   const { user } = useUserAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const comprov = useComprovantesStatus();
 
   useEffect(() => {
     api.get<DashboardData>('/api/usuarios/me/dashboard')
@@ -241,11 +244,18 @@ export function Dashboard() {
                         R$ {p.total.toFixed(2)}
                       </span>
                     </div>
-                    {p.status !== 'pago' && (
-                      <div className="mt-2">
-                        <EnviarComprovante origem="cantina" referenciaId={p.id} onEnviado={() => window.location.reload()} />
-                      </div>
-                    )}
+                    {p.status !== 'pago' && (() => {
+                      const st = comprov.get('cantina', p.id);
+                      if (st?.status === 'aguardando' || st?.status === 'aprovado') {
+                        return <div className="mt-2"><StatusComprovante status={st.status} motivo={st.motivo_rejeicao} /></div>;
+                      }
+                      return (
+                        <div className="mt-2 space-y-2">
+                          {st?.status === 'rejeitado' && <StatusComprovante status="rejeitado" motivo={st.motivo_rejeicao} />}
+                          <EnviarComprovante origem="cantina" referenciaId={p.id} onEnviado={comprov.recarregar} />
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

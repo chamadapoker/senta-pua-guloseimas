@@ -5,6 +5,7 @@ import { userAuthMiddleware } from '../middleware/userAuth';
 import { authMiddleware } from '../middleware/auth';
 import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categoria';
 import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante';
+import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import type { AppType } from '../index';
 
 const usuarios = new Hono<AppType>();
@@ -166,6 +167,10 @@ usuarios.post('/login', async (c) => {
 
   if (!email || !senha) return c.json({ error: 'Email e senha obrigatórios' }, 400);
 
+  const key = `${clientKey(c)}:${email.trim().toLowerCase()}`;
+  const rl = await checkRateLimit(c, 'user_login', key, 8, 15);
+  if (!rl.ok) return c.json({ error: `Muitas tentativas. Tente de novo em ${rl.retry_after_min} minutos.` }, 429);
+
   const user = await c.env.DB.prepare(
     'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado FROM usuarios WHERE email = ?'
   ).bind(email.trim().toLowerCase()).first<{
@@ -176,11 +181,12 @@ usuarios.post('/login', async (c) => {
     permite_fiado: number;
   }>();
 
-  if (!user) return c.json({ error: 'Email ou senha incorretos' }, 401);
+  if (!user) { await recordAttempt(c, 'user_login', key); return c.json({ error: 'Email ou senha incorretos' }, 401); }
   if (!user.ativo) return c.json({ error: 'Conta desativada. Procure o administrador.' }, 403);
 
   const valid = await verifyPassword(senha, user.senha_hash);
-  if (!valid) return c.json({ error: 'Email ou senha incorretos' }, 401);
+  if (!valid) { await recordAttempt(c, 'user_login', key); return c.json({ error: 'Email ou senha incorretos' }, 401); }
+  await clearAttempts(c, 'user_login', key);
 
   const token = await sign(
     { tipo: 'usuario', id: user.id, email: user.email, trigrama: user.trigrama },

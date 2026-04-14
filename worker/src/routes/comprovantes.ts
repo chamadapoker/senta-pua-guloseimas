@@ -117,6 +117,23 @@ comprovantes.get('/me', userAuthMiddleware, async (c) => {
   return c.json(results);
 });
 
+// USER: status do comprovante mais recente por item (para mostrar badge)
+comprovantes.get('/me/status', userAuthMiddleware, async (c) => {
+  const trigrama = c.get('userTrigrama');
+  const { results } = await c.env.DB.prepare(
+    `SELECT c.origem, c.referencia_id, c.status, c.motivo_rejeicao, c.created_at
+     FROM comprovantes c
+     INNER JOIN (
+       SELECT origem, referencia_id, MAX(created_at) as max_created
+       FROM comprovantes
+       WHERE trigrama = ? COLLATE NOCASE
+       GROUP BY origem, referencia_id
+     ) latest ON c.origem = latest.origem AND c.referencia_id = latest.referencia_id AND c.created_at = latest.max_created
+     WHERE c.trigrama = ? COLLATE NOCASE`
+  ).bind(trigrama, trigrama).all<{ origem: string; referencia_id: string; status: string; motivo_rejeicao: string | null; created_at: string }>();
+  return c.json(results);
+});
+
 // ADMIN: lista comprovantes (filtro por status)
 comprovantes.get('/', authMiddleware, async (c) => {
   const status = c.req.query('status') || 'aguardando';

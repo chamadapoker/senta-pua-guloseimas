@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { sign } from '../lib/jwt';
 import { hashPassword, verifyPassword } from '../lib/password';
+import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import { authMiddleware } from '../middleware/auth';
 import type { AppType } from '../index';
 
@@ -21,16 +22,28 @@ auth.post('/login', async (c) => {
   const { email, senha } = await c.req.json<{ email: string; senha: string }>();
   if (!email || !senha) return c.json({ error: 'Email e senha obrigatórios' }, 400);
 
+  const ip = clientKey(c);
+  const key = `${ip}:${email.toLowerCase()}`;
+  const rl = await checkRateLimit(c, 'admin_login', key, 5, 15);
+  if (!rl.ok) return c.json({ error: `Muitas tentativas. Tente de novo em ${rl.retry_after_min} minutos.` }, 429);
+
   await ensureSuperAdmin(c.env);
 
   const admin = await c.env.DB.prepare(
     'SELECT id, email, senha_hash, nome, role, ativo FROM admins WHERE email = ? COLLATE NOCASE'
   ).bind(email).first<{ id: string; email: string; senha_hash: string; nome: string; role: string; ativo: number }>();
 
-  if (!admin || !admin.ativo) return c.json({ error: 'Credenciais inválidas' }, 401);
+  if (!admin || !admin.ativo) {
+    await recordAttempt(c, 'admin_login', key);
+    return c.json({ error: 'Credenciais inválidas' }, 401);
+  }
   const ok = await verifyPassword(senha, admin.senha_hash);
-  if (!ok) return c.json({ error: 'Credenciais inválidas' }, 401);
+  if (!ok) {
+    await recordAttempt(c, 'admin_login', key);
+    return c.json({ error: 'Credenciais inválidas' }, 401);
+  }
 
+  await clearAttempts(c, 'admin_login', key);
   await c.env.DB.prepare("UPDATE admins SET last_login = datetime('now') WHERE id = ?").bind(admin.id).run();
 
   const token = await sign({ id: admin.id, email: admin.email, role: admin.role }, c.env.JWT_SECRET);
