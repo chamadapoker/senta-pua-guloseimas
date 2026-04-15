@@ -187,7 +187,7 @@ export function Perfil() {
           }}
           className="w-full mt-4 bg-white border border-borda rounded-xl py-3 text-sm font-medium text-azul hover:bg-azul/5"
         >
-          📄 Baixar meu extrato (PDF)
+          Baixar meu extrato (PDF)
         </button>
 
         <button

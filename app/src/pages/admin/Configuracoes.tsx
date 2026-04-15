@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 
 type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 
-const ABAS: { id: Aba; label: string; icon: string }[] = [
-  { id: 'nomes',   label: 'Nomes',   icon: '🏷️' },
-  { id: 'pix',     label: 'PIX',     icon: '💳' },
-  { id: 'valores', label: 'Valores', icon: '💰' },
-  { id: 'loja',    label: 'Loja',    icon: '🛒' },
+const ABAS: { id: Aba; label: string; icon: 'tag' | 'credit-card' | 'cash' | 'cart' }[] = [
+  { id: 'nomes',   label: 'Nomes',   icon: 'tag' },
+  { id: 'pix',     label: 'PIX',     icon: 'credit-card' },
+  { id: 'valores', label: 'Valores', icon: 'cash' },
+  { id: 'loja',    label: 'Loja',    icon: 'cart' },
 ];
 
 export function Configuracoes() {
@@ -64,11 +65,11 @@ export function Configuracoes() {
             key={a.id}
             type="button"
             onClick={() => setAba(a.id)}
-            className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+            className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
               aba === a.id ? 'bg-azul text-white shadow-sm' : 'text-texto-fraco hover:bg-fundo'
             }`}
           >
-            <span className="mr-1">{a.icon}</span>
+            <Icon name={a.icon} size={16} />
             <span className="hidden sm:inline">{a.label}</span>
           </button>
         ))}
@@ -195,7 +196,7 @@ export function Configuracoes() {
           <Button type="submit" disabled={salvando}>
             {salvando ? 'Salvando...' : 'Salvar Tudo'}
           </Button>
-          {salvo && <span className="text-verde text-sm font-medium">✓ Salvo com sucesso</span>}
+          {salvo && <span className="text-verde text-sm font-medium flex items-center gap-1"><Icon name="check" size={16} /> Salvo com sucesso</span>}
           <span className="ml-auto text-xs text-texto-fraco">Salva todas as abas</span>
         </div>
       </form>

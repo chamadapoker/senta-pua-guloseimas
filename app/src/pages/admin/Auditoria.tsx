@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 
 interface Log {
@@ -22,12 +23,12 @@ interface Resp {
   offset: number;
 }
 
-const ACAO_ICONE: Record<string, string> = {
-  aprovar_comprovante: '✅',
-  rejeitar_comprovante: '❌',
-  criar_admin: '👤',
-  excluir_admin: '🗑️',
-  gerar_cobrancas_auto: '⏰',
+const ACAO_ICONE: Record<string, 'check' | 'x' | 'user' | 'trash' | 'alarm' | 'note'> = {
+  aprovar_comprovante: 'check',
+  rejeitar_comprovante: 'x',
+  criar_admin: 'user',
+  excluir_admin: 'trash',
+  gerar_cobrancas_auto: 'alarm',
 };
 
 const PAGE = 50;
@@ -86,7 +87,7 @@ export function Auditoria() {
                   onClick={() => setAberto(aberto === log.id ? null : log.id)}
                   className="w-full text-left flex items-center gap-2 text-sm"
                 >
-                  <span className="text-lg">{ACAO_ICONE[log.acao] || '📝'}</span>
+                  <Icon name={ACAO_ICONE[log.acao] || 'note'} size={18} className="text-texto-fraco" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-texto truncate">
                       <span className="text-azul">{log.admin_email}</span>

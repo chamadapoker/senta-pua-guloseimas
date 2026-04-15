@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 
 interface Item {
@@ -86,8 +87,9 @@ export function Lucratividade() {
           </div>
 
           {atual.totais.sem_custo_count > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900">
-              ⚠ {atual.totais.sem_custo_count} produto(s) sem preço de custo cadastrado — não entram no cálculo de lucro.
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 flex items-start gap-2">
+              <Icon name="warning" size={14} className="mt-0.5 flex-shrink-0" />
+              <span>{atual.totais.sem_custo_count} produto(s) sem preço de custo cadastrado — não entram no cálculo de lucro.</span>
             </div>
           )}
 

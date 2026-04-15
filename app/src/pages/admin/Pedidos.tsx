@@ -165,7 +165,7 @@ export function Pedidos() {
                       p.metodo_pagamento === 'dinheiro' ? 'bg-green-50 text-verde-escuro' :
                       'bg-amber-50 text-amber-700'
                     }`}>
-                      {p.metodo_pagamento === 'pix' ? '💠 PIX' : p.metodo_pagamento === 'dinheiro' ? '💵 CASH' : '📝 FIADO'}
+                      {p.metodo_pagamento === 'pix' ? 'PIX' : p.metodo_pagamento === 'dinheiro' ? 'DINHEIRO' : 'FIADO'}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>

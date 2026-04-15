@@ -4,6 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { AppLayout } from '../../../components/AppLayout';
 import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
+import { Icon } from '../../../components/ui/Icon';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -187,8 +188,8 @@ export function XimbocaEvento() {
       </div>
       <p className="text-sm text-texto-fraco mb-3">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
       <div className="flex gap-2 flex-wrap mb-5">
-        <button onClick={abrirEdicao} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200">✏ Editar Evento</button>
-        <button onClick={() => setModalQR(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">📱 QR Code</button>
+        <button onClick={abrirEdicao} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200 inline-flex items-center gap-1.5"><Icon name="pencil" size={12} /> Editar Evento</button>
+        <button onClick={() => setModalQR(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5"><Icon name="qr-code" size={12} /> QR Code</button>
       </div>
 
       {/* Financial summary */}
@@ -252,7 +253,7 @@ export function XimbocaEvento() {
         <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl flex-wrap gap-2">
           <h2 className="text-sm font-medium text-white uppercase tracking-wider">Despesas</h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={abrirEstoque}>📦 Do Estoque</Button>
+            <Button size="sm" variant="outline" onClick={abrirEstoque}><span className="inline-flex items-center gap-1.5"><Icon name="archive" size={12} /> Do Estoque</span></Button>
             <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
           </div>
         </div>
@@ -404,8 +405,8 @@ export function XimbocaEvento() {
           </div>
           <div className="text-xs text-texto-fraco break-all">{qrUrl}</div>
           <div className="grid grid-cols-2 gap-2">
-            <Button onClick={baixarQR}>📥 Baixar PNG</Button>
-            <Button variant="outline" onClick={() => window.print()}>🖨 Imprimir</Button>
+            <Button onClick={baixarQR}><span className="inline-flex items-center gap-1.5"><Icon name="download" size={14} /> Baixar PNG</span></Button>
+            <Button variant="outline" onClick={() => window.print()}><span className="inline-flex items-center gap-1.5"><Icon name="printer" size={14} /> Imprimir</span></Button>
           </div>
         </div>
       </Modal>

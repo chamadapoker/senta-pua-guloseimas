@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from './Button';
+import { Icon } from './Icon';
 import { api } from '../../services/api';
 
 interface EnviarComprovanteProps {
@@ -41,7 +42,7 @@ export function EnviarComprovante({ origem, referenciaId, onEnviado, size = 'sm'
 
   return (
     <>
-      <Button variant="primary" size={size} onClick={abrir}>📎 Anexar Comprovante</Button>
+      <Button variant="primary" size={size} onClick={abrir}><Icon name="paper-clip" size={14} className="mr-1.5" /> Anexar Comprovante</Button>
 
       {modal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !loading && setModal(false)}>
@@ -60,7 +61,7 @@ export function EnviarComprovante({ origem, referenciaId, onEnviado, size = 'sm'
                 </div>
               ) : (
                 <div>
-                  <div className="text-texto-fraco text-3xl mb-1">📤</div>
+                  <div className="text-texto-fraco mb-1 flex justify-center"><Icon name="upload" size={32} /></div>
                   <div className="text-sm text-texto-fraco">Toque para selecionar foto ou PDF</div>
                   <div className="text-[10px] text-texto-fraco mt-1">Máx 5MB · JPG, PNG, WEBP, PDF</div>
                 </div>

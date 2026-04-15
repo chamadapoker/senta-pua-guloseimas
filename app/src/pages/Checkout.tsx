@@ -142,14 +142,14 @@ export function Checkout() {
 
       <div className="space-y-3 pb-4">
         <Button variant="success" size="lg" className="w-full" onClick={() => enviarPedido('pix')} disabled={loading}>
-          💠 Pagar via PIX
+          Pagar via PIX
         </Button>
         <Button variant="primary" size="lg" className="w-full" onClick={() => enviarPedido('dinheiro')} disabled={loading}>
-          💵 Paguei em Dinheiro
+          Paguei em Dinheiro
         </Button>
         {user.permite_fiado !== 0 && (
           <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
-            📝 Anotar no Fiado
+            Anotar no Fiado
           </Button>
         )}
         {user.permite_fiado === 0 && user.is_visitante === 1 && (
@@ -158,7 +158,7 @@ export function Checkout() {
           </p>
         )}
         <p className="text-[10px] text-texto-fraco text-center">
-          💵 Dinheiro: o admin confirma quando receber. 💠 PIX: envie comprovante ao terminar.
+          Dinheiro: o admin confirma quando receber. PIX: envie comprovante ao terminar.
         </p>
       </div>
     </AppLayout>

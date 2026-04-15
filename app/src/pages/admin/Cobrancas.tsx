@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 
 interface Devedor {
@@ -101,7 +102,7 @@ export function Cobrancas() {
       )}
 
       <details className="bg-white rounded-xl border border-borda p-3 mb-4">
-        <summary className="text-sm font-medium cursor-pointer text-texto-fraco">✏ Editar modelo de mensagem</summary>
+        <summary className="text-sm font-medium cursor-pointer text-texto-fraco flex items-center gap-1.5"><Icon name="pencil" size={14} /> Editar modelo de mensagem</summary>
         <textarea
           value={modelo}
           onChange={e => setModelo(e.target.value)}
@@ -115,7 +116,7 @@ export function Cobrancas() {
 
       <div className="mb-3 flex justify-end">
         <Button variant="success" onClick={abrirTodos} disabled={!devedores.some(d => d.whatsapp)}>
-          📢 Cobrar todos ({devedores.filter(d => d.whatsapp).length})
+          <span className="inline-flex items-center gap-1.5"><Icon name="megaphone" size={16} /> Cobrar todos ({devedores.filter(d => d.whatsapp).length})</span>
         </Button>
       </div>
 
@@ -151,13 +152,13 @@ export function Cobrancas() {
                     disabled={!d.whatsapp}
                     className="text-xs px-2 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {d.whatsapp ? '📱 WhatsApp' : 'sem zap'}
+                    {d.whatsapp ? <span className="inline-flex items-center gap-1"><Icon name="device-phone" size={12} /> WhatsApp</span> : 'sem zap'}
                   </button>
                 </td>
               </tr>
             ))}
             {devedores.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-6 text-texto-fraco">🎉 Nenhum devedor no filtro selecionado</td></tr>
+              <tr><td colSpan={8} className="text-center py-6 text-texto-fraco">Nenhum devedor no filtro selecionado</td></tr>
             )}
           </tbody>
         </table>

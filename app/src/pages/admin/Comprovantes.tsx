@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -176,8 +177,8 @@ export function Comprovantes() {
 
             <div className="bg-fundo rounded-lg p-2 mb-3">
               {preview.imagem_url.endsWith('.pdf') ? (
-                <a href={resolverImg(preview.imagem_url)} target="_blank" rel="noopener noreferrer" className="text-azul hover:underline">
-                  📄 Abrir PDF em nova aba
+                <a href={resolverImg(preview.imagem_url)} target="_blank" rel="noopener noreferrer" className="text-azul hover:underline inline-flex items-center gap-1.5">
+                  <Icon name="document" size={14} /> Abrir PDF em nova aba
                 </a>
               ) : (
                 <img src={resolverImg(preview.imagem_url)} alt="Comprovante" className="w-full max-h-[60vh] object-contain rounded" />
