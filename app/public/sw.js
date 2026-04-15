@@ -15,13 +15,31 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // API calls: network only
+  // API: network only (nunca cacheia)
   if (url.pathname.startsWith('/api')) return;
 
-  // Assets: cache first, fallback to network
+  // HTML navigation: network first (sempre pega versao nova), cache como fallback offline
+  if (e.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request).then((c) => c || caches.match('/')))
+    );
+    return;
+  }
+
+  // Assets com hash no nome (JS/CSS imutaveis): cache first
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetched = fetch(e.request).then((res) => {

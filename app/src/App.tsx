@@ -43,6 +43,7 @@ import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
 import { XimbocaPublica } from './pages/XimbocaPublica';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { useAuth } from './hooks/useAuth';
 import { useUserAuth } from './hooks/useUserAuth';
 import { api } from './services/api';
@@ -93,6 +94,7 @@ export function App() {
   return (
     <BrowserRouter>
       <UserAuthLoader />
+      <UpdatePrompt />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/catalogo/:categoria" element={<VisitorGuard><Catalogo /></VisitorGuard>} />
