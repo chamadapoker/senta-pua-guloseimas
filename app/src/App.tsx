@@ -41,6 +41,7 @@ import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
 import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { Documentacao } from './pages/admin/Documentacao';
+import { Aniversariantes } from './pages/admin/Aniversariantes';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -145,6 +146,7 @@ export function App() {
         <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
         <Route path="/admin/ximboca/estoque" element={<AdminGuard><XimbocaEstoque /></AdminGuard>} />
         <Route path="/admin/documentacao" element={<AdminGuard><Documentacao /></AdminGuard>} />
+        <Route path="/admin/aniversariantes" element={<AdminGuard><Aniversariantes /></AdminGuard>} />
       </Routes>
     </BrowserRouter>
     </ToastProvider>

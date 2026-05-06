@@ -22,7 +22,7 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
 type FiltroStatus = 'todos' | 'ativos' | 'desativados' | 'visitantes' | 'expirados';
 type FiltroCategoria = 'todas' | 'oficial' | 'graduado' | 'praca';
 
-type EditForm = { trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string };
+type EditForm = { trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string; data_nascimento: string };
 
 export function Usuarios() {
   const { showToast } = useToast();
@@ -43,7 +43,7 @@ export function Usuarios() {
   const [novaSenha, setNovaSenha] = useState('');
   const [editModal, setEditModal] = useState<Usuario | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({
-    trigrama: '', email: '', saram: '', whatsapp: '', esquadrao_origem: '',
+    trigrama: '', email: '', saram: '', whatsapp: '', esquadrao_origem: '', data_nascimento: '',
   });
   const [editErro, setEditErro] = useState('');
   const [novoModal, setNovoModal] = useState(false);
@@ -56,7 +56,8 @@ export function Usuarios() {
     senha: '',
     is_visitante: false, 
     esquadrao_origem: '', 
-    expira_em: ''
+    expira_em: '',
+    data_nascimento: ''
   });
   const [acaoLoading, setAcaoLoading] = useState<number | null>(null);
   const [msg, setMsg] = useState('');
@@ -173,6 +174,7 @@ export function Usuarios() {
       saram: u.saram,
       whatsapp: u.whatsapp,
       esquadrao_origem: u.esquadrao_origem || '',
+      data_nascimento: u.data_nascimento || '',
     });
     setEditErro('');
   };
@@ -195,6 +197,7 @@ export function Usuarios() {
       email: em,
       saram: sa,
       whatsapp: wp,
+      data_nascimento: editForm.data_nascimento || null,
     };
     if (editModal.is_visitante === 1) {
       payload.esquadrao_origem = editForm.esquadrao_origem.trim().toUpperCase() || null;
@@ -268,7 +271,7 @@ export function Usuarios() {
       setNovoModal(false);
       setNovoForm({
         trigrama: '', email: '', saram: '', whatsapp: '', categoria: 'oficial', senha: '',
-        is_visitante: false, esquadrao_origem: '', expira_em: ''
+        is_visitante: false, esquadrao_origem: '', expira_em: '', data_nascimento: ''
       });
       await carregar();
     } catch (e) {
@@ -574,17 +577,17 @@ export function Usuarios() {
                 />
               </div>
 
-              {editModal.is_visitante === 1 && (
-                <div>
-                  <label className="block text-xs font-medium text-texto-fraco mb-1">Esquadrão de Origem</label>
-                  <input
-                    type="text"
-                    value={editForm.esquadrao_origem}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
-                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-                  />
-                </div>
               )}
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Data de Nascimento</label>
+                <input
+                  type="date"
+                  value={editForm.data_nascimento}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                />
+              </div>
             </div>
 
             {editErro && <p className="text-vermelho text-xs mt-4">{editErro}</p>}
@@ -644,6 +647,16 @@ export function Usuarios() {
                   type="email"
                   value={novoForm.email}
                   onChange={(e) => setNovoForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Data de Nascimento</label>
+                <input
+                  type="date"
+                  value={novoForm.data_nascimento}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, data_nascimento: e.target.value }))}
                   className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
                 />
               </div>

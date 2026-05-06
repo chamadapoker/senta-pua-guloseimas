@@ -288,8 +288,8 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{ sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number }>();
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at, data_nascimento, niver_titulo, niver_texto, niver_imagem_url FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number; data_nascimento: string | null; niver_titulo: string | null; niver_texto: string | null; niver_imagem_url: string | null }>();
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
   const cliente = await c.env.DB.prepare(
@@ -432,7 +432,56 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
       ximboca: { pago: ximbocaPagoTotal, pendente: ximbocaPendenteTotal },
       geral: { pago: totalPagoGeral, pendente: totalPendenteGeral },
     },
+    aniversario: await checarAniversario(user, c.env)
   });
+});
+
+async function checarAniversario(u: any, env: any) {
+  if (!u.data_nascimento) return null;
+  const hoje = new Date();
+  // Obtém MM-DD em fuso local/Brasília (simplificado)
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  const hojeMMDD = `${mes}-${dia}`;
+  const niverMMDD = u.data_nascimento.slice(5, 10); // Assume YYYY-MM-DD
+  if (hojeMMDD !== niverMMDD) return null;
+
+  // Busca config padrão
+  const config = await env.DB.prepare('SELECT niver_titulo_padrao, niver_texto_padrao, niver_imagem_url_padrao FROM config').first<{ niver_titulo_padrao: string; niver_texto_padrao: string; niver_imagem_url_padrao: string }>();
+
+  return {
+    titulo: u.niver_titulo || config?.niver_titulo_padrao || 'Feliz Aniversário!',
+    texto: u.niver_texto || config?.niver_texto_padrao || 'O 1/10 GpAv deseja a você muitas felicidades e sucesso!',
+    imagem_url: u.niver_imagem_url || config?.niver_imagem_url_padrao || null
+  };
+}
+
+// Admin: listar aniversariantes
+usuarios.get('/admin/aniversariantes', authMiddleware, async (c) => {
+  const { results } = await c.env.DB.prepare(`
+    SELECT id, trigrama, categoria, data_nascimento, niver_titulo, niver_texto, niver_imagem_url
+    FROM usuarios 
+    WHERE data_nascimento IS NOT NULL 
+    ORDER BY SUBSTR(data_nascimento, 6) ASC
+  `).all();
+  
+  return c.json(results);
+});
+
+// Admin: salvar homenagem personalizada
+usuarios.put('/admin/:id/homenagem', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { niver_titulo, niver_texto, niver_imagem_url } = await c.req.json();
+
+  await c.env.DB.prepare(`
+    UPDATE usuarios 
+    SET niver_titulo = ?, niver_texto = ?, niver_imagem_url = ? 
+    WHERE id = ?
+  `).bind(niver_titulo, niver_texto, niver_imagem_url, id).run();
+
+  await audit(c, 'configurar_homenagem_aniversario', 'usuarios', id, null, { niver_titulo });
+
+  return c.json({ ok: true });
 });
 
 // Usuario logado: meu extrato completo (self-service)

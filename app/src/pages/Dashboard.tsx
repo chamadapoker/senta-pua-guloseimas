@@ -4,6 +4,7 @@ import { AppLayout } from '../components/AppLayout';
 import { EnviarComprovante } from '../components/ui/EnviarComprovante';
 import { StatusComprovante } from '../components/ui/StatusComprovante';
 import { useComprovantesStatus } from '../hooks/useComprovantesStatus';
+import { BirthdaySurprise } from '../components/ui/BirthdaySurprise';
 import { api } from '../services/api';
 import { useUserAuth } from '../hooks/useUserAuth';
 import type { Usuario } from '../types';
@@ -51,6 +52,7 @@ interface DashboardData {
   ultimos_pedidos: PedidoResumo[];
   cafe_status: CafeStatus | null;
   totais?: Totais;
+  aniversario?: { titulo: string; texto: string; imagem_url: string | null } | null;
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -74,11 +76,21 @@ export function Dashboard() {
   const { user } = useUserAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showBirthday, setShowBirthday] = useState(false);
   const comprov = useComprovantesStatus();
 
   useEffect(() => {
     api.get<DashboardData>('/api/usuarios/me/dashboard')
-      .then(setData)
+      .then(d => {
+        setData(d);
+        if (d.aniversario) {
+          const key = `niver_visto_${new Date().toISOString().slice(0, 10)}`;
+          if (!localStorage.getItem(key)) {
+            setShowBirthday(true);
+            localStorage.setItem(key, '1');
+          }
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -86,6 +98,15 @@ export function Dashboard() {
 
   return (
     <AppLayout>
+      {showBirthday && data?.aniversario && (
+        <BirthdaySurprise
+          titulo={data.aniversario.titulo}
+          texto={data.aniversario.texto}
+          imagemUrl={data.aniversario.imagem_url}
+          onClose={() => setShowBirthday(false)}
+        />
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         {resolveImg(user.foto_url) ? (
           <img src={resolveImg(user.foto_url)!} alt={user.trigrama} className="w-14 h-14 rounded-full object-cover border-2 border-borda" />

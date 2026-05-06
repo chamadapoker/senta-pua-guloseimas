@@ -122,6 +122,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: '/admin/caixa', label: 'Caixa Consolidado', icon: <IconVault /> },
   { to: '/admin/auditoria', label: 'Auditoria', icon: <IconHistory /> },
   { to: '/admin/admins', label: 'Administradores', icon: <IconShield /> },
+  { to: '/admin/aniversariantes', label: 'Aniversariantes', icon: <IconGift /> },
   { to: '/admin/documentacao', label: 'Documentação', icon: <IconClipboard /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];
