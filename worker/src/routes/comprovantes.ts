@@ -183,9 +183,24 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
 
   const { results } = await c.env.DB.prepare(
     "UPDATE comprovantes SET status = 'aprovado', reviewed_by = ?, reviewed_at = datetime('now') WHERE id = ? RETURNING *"
-  ).bind(reviewer, id).all();
+  ).bind(reviewer, id).all<any>();
+  
+  const aprovado = results[0];
   await audit(c, 'aprovar_comprovante', 'comprovantes', id, null, { origem: comp.origem, referencia_id: comp.referencia_id });
-  return c.json(results[0]);
+
+  // NOTIFICAÇÃO AUTOMÁTICA
+  try {
+    await c.env.DB.prepare(
+      "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO APROVADO', ?)"
+    ).bind(
+      aprovado.trigrama, 
+      `Seu pagamento de R$ ${aprovado.valor.toFixed(2)} referente a ${comp.origem.toUpperCase()} foi confirmado!`
+    ).run();
+  } catch (err) {
+    console.error('Erro ao enviar notificação de aprovação:', err);
+  }
+
+  return c.json(aprovado);
 });
 
 // ADMIN: rejeitar
@@ -196,10 +211,25 @@ comprovantes.put('/:id/rejeitar', authMiddleware, async (c) => {
 
   const { results } = await c.env.DB.prepare(
     "UPDATE comprovantes SET status = 'rejeitado', motivo_rejeicao = ?, reviewed_by = ?, reviewed_at = datetime('now') WHERE id = ? AND status = 'aguardando' RETURNING *"
-  ).bind(motivo || 'Sem motivo informado', reviewer, id).all();
+  ).bind(motivo || 'Sem motivo informado', reviewer, id).all<any>();
+  
   if (!results.length) return c.json({ error: 'Comprovante não encontrado ou já processado' }, 404);
+  const rejeitado = results[0];
   await audit(c, 'rejeitar_comprovante', 'comprovantes', id, null, { motivo });
-  return c.json(results[0]);
+
+  // NOTIFICAÇÃO AUTOMÁTICA
+  try {
+    await c.env.DB.prepare(
+      "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO REJEITADO', ?)"
+    ).bind(
+      rejeitado.trigrama, 
+      `Atenção: Seu comprovante de R$ ${rejeitado.valor.toFixed(2)} foi rejeitado. Motivo: ${motivo || 'Não informado'}.`
+    ).run();
+  } catch (err) {
+    console.error('Erro ao enviar notificação de rejeição:', err);
+  }
+
+  return c.json(rejeitado);
 });
 
 // ADMIN: contador de pendentes (para badge)

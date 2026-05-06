@@ -66,11 +66,18 @@ async function gerarCobrancasAutomaticas(env: Env) {
   const mes = `${ano}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
   const { results: mensais } = await env.DB.prepare(
-    "SELECT id, valor FROM cafe_assinantes WHERE ativo = 1 AND plano = 'mensal'"
-  ).all<{ id: string; valor: number }>();
+    `SELECT ca.id, ca.valor, cl.nome_guerra 
+     FROM cafe_assinantes ca 
+     JOIN clientes cl ON cl.id = ca.cliente_id 
+     WHERE ca.ativo = 1 AND ca.plano = 'mensal'`
+  ).all<{ id: string; valor: number; nome_guerra: string }>();
+
   const { results: anuais } = await env.DB.prepare(
-    "SELECT id, valor FROM cafe_assinantes WHERE ativo = 1 AND plano = 'anual'"
-  ).all<{ id: string; valor: number }>();
+    `SELECT ca.id, ca.valor, cl.nome_guerra 
+     FROM cafe_assinantes ca 
+     JOIN clientes cl ON cl.id = ca.cliente_id 
+     WHERE ca.ativo = 1 AND ca.plano = 'anual'`
+  ).all<{ id: string; valor: number; nome_guerra: string }>();
 
   const { results: existMes } = await env.DB.prepare(
     'SELECT assinante_id FROM cafe_pagamentos WHERE referencia = ?'
@@ -86,6 +93,12 @@ async function gerarCobrancasAutomaticas(env: Env) {
   for (const a of mensais) {
     if (!jaMes.has(a.id)) {
       batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
+      // NOTIFICAÇÃO
+      batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
+        a.nome_guerra, 
+        'CAIXINHA DO CAFÉ', 
+        `Mensalidade do café de ${mes} lançada no seu extrato.`
+      ));
     }
   }
   // Só gera anual em janeiro (mes 01)
@@ -93,6 +106,12 @@ async function gerarCobrancasAutomaticas(env: Env) {
     for (const a of anuais) {
       if (!jaAno.has(a.id)) {
         batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
+        // NOTIFICAÇÃO
+        batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
+          a.nome_guerra, 
+          'CAFÉ (ANUAL)', 
+          `Anuidade do café de ${ano} lançada no seu extrato.`
+        ));
       }
     }
   }
@@ -135,12 +154,37 @@ async function gerarRelatorioCobrancaRP(env: Env) {
   ).bind(JSON.stringify(resumo)).run();
 }
 
+async function verificarAniversariantes(env: Env) {
+  const now = new Date();
+  const hoje = `${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`; // MM-DD
+
+  // Procura usuários que fazem niver hoje (ignorando o ano)
+  const { results: aniversariantes } = await env.DB.prepare(`
+    SELECT trigrama FROM usuarios 
+    WHERE data_nascimento IS NOT NULL 
+    AND (
+      strftime('%m-%d', data_nascimento) = ? OR 
+      substr(data_nascimento, 4, 2) || '-' || substr(data_nascimento, 1, 2) = ?
+    )
+  `).bind(hoje, hoje).all<{ trigrama: string }>();
+
+  if (aniversariantes.length === 0) return;
+
+  const batch: D1PreparedStatement[] = aniversariantes.map(a => 
+    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSÁRIO!', ?)")
+      .bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Passe no RP para sua homenagem.")
+  );
+
+  await env.DB.batch(batch);
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil((async () => {
       await gerarCobrancasAutomaticas(env);
       await gerarRelatorioCobrancaRP(env);
+      await verificarAniversariantes(env);
     })());
   },
 };

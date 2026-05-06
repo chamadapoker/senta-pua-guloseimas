@@ -124,6 +124,21 @@ pedidos.post('/', checkVisitanteSeLogado, async (c) => {
     "UPDATE produtos SET disponivel = 0 WHERE estoque IS NOT NULL AND estoque <= 0"
   ).run();
 
+  // NOTIFICAÇÃO AUTOMÁTICA (se for militar logado)
+  const userTrigrama = c.get('userTrigrama');
+  if (userTrigrama && metodo === 'fiado') {
+    try {
+      await c.env.DB.prepare(
+        "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'NOVA COMPRA', ?)"
+      ).bind(
+        userTrigrama, 
+        `Compra de guloseimas realizada no valor de R$ ${total.toFixed(2)}. Não esqueça de regularizar seu saldo!`
+      ).run();
+    } catch (err) {
+      console.error('Erro ao enviar notificação de compra:', err);
+    }
+  }
+
   return c.json({ pedido_id: pedidoId, total, status }, 201);
 });
 
@@ -206,7 +221,24 @@ pedidos.put('/:id/pagar', authMiddleware, async (c) => {
   ).bind(id).all();
 
   if (!results.length) return c.json({ error: 'Pedido não encontrado ou já pago' }, 404);
-  return c.json(results[0]);
+  const pedidoPago = results[0];
+
+  // NOTIFICAÇÃO AUTOMÁTICA
+  try {
+    const cliente = await c.env.DB.prepare("SELECT nome_guerra FROM clientes WHERE id = ?").bind(pedidoPago.cliente_id).first<{ nome_guerra: string }>();
+    if (cliente) {
+      await c.env.DB.prepare(
+        "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO CONFIRMADO', ?)"
+      ).bind(
+        cliente.nome_guerra, 
+        `Seu débito de guloseimas no valor de R$ ${pedidoPago.total.toFixed(2)} foi marcado como PAGO!`
+      ).run();
+    }
+  } catch (err) {
+    console.error('Erro ao enviar notificação de baixa manual:', err);
+  }
+
+  return c.json(pedidoPago);
 });
 
 // Admin: excluir pedido

@@ -250,7 +250,24 @@ ximboca.put('/participantes/:id/pagar', async (c) => {
     "UPDATE ximboca_participantes SET status = 'pago', paid_at = datetime('now') WHERE id = ? RETURNING *"
   ).bind(id).all();
   if (!results.length) return c.json({ error: 'Participante não encontrado' }, 404);
-  return c.json(results[0]);
+  const pago = results[0];
+
+  // NOTIFICAÇÃO AUTOMÁTICA
+  try {
+    const evento = await c.env.DB.prepare("SELECT nome FROM ximboca_eventos WHERE id = ?").bind(pago.evento_id).first<{ nome: string }>();
+    if (evento) {
+      await c.env.DB.prepare(
+        "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'XIMBOCA CONFIRMADA', ?)"
+      ).bind(
+        pago.nome, 
+        `Seu pagamento para o evento "${evento.nome}" foi confirmado. Bom churrasco!`
+      ).run();
+    }
+  } catch (err) {
+    console.error('Erro ao enviar notificação de ximboca:', err);
+  }
+
+  return c.json(pago);
 });
 
 // Remove participant
