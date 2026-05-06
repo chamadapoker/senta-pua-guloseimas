@@ -853,11 +853,16 @@ usuarios.post('/admin', authMiddleware, async (c) => {
     placeholders.push('?');
   }
 
-  const { results } = await c.env.DB.prepare(
-    `INSERT INTO usuarios (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`
-  ).bind(...values).all<{ id: number }>();
-
-  const userId = results[0].id;
+  let userId: number;
+  try {
+    const { results } = await c.env.DB.prepare(
+      `INSERT INTO usuarios (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`
+    ).bind(...values).all<{ id: number }>();
+    userId = results[0].id;
+  } catch (err) {
+    console.error('Erro ao criar usuario:', err);
+    return c.json({ error: 'Erro ao criar usuário no banco. Verifique as colunas de aniversário.' }, 500);
+  }
 
   // Sincroniza tabela clientes
   const existCliente = await c.env.DB.prepare(
@@ -963,7 +968,12 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
   if (!updates.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
 
   params.push(id);
-  await c.env.DB.prepare(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+  try {
+    await c.env.DB.prepare(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+  } catch (err) {
+    console.error('Erro ao atualizar usuario:', err);
+    return c.json({ error: 'Erro no banco de dados. Verifique se a coluna data_nascimento existe.' }, 500);
+  }
 
   // Sincroniza tabela clientes (linkada por nome_guerra = trigrama)
   if (novoTrigrama || novoWhatsapp !== null || novoEsquadrao !== undefined) {

@@ -89,7 +89,7 @@ export function Aniversariantes() {
                   <div className="text-[10px] text-texto-fraco uppercase font-bold tracking-widest">{u.categoria}</div>
                 </div>
                 <div className="bg-azul/10 text-azul text-xs font-bold px-3 py-1 rounded-full">
-                  🎂 {formatData(u.data_nascimento)}
+                  {formatData(u.data_nascimento)}
                 </div>
               </div>
 
@@ -112,15 +112,12 @@ export function Aniversariantes() {
         </div>
       ) : (
         <div className="bg-white rounded-3xl border border-borda p-12 text-center shadow-sm max-w-lg mx-auto mt-10">
-          <div className="w-20 h-20 bg-fundo rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl">🎂</span>
-          </div>
-          <h2 className="font-display text-xl text-azul tracking-wider uppercase mb-3">Nenhum militar cadastrado</h2>
+          <h2 className="font-display text-xl text-azul tracking-wider uppercase mb-3">Aguardando Dados</h2>
           <p className="text-sm text-texto-fraco leading-relaxed mb-8">
-            Para que os aniversariantes apareçam aqui e recebam a surpresa no Dashboard, você precisa cadastrar a <strong>Data de Nascimento</strong> no perfil deles.
+            Nenhum aniversário foi identificado no sistema ainda. Para começar, adicione a data de nascimento no perfil dos militares.
           </p>
-          <Button variant="primary" onClick={() => window.location.href = '/admin/usuarios'}>
-            Ir para Gestão de Usuários
+          <Button variant="outline" onClick={() => window.location.href = '/admin/usuarios'}>
+            Gerenciar Usuários
           </Button>
         </div>
       )}
