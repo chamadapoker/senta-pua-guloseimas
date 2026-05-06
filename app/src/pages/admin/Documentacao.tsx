@@ -257,18 +257,32 @@ export function Documentacao() {
                 <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
                   <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Automações do Sistema</h2>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
-                      <h3 className="font-bold text-azul text-xs uppercase mb-2">Dia 01: Cobrança do Café</h3>
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">🚀 Mensalidade do Café (Dia 01)</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        À meia-noite do dia 01, o servidor percorre a lista de assinantes do café e lança o débito mensal automaticamente. O RP não precisa fazer nada.
+                        À meia-noite do dia 01, o servidor percorre todos os assinantes ativos e gera as cobranças mensais. O militar recebe um aviso imediato no <strong>Sininho</strong>.
                       </p>
                     </div>
 
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
-                      <h3 className="font-bold text-vermelho text-xs uppercase mb-2">Alertas de Inadimplência</h3>
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">🎂 Radar de Aniversariantes</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        Caso um militar acumule débitos, o Dashboard dele muda de cor e um banner de aviso aparece em todas as páginas até que ele baixe o extrato.
+                        Diariamente o sistema verifica quem faz aniversário e envia uma mensagem de parabéns automática, convidando o militar a passar no RP para sua homenagem.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">🔔 Sininho de Feedback</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Sempre que um Admin aprova ou rejeita um comprovante, ou quando um militar faz uma nova compra no fiado, o sistema dispara um alerta em tempo real.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-vermelho text-xs uppercase mb-2">🛑 Bloqueio de Visitantes</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O sistema monitora a data de validade de todos os visitantes. Ao expirar, o login é bloqueado automaticamente, garantindo a segurança do ambiente.
                       </p>
                     </div>
                   </div>

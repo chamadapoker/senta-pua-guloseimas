@@ -218,10 +218,7 @@ usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
     'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, data_nascimento, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{
-    is_visitante: number; expira_em: string | null; acesso_pausado: number;
-    [k: string]: unknown;
-  }>();
+  ).bind(userId).first<any>();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
@@ -270,11 +267,8 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
   }
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{
-    is_visitante: number; expira_em: string | null; acesso_pausado: number;
-    [k: string]: unknown;
-  }>();
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, data_nascimento, created_at FROM usuarios WHERE id = ?'
+  ).bind(userId).first<any>();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
