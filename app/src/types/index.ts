@@ -66,6 +66,10 @@ export interface Usuario {
   ativo?: number;
   cliente_id?: string | null;
   created_at?: string;
+  data_nascimento?: string | null;
+  niver_titulo?: string | null;
+  niver_texto?: string | null;
+  niver_imagem_url?: string | null;
 }
 
 export interface DashboardStats {
