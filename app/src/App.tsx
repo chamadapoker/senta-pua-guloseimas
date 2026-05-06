@@ -37,6 +37,8 @@ import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
 import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
 import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
 import { XimbocaDashboard } from './pages/admin/ximboca/XimbocaDashboard';
+import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
+import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
 import { Documentacao } from './pages/admin/Documentacao';
 import { CafePublico } from './pages/CafePublico';
