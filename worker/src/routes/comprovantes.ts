@@ -194,7 +194,7 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
       "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO APROVADO', ?)"
     ).bind(
       aprovado.trigrama, 
-      `Missao Cumprida! Seu pagamento de R$ ${aprovado.valor.toFixed(2)} (${comp.origem.toUpperCase()}) foi confirmado. Disciplina e pontualidade sao marcas do nosso esquadrao. Senta a Pua!`
+      `Missao Cumprida! Seu pagamento de R$ ${aprovado.valor.toFixed(2)} (${comp.origem.toUpperCase()}) foi confirmado. Disciplina e pontualidade sao marcas do nosso esquadrao.`
     ).run();
   } catch (err) {
     console.error('Erro ao enviar notificação de aprovação:', err);
