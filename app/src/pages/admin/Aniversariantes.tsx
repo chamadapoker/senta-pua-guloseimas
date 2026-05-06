@@ -79,7 +79,7 @@ export function Aniversariantes() {
 
       {loading ? (
         <div className="text-center py-20 text-texto-fraco">Carregando...</div>
-      ) : (
+      ) : lista.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {lista.map(u => (
             <div key={u.id} className="bg-white rounded-2xl border border-borda p-5 shadow-sm hover:shadow-md transition-all group">
@@ -109,6 +109,19 @@ export function Aniversariantes() {
               </Button>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-borda p-12 text-center shadow-sm max-w-lg mx-auto mt-10">
+          <div className="w-20 h-20 bg-fundo rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl">🎂</span>
+          </div>
+          <h2 className="font-display text-xl text-azul tracking-wider uppercase mb-3">Nenhum militar cadastrado</h2>
+          <p className="text-sm text-texto-fraco leading-relaxed mb-8">
+            Para que os aniversariantes apareçam aqui e recebam a surpresa no Dashboard, você precisa cadastrar a <strong>Data de Nascimento</strong> no perfil deles.
+          </p>
+          <Button variant="primary" onClick={() => window.location.href = '/admin/usuarios'}>
+            Ir para Gestão de Usuários
+          </Button>
         </div>
       )}
 
