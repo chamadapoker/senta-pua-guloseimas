@@ -171,8 +171,8 @@ async function verificarAniversariantes(env: Env) {
   if (aniversariantes.length === 0) return;
 
   const batch: D1PreparedStatement[] = aniversariantes.map(a => 
-    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSÁRIO!', ?)")
-      .bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Passe no RP para sua homenagem.")
+    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSARIO!', ?)")
+      .bind(a.trigrama, "O Esquadrao Senta Pua te deseja um excelente dia e um feliz aniversario! Lembre-se: o RP pode ate esquecer o proprio nome, mas nunca esquece da sua divida. Senta a Pua!")
   );
 
   await env.DB.batch(batch);
