@@ -8,213 +8,275 @@ export function Documentacao() {
   const [ativo, setAtivo] = useState<Topico>('geral');
 
   const menu = [
-    { id: 'geral', label: 'Visão Geral', icon: 'note' },
-    { id: 'loja', label: 'Lojinha Militar', icon: 'trash' }, // Usando ícones disponíveis no Icon.tsx
-    { id: 'cafe', label: 'Caixinha do Café', icon: 'check' },
-    { id: 'ximboca', label: 'Ximboca', icon: 'user' },
-    { id: 'usuarios', label: 'Usuários & Aniversários', icon: 'user' },
-    { id: 'financeiro', label: 'Financeiro & Caixa', icon: 'note' },
-    { id: 'seguranca', label: 'Segurança & Auditoria', icon: 'x' },
-    { id: 'automacoes', label: 'Automações (Crons)', icon: 'alarm' },
+    { id: 'geral', label: 'Visão Geral', icon: 'info' },
+    { id: 'loja', label: 'Lojinha Militar', icon: 'cart' },
+    { id: 'cafe', label: 'Caixinha do Café', icon: 'coffee' },
+    { id: 'ximboca', label: 'Ximboca', icon: 'fire' },
+    { id: 'usuarios', label: 'Usuários & Niver', icon: 'users' },
+    { id: 'financeiro', label: 'Financeiro', icon: 'cash' },
+    { id: 'seguranca', label: 'Segurança', icon: 'eye' },
+    { id: 'automacoes', label: 'Automações', icon: 'clock' },
   ];
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-6">DOCUMENTAÇÃO DO SISTEMA</h1>
+      <div className="max-w-6xl mx-auto animate-fade-in">
+        <header className="mb-8">
+          <h1 className="font-display text-3xl text-azul tracking-wider uppercase">Central de Documentação</h1>
+          <p className="text-texto-fraco text-sm mt-1">Guia prático para o Administrador e Responsável (RP) do sistema Senta Pua.</p>
+        </header>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Menu Lateral da Doc */}
-        <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="bg-white rounded-2xl border border-borda overflow-hidden sticky top-24">
-            {menu.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setAtivo(item.id as Topico)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-b border-borda last:border-0
-                  ${ativo === item.id ? 'bg-azul text-white' : 'text-texto-fraco hover:bg-fundo'}
-                `}
-              >
-                {item.label}
-              </button>
-            ))}
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Menu Lateral da Doc */}
+          <aside className="w-full md:w-72 flex-shrink-0">
+            <div className="bg-white rounded-2xl border border-borda overflow-hidden sticky top-24 shadow-sm">
+              <div className="px-4 py-3 bg-fundo/50 border-b border-borda">
+                <span className="text-[10px] font-bold text-azul uppercase tracking-widest">Tópicos de Ajuda</span>
+              </div>
+              {menu.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setAtivo(item.id as Topico)}
+                  className={`w-full flex items-center gap-3 px-4 py-4 text-sm font-medium transition-all border-b border-borda last:border-0
+                    ${ativo === item.id ? 'bg-azul text-white' : 'text-texto-fraco hover:bg-fundo hover:text-azul'}
+                  `}
+                >
+                  <Icon name={item.icon as any} size={18} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          {/* Conteúdo Principal */}
+          <div className="flex-1 space-y-6">
+            
+            {ativo === 'geral' && (
+              <div className="space-y-6 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-4 uppercase tracking-wider">O Sistema Senta Pua</h2>
+                  <p className="text-texto leading-relaxed mb-6">
+                    Desenvolvido para automatizar a gestão do <strong>1/10 GpAv</strong>, unificando cantina, loja, café e eventos em uma única plataforma digital resiliente.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-5 bg-azul/5 rounded-2xl border border-azul/10">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">Ecossistema Único</h3>
+                      <p className="text-xs text-texto-fraco">Um único login para o militar comprar guloseimas, pagar a lojinha e participar da Ximboca.</p>
+                    </div>
+                    <div className="p-5 bg-verde/5 rounded-2xl border border-verde/10">
+                      <h3 className="font-bold text-verde-escuro text-xs uppercase mb-2">Financeiro Integrado</h3>
+                      <p className="text-xs text-texto-fraco">O saldo do militar é consolidado em um extrato único, facilitando a cobrança mensal pelo RP.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'loja' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Lojinha Militar</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Variações de Produto</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Ao cadastrar itens como Camisetas ou Manicacas, use as <strong>Variações</strong> (Tamanho, Cor). Cada variação tem seu próprio estoque independente, evitando que você venda um tamanho "G" que não existe.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Sistema de Parcelamento</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Itens caros podem ser parcelados. O Admin define o número de parcelas e o sistema gera os débitos futuros automaticamente no extrato do militar.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Controle de Entrega</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Um pedido de loja tem dois status: <strong>Pagamento</strong> (Confirmado/Pendente) e <strong>Entrega</strong> (Entregue/Aguardando). Use o painel de pedidos da loja para filtrar quem já pagou mas ainda não buscou o material.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'cafe' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Caixinha do Café</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Assinaturas Recorrentes</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Os assinantes são divididos em <strong>Oficiais</strong> e <strong>Graduados</strong>. No dia 01 de cada mês, o sistema lança automaticamente o débito da mensalidade para todos os ativos.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Gestão de Insumos</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Cadastre o estoque de café, açúcar e copos. Quando você registra uma <strong>Despesa</strong> de compra, o sistema pergunta se quer adicionar esses itens ao estoque. Assim, você nunca fica sem café.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Painel Público</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O QR Code da caixinha leva a uma página pública que mostra quem são os "Amigos do Café" do mês, incentivando a participação e transparência.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'ximboca' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Gestão de Ximbocas</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Categorias de Consumo</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Ao criar um evento, defina valores diferentes para quem consome <strong>Cerveja</strong>, <strong>Refrigerante</strong> ou apenas o <strong>Padrão</strong>. Isso garante um rateio justo para todos.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Reaproveitamento de Estoque</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Sobrou bebida do último evento? Cadastre no <strong>Estoque da Ximboca</strong>. No próximo evento, use o botão "Consumir Estoque" para usar esses itens sem gerar novas despesas financeiras.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Balanço Automático</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O sistema calcula: (Total Pago pelos Militares) - (Despesas com Carne/Carvão) = <strong>Saldo Final</strong>. O RP sabe na hora se o evento se pagou ou se sobrou dinheiro para o próximo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'usuarios' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Usuários & Aniversários</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. O Trigrama</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O trigrama é o ID vital. Ele conecta o Login do usuário ao Extrato Financeiro. Nunca altere um trigrama sem garantir que o militar não tenha dívidas pendentes.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Gestão de Aniversariantes</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O sistema monitora as datas de nascimento. Na página de <strong>Aniversariantes</strong>, o RP pode configurar uma foto e mensagem especial que aparecerá no Dashboard do militar no dia do aniversário dele.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Contas de Visitantes</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Para militares temporários ou de outros esquadrões, crie uma conta de <strong>Visitante</strong> com data de expiração. O sistema bloqueia o acesso automaticamente após essa data.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'financeiro' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Fluxo Financeiro</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. O Ciclo do Comprovante</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O militar pode pagar via PIX e enviar o comprovante na hora. Se ele esquecer, o sistema mantém um alerta no Dashboard dele até que o arquivo seja enviado. O Admin só aprova após ver o PDF/Imagem.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Auditoria e Logs</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Toda alteração de saldo ou status de pedido é registrada. O Admin pode ver quem alterou, quando e qual era o valor antigo, garantindo transparência total para o Conselho do Esquadrão.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Consolidação de Caixa</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        O painel "Caixa Consolidado" agrupa o faturamento de todos os módulos, permitindo ao RP saber quanto dinheiro físico e digital deve haver em cada conta.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'seguranca' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Segurança & LGPD</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Níveis de Permissão</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        <strong>Admin:</strong> Operação diária. <strong>Super-Admin:</strong> Pode excluir registros permanentes, gerenciar outros admins e realizar auditorias profundas.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Exclusão Nuclear (LGPD)</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Se um militar solicitar a exclusão de dados, use a "Exclusão Nuclear". Ela apaga login, fotos, histórico e dívidas de forma irreversível, garantindo o "Direito ao Esquecimento".
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {ativo === 'automacoes' && (
+              <div className="space-y-4 animate-slide-up">
+                <div className="bg-white rounded-2xl border border-borda p-8 shadow-sm">
+                  <h2 className="text-2xl font-display text-azul mb-6 uppercase tracking-wider">Automações do Sistema</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">Dia 01: Cobrança do Café</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        À meia-noite do dia 01, o servidor percorre a lista de assinantes do café e lança o débito mensal automaticamente. O RP não precisa fazer nada.
+                      </p>
+                    </div>
+
+                    <div className="bg-fundo p-5 rounded-2xl border border-borda">
+                      <h3 className="font-bold text-vermelho text-xs uppercase mb-2">Alertas de Inadimplência</h3>
+                      <p className="text-xs text-texto-fraco leading-relaxed">
+                        Caso um militar acumule débitos, o Dashboard dele muda de cor e um banner de aviso aparece em todas as páginas até que ele baixe o extrato.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
-        </aside>
-
-        {/* Conteúdo Principal */}
-        <div className="flex-1 bg-white rounded-2xl border border-borda p-6 md:p-8 shadow-sm min-h-[600px]">
-          {ativo === 'geral' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Visão Geral</h2>
-              <p className="text-sm text-texto leading-relaxed mb-4">
-                O Sistema <strong>Senta Pua</strong> foi desenvolvido para centralizar a gestão administrativa do 1/10 GpAv. 
-                Ele integra a cantina de guloseimas, a loja de artigos militares, a caixinha do café e a organização de eventos (Ximbocas).
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                <div className="p-4 bg-fundo rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">Público-Alvo</h3>
-                  <p className="text-xs text-texto-fraco">Militares do esquadrão, oficiais, graduados e visitantes autorizados.</p>
-                </div>
-                <div className="p-4 bg-fundo rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">Tecnologia</h3>
-                  <p className="text-xs text-texto-fraco">Cloudflare Workers, D1 Database, R2 Storage e React (Vite).</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'loja' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Lojinha Militar</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>O módulo de loja permite a venda de produtos físicos com controle de variações complexas.</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Produtos e Variações</strong>: Suporta variações como Tamanho (P, M, G) ou Cor. Cada variação tem seu próprio estoque.</li>
-                  <li><strong>Fluxo de Pedido</strong>: O militar escolhe o item, a variação e o método de pagamento.</li>
-                  <li><strong>Parcelamento</strong>: Permite que o administrador configure parcelas para itens de maior valor.</li>
-                  <li><strong>Gestão de Pedidos</strong>: O admin pode marcar pedidos como "Entregue" ou "Pago".</li>
-                </ul>
-                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-amber-800 text-xs">
-                  <strong>Importante:</strong> Ao excluir um produto da loja, o sistema remove as variações, mas mantém o histórico de pedidos antigos para integridade financeira.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'cafe' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Caixinha do Café</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>Sistema de assinaturas recorrentes para manutenção do café no esquadrão.</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Assinantes</strong>: Divididos entre Oficiais e Graduados. Cada grupo tem seu próprio dashboard e estatísticas.</li>
-                  <li><strong>Planos</strong>: Suporta cobrança Mensal e Anual.</li>
-                  <li><strong>Insumos</strong>: Controle de estoque de café, açúcar, copos, etc. O sistema gera alertas quando o estoque está baixo.</li>
-                  <li><strong>Despesas</strong>: Registro de compras de insumos para cálculo de saldo real da caixinha.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'ximboca' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Gestão de Ximbocas (Eventos)</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>O módulo Ximboca foi desenhado para organizar churrascos, festas e confraternizações com rateio de custos.</p>
-                
-                <div className="bg-fundo p-4 rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Criando o Evento</h3>
-                  <p className="text-xs text-texto-fraco">
-                    Ao criar um evento, você define o <strong>Valor Padrão</strong> e valores opcionais para <strong>Cerveja</strong> e <strong>Refrigerante</strong>. 
-                    Isso permite que quem não bebe pague menos, facilitando a adesão.
-                  </p>
-                </div>
-
-                <div className="bg-fundo p-4 rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">2. O Fluxo do Militar</h3>
-                  <p className="text-xs text-texto-fraco">
-                    O militar entra na aba "Ximboca", escolhe sua categoria de consumo e confirma a presença. 
-                    O sistema gera o PIX configurado para aquele evento específico e ele pode enviar o comprovante direto para o WhatsApp do responsável.
-                  </p>
-                </div>
-
-                <div className="bg-fundo p-4 rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Uso do Estoque</h3>
-                  <p className="text-xs text-texto-fraco">
-                    Sabe aquela caixa de cerveja que sobrou do último churrasco? Você a cadastra no <strong>Estoque da Ximboca</strong>. 
-                    No novo evento, use o botão "Consumir Estoque". O sistema debita o item e lança uma despesa de R$ 0,00 no evento atual (pois o item já foi pago anteriormente), garantindo que o balanço financeiro seja real.
-                  </p>
-                </div>
-
-                <div className="bg-fundo p-4 rounded-xl border border-borda">
-                  <h3 className="font-bold text-azul text-xs uppercase mb-2">4. Balanço Final</h3>
-                  <p className="text-xs text-texto-fraco">
-                    O sistema subtrai as <strong>Despesas</strong> (compras de carne, carvão, etc) do <strong>Total Arrecadado</strong> (pagamentos confirmados). 
-                    O "Saldo do Evento" mostra se a vaquinha cobriu os custos ou se houve prejuízo.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'usuarios' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Usuários & Militares</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>O coração da plataforma. Gerencia quem pode acessar e comprar.</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Trigrama</strong>: Identificador único de 3 letras. É sincronizado automaticamente com a tabela de Clientes (Militares).</li>
-                  <li><strong>Data de Nascimento</strong>: Essencial para o sistema de homenagens. Deve ser cadastrada no botão "Gerenciar Conta".</li>
-                  <li><strong>Homenagens</strong>: O RP pode configurar mensagens e fotos especiais para cada militar na página de Aniversariantes.</li>
-                  <li><strong>Visitantes</strong>: Contas temporárias com data de expiração. Após a data, o acesso é bloqueado automaticamente.</li>
-                  <li><strong>Exclusão Nuclear</strong>: Recurso de Super-Admin que remove um usuário e TODOS os seus rastros para conformidade com a LGPD.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'financeiro' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Financeiro & Caixa</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Fluxo PIX / "Já Paguei"</strong>:
-                    <br/>1. O militar copia o PIX e paga no banco.
-                    <br/>2. Ele clica em "Já Paguei" (o pedido fica amarelo no Admin, mas sem arquivo).
-                    <br/>3. O militar pode enviar o comprovante na hora ou <strong>depois pelo Dashboard</strong>.
-                    <br/>4. O Admin só dá baixa após conferir o arquivo ou o extrato bancário.
-                  </li>
-                  <li><strong>Dashboard do Militar</strong>: Caso ele esqueça de mandar o comprovante, um botão "Enviar Comprovante" aparecerá nos pedidos pendentes dele.</li>
-                  <li><strong>Cobranças</strong>: Painel que gera links de WhatsApp para devedores, com o valor consolidado de todos os módulos.</li>
-                  <li><strong>Caixa Consolidado</strong>: Tela que soma o faturamento de Lojinha + Café + Cantina + Ximboca.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'seguranca' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Segurança & Auditoria</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Níveis de Acesso</strong>: 
-                    <br/>- <em>Admin:</em> Gestão diária.
-                    <br/>- <em>Super Admin:</em> Funções destrutivas e gestão de outros admins.
-                  </li>
-                  <li><strong>Auditoria (Logs)</strong>: Registra quem alterou o quê. Permite ver o estado do dado "Antes" e "Depois" da alteração.</li>
-                  <li><strong>IP Tracking</strong>: O endereço IP de cada ação administrativa é registrado para segurança.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {ativo === 'automacoes' && (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Automações (Crons)</h2>
-              <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>O sistema realiza tarefas automáticas programadas pelo (3S TIN HÖEHR) para reduzir o trabalho manual.</p>
-                <div className="space-y-6">
-                  <div className="border-l-4 border-azul pl-4">
-                    <h4 className="font-bold text-texto text-xs uppercase">1. Cobrança do Café (Mensal/Anual)</h4>
-                    <p className="text-xs text-texto-fraco mt-1">
-                      Executado no dia 01 de cada mês. Gera automaticamente os débitos de R$ 30,00 (ou valor configurado) no extrato dos assinantes ativos.
-                    </p>
-                  </div>
-                  <div className="border-l-4 border-azul pl-4">
-                    <h4 className="font-bold text-texto text-xs uppercase">2. Fechamento Mensal para o RP</h4>
-                    <p className="text-xs text-texto-fraco mt-1">
-                      Executado no dia 01. Consolida todas as dívidas pendentes do mês anterior e gera um log de auditoria resumido com o valor total a ser coletado.
-                    </p>
-                  </div>
-                  <div className="border-l-4 border-vermelho pl-4">
-                    <h4 className="font-bold text-texto text-xs uppercase">3. Alerta de Dívida (Dashboard)</h4>
-                    <p className="text-xs text-texto-fraco mt-1">
-                      Dinâmico. Caso o militar possua qualquer valor pendente, um banner vermelho pulsante aparece no portal dele com botão direto para baixar o extrato em PDF.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </AppLayout>

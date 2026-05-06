@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
@@ -15,6 +16,7 @@ const ABAS: { id: Aba; label: string; icon: 'tag' | 'credit-card' | 'cash' | 'ca
 ];
 
 export function Configuracoes() {
+  const location = useLocation();
   const [config, setConfig] = useState<Record<string, string>>({});
   const [aba, setAba] = useState<Aba>('nomes');
   const [salvando, setSalvando] = useState(false);
@@ -23,6 +25,14 @@ export function Configuracoes() {
   useEffect(() => {
     api.get<Record<string, string>>('/api/config').then(setConfig);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const abaParam = params.get('aba') as Aba;
+    if (abaParam && ABAS.some(a => a.id === abaParam)) {
+      setAba(abaParam);
+    }
+  }, [location.search]);
 
   const v = (key: string, fallback = '') => config[key] || fallback;
   const set = (key: string, valor: string) => setConfig(prev => ({ ...prev, [key]: valor }));
