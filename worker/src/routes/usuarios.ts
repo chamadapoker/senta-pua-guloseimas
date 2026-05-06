@@ -13,9 +13,9 @@ const usuarios = new Hono<AppType>();
 
 // Publico: cadastro
 usuarios.post('/cadastro', async (c) => {
-  const { email, senha, trigrama, saram, whatsapp, categoria, aceite_lgpd } = await c.req.json<{
+  const { email, senha, trigrama, saram, whatsapp, categoria, aceite_lgpd, data_nascimento } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string; categoria: string;
-    aceite_lgpd?: boolean;
+    aceite_lgpd?: boolean; data_nascimento?: string | null;
   }>();
 
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
@@ -50,8 +50,8 @@ usuarios.post('/cadastro', async (c) => {
 
   const { results } = await c.env.DB.prepare(
     `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, aceitou_lgpd_em, data_nascimento)
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), NULL) RETURNING id`
-  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe).all<{ id: number }>();
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)`
+  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, data_nascimento || null).all<{ id: number }>();
 
   const userId = results[0].id;
 
@@ -92,9 +92,9 @@ usuarios.post('/cadastro', async (c) => {
 
 // Publico: cadastro de visitante
 usuarios.post('/cadastro/visitante', async (c) => {
-  const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem, aceite_lgpd } = await c.req.json<{
+  const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem, aceite_lgpd, data_nascimento } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
-    categoria: string; esquadrao_origem: string; aceite_lgpd?: boolean;
+    categoria: string; esquadrao_origem: string; aceite_lgpd?: boolean; data_nascimento?: string | null;
   }>();
 
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria || !esquadrao_origem) {
@@ -132,8 +132,8 @@ usuarios.post('/cadastro/visitante', async (c) => {
   const { results } = await c.env.DB.prepare(
     `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe,
        is_visitante, esquadrao_origem, expira_em, permite_fiado, aceitou_lgpd_em, data_nascimento)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, datetime('now'), NULL) RETURNING id`
-  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm).all<{ id: number }>();
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, datetime('now'), ?)`
+  ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm, data_nascimento || null).all<{ id: number }>();
 
   const userId = results[0].id;
 

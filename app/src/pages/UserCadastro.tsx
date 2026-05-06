@@ -13,6 +13,7 @@ export function UserCadastro() {
   const [saram, setSaram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [categoria, setCategoria] = useState<Categoria | ''>('');
+  const [dataNascimento, setDataNascimento] = useState('');
   const [aceiteLgpd, setAceiteLgpd] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export function UserCadastro() {
         saram: saram.trim(),
         whatsapp: whatsapp.trim(),
         categoria,
+        data_nascimento: dataNascimento || null,
         aceite_lgpd: true,
       });
       let fotoErro = '';
@@ -189,6 +191,17 @@ export function UserCadastro() {
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
               placeholder="Ex: 62999998888"
+              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Data de Nascimento</label>
+            <input
+              type="date"
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
               className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
               required
             />
