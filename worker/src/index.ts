@@ -93,11 +93,18 @@ async function gerarCobrancasAutomaticas(env: Env) {
   for (const a of mensais) {
     if (!jaMes.has(a.id)) {
       batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
-      // NOTIFICAÇÃO
+      const frases = [
+        "A disciplina financeira e a base da operatividade. Sua mensalidade do cafe foi lancada no extrato.",
+        "Radar limpo e conta paga. Esse e o lema. Confira seu extrato, a mensalidade do cafe ja esta disponivel.",
+        "O esquadrao conta com sua pontualidade para manter o cafe quente. Mensalidade lancada com sucesso.",
+        "Missao dada e missao cumprida. Sua mensalidade do cafe foi registrada. Mantenha seu radar em dia."
+      ];
+      const msg = frases[Math.floor(Math.random() * frases.length)];
+
       batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
         a.nome_guerra, 
-        'CAIXINHA DO CAFÉ', 
-        `Mensalidade do café de ${mes} lançada no seu extrato.`
+        'MENSALIDADE CAFE', 
+        msg
       ));
     }
   }
@@ -107,10 +114,18 @@ async function gerarCobrancasAutomaticas(env: Env) {
       if (!jaAno.has(a.id)) {
         batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
         // NOTIFICAÇÃO
+        const frases = [
+          "A disciplina financeira e a base da operatividade. Sua mensalidade do cafe foi lancada no extrato.",
+          "Radar limpo e conta paga. Esse e o lema. Confira seu extrato, a mensalidade do cafe ja esta disponivel.",
+          "O esquadrao conta com sua pontualidade para manter o cafe quente. Mensalidade lancada com sucesso.",
+          "Missao dada e missao cumprida. Sua mensalidade do cafe foi registrada. Mantenha seu radar em dia."
+        ];
+        const msg = frases[Math.floor(Math.random() * frases.length)];
+
         batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
           a.nome_guerra, 
-          'CAFÉ (ANUAL)', 
-          `Anuidade do café de ${ano} lançada no seu extrato.`
+          'MENSALIDADE CAFE', 
+          msg
         ));
       }
     }
