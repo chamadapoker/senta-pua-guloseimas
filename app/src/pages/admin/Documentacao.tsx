@@ -159,7 +159,7 @@ export function Documentacao() {
             <div className="animate-fade-in">
               <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Automações (Crons)</h2>
               <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>O sistema realiza tarefas automáticas programadas (Crons) para reduzir o trabalho manual.</p>
+                <p>O sistema realiza tarefas automáticas programadas pelo (3S TIN HÖEHR) para reduzir o trabalho manual.</p>
                 <div className="space-y-6">
                   <div className="border-l-4 border-azul pl-4">
                     <h4 className="font-bold text-texto text-xs uppercase">1. Cobrança do Café (Mensal/Anual)</h4>
