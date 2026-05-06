@@ -72,16 +72,19 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }, [token, checkAuth]);
 
   if (verificando) return <div className="text-center py-20 text-gray-400">Verificando...</div>;
-  if (!autenticado) return <Navigate to="/admin/login" replace />;
+  
+  // Se não autenticou, mas foi erro de rede (não limpou o token), permite continuar
+  if (!autenticado && !token) return <Navigate to="/admin/login" replace />;
+  
   return <>{children}</>;
 }
 
 function UserAuthLoader() {
-  const { token, checkAuth } = useUserAuth();
+  const { token, user, checkAuth } = useUserAuth();
   useEffect(() => {
-    if (token) checkAuth();
+    if (token && !user) checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token, user]);
   return null;
 }
 

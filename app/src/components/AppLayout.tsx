@@ -19,14 +19,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNotif, setShowNotif] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { token: adminToken } = useAuth();
-  const { user } = useUserAuth();
+  const { user, token: userToken } = useUserAuth();
   const isAdmin = !!adminToken;
 
   useEffect(() => {
-    if (user) {
+    if (userToken) {
       api.get<any[]>('/api/notificacoes/me').then(setNotificacoes).catch(() => {});
     }
-  }, [user]);
+  }, [userToken]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,7 +86,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right: avatar/login */}
           <div className="flex items-center gap-2">
-            {user && (
+            {(userToken || user) && (
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setShowNotif(!showNotif)}
