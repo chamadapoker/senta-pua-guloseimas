@@ -22,11 +22,30 @@ export function Dashboard() {
     <AppLayout>
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">DASHBOARD</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Vendido no mês" value={`R$ ${stats.vendido_mes.toFixed(2)}`} />
-        <StatCard label="Recebido" value={`R$ ${stats.recebido_mes.toFixed(2)}`} color="text-verde" />
-        <StatCard label="Pendente" value={`R$ ${stats.pendente_total.toFixed(2)}`} color="text-vermelho" />
-        <StatCard label="Vendas hoje" value={String(stats.vendas_hoje)} color="text-azul" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard 
+          label="Vendido no mês" 
+          value={`R$ ${stats.vendido_mes.toFixed(2)}`} 
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m.5-1c.28 0 .551-.022.812-.062M12 16c-.812 0-1.557-.21-2.13-.558" /></svg>}
+        />
+        <StatCard 
+          label="Recebido" 
+          value={`R$ ${stats.recebido_mes.toFixed(2)}`} 
+          color="text-verde" 
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+        <StatCard 
+          label="Pendente" 
+          value={`R$ ${stats.pendente_total.toFixed(2)}`} 
+          color="text-vermelho" 
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+        <StatCard 
+          label="Vendas hoje" 
+          value={String(stats.vendas_hoje)} 
+          color="text-azul" 
+          icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+        />
       </div>
 
       {chartData.length > 0 && (

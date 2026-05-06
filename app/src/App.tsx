@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { ToastProvider } from './hooks/useToast';
 import { Home } from './pages/Home';
 import { Catalogo } from './pages/Catalogo';
 import { Checkout } from './pages/Checkout';
@@ -36,9 +37,8 @@ import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
 import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
 import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
 import { XimbocaDashboard } from './pages/admin/ximboca/XimbocaDashboard';
-import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
-import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
 import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
+import { Documentacao } from './pages/admin/Documentacao';
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -92,10 +92,11 @@ function VisitorGuard({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <BrowserRouter>
-      <UserAuthLoader />
-      <UpdatePrompt />
-      <Routes>
+    <ToastProvider>
+      <BrowserRouter>
+        <UserAuthLoader />
+        <UpdatePrompt />
+        <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/catalogo/:categoria" element={<VisitorGuard><Catalogo /></VisitorGuard>} />
         <Route path="/checkout" element={<VisitorGuard><Checkout /></VisitorGuard>} />
@@ -141,7 +142,9 @@ export function App() {
         <Route path="/admin/ximboca/eventos" element={<AdminGuard><XimbocaEventos /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
         <Route path="/admin/ximboca/estoque" element={<AdminGuard><XimbocaEstoque /></AdminGuard>} />
+        <Route path="/admin/documentacao" element={<AdminGuard><Documentacao /></AdminGuard>} />
       </Routes>
     </BrowserRouter>
+    </ToastProvider>
   );
 }

@@ -27,3 +27,22 @@ table tbody tr:hover            { background-color: #eef1f5; }
 /* Listas estilo "divide-y": aplicar zebra nos filhos diretos */
 .list-zebra > *:nth-child(even) { background-color: #f7f8fa; }
 .list-zebra > *:nth-child(odd)  { background-color: #ffffff; }
+
+@keyframes pulse-subtle {
+  0% { transform: scale(1); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+  50% { transform: scale(1.01); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+  100% { transform: scale(1); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}

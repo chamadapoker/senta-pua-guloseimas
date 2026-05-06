@@ -122,6 +122,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: '/admin/caixa', label: 'Caixa Consolidado', icon: <IconVault /> },
   { to: '/admin/auditoria', label: 'Auditoria', icon: <IconHistory /> },
   { to: '/admin/admins', label: 'Administradores', icon: <IconShield /> },
+  { to: '/admin/documentacao', label: 'Documentação', icon: <IconClipboard /> },
   { to: '/admin/config', label: 'Configurações', icon: <IconSettings /> },
 ];
 
@@ -213,7 +214,14 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
               {item.children ? (
                 <>
                   <button
-                    onClick={() => toggleMenu(item.to)}
+                    onClick={() => {
+                      if (collapsed) {
+                        onToggleCollapse();
+                        if (!openMenus[item.to]) toggleMenu(item.to);
+                      } else {
+                        toggleMenu(item.to);
+                      }
+                    }}
                     title={collapsed ? item.label : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5
                       ${isInSection(item) ? 'bg-azul/10 text-azul' : 'text-texto-fraco hover:bg-fundo hover:text-texto'}

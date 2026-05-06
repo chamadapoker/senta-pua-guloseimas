@@ -103,9 +103,42 @@ async function gerarCobrancasAutomaticas(env: Env) {
   return { mes, ano, total_criado: batch.length };
 }
 
+async function gerarRelatorioCobrancaRP(env: Env) {
+  const now = new Date();
+  // Só executa no dia 01
+  if (now.getUTCDate() !== 1) return;
+
+  const { results: devedores } = await env.DB.prepare(`
+    SELECT cl.nome_guerra, cl.whatsapp,
+           (SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE cliente_id = cl.id AND status IN ('pendente', 'fiado')) +
+           (SELECT COALESCE(SUM(total), 0) FROM loja_pedidos WHERE cliente_id = cl.id AND status IN ('pendente', 'fiado')) +
+           (SELECT COALESCE(SUM(valor), 0) FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE ca.cliente_id = cl.id AND cp.status = 'pendente') as total_divida
+    FROM clientes cl
+    WHERE total_divida > 0
+    ORDER BY total_divida DESC
+  `).all<{ nome_guerra: string; whatsapp: string | null; total_divida: number }>();
+
+  if (devedores.length === 0) return;
+
+  const resumo = {
+    mes_referencia: now.getUTCMonth() === 0 ? 12 : now.getUTCMonth(),
+    ano_referencia: now.getUTCMonth() === 0 ? now.getUTCFullYear() - 1 : now.getUTCFullYear(),
+    total_militares: devedores.length,
+    valor_total: devedores.reduce((s, d) => s + d.total_divida, 0),
+    top_devedores: devedores.slice(0, 5)
+  };
+
+  await env.DB.prepare(
+    `INSERT INTO audit_log (admin_email, acao, entidade, dados_depois) VALUES ('cron', 'fechamento_mensal_rp', 'faturamento', ?)`
+  ).bind(JSON.stringify(resumo)).run();
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(gerarCobrancasAutomaticas(env));
+    ctx.waitUntil(Promise.all([
+      gerarCobrancasAutomaticas(env),
+      gerarRelatorioCobrancaRP(env)
+    ]));
   },
 };

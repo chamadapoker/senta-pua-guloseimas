@@ -118,6 +118,53 @@ export function Dashboard() {
 
       {!loading && data && (
         <>
+          {/* Banner de Cobrança Proativa */}
+          {data.totais && data.totais.geral.pendente > 0 && (
+            <div className="bg-vermelho rounded-2xl p-5 mb-6 text-white shadow-lg animate-pulse-subtle">
+              <div className="flex items-start gap-4">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-lg tracking-wider">DÉBITOS PENDENTES</h3>
+                  <p className="text-xs text-white/80 mb-3">Você possui pendências que precisam ser regularizadas.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { gerarExtratoUnificadoPDF } = await import('../services/pdf');
+                          const d = await api.get<any>('/api/usuarios/me/extrato');
+                          const fmt = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
+                          const total = d.guloseimas.filter((p: any) => p.status !== 'pago').reduce((s: number, p: any) => s + p.total, 0)
+                            + d.loja.filter((p: any) => p.status !== 'pago').reduce((s: number, p: any) => s + p.total, 0)
+                            + d.cafe.filter((p: any) => p.status === 'pendente').reduce((s: number, p: any) => s + p.valor, 0)
+                            + d.ximboca.filter((p: any) => p.status !== 'pago').reduce((s: number, p: any) => s + (p.valor_individual ?? p.valor_por_pessoa), 0);
+                          const cafeGraduado = d.cafe.some((p: any) => p.cafe_tipo === 'graduado');
+                          await gerarExtratoUnificadoPDF(d.cliente.nome_guerra, {
+                            guloseimas: d.guloseimas.filter((p: any) => p.status !== 'pago').map((p: any) => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at) })),
+                            loja: d.loja.filter((p: any) => p.status !== 'pago').map((p: any) => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at), parcelas: p.parcelas })),
+                            cafe: d.cafe.filter((p: any) => p.status === 'pendente').map((p: any) => ({ referencia: p.referencia, valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
+                            ximboca: d.ximboca.filter((p: any) => p.status !== 'pago').map((p: any) => ({ evento: p.evento_nome, data: fmt(p.evento_data + 'T12:00:00'), valor: p.valor_individual ?? p.valor_por_pessoa })),
+                          }, total, cafeGraduado);
+                        } catch (e) {
+                          alert('Erro ao gerar extrato');
+                        }
+                      }}
+                      className="bg-white text-vermelho px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/90 transition-colors"
+                    >
+                      BAIXAR EXTRATO (PDF)
+                    </button>
+                    <Link to="/perfil" className="bg-black/20 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-black/30 transition-colors">
+                      VER DETALHES
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl border border-borda p-4 mb-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium text-texto-fraco">Caixinha do Café</div>

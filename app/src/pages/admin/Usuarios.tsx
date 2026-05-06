@@ -4,6 +4,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import type { Usuario, Categoria } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -24,6 +25,7 @@ type FiltroCategoria = 'todas' | 'oficial' | 'graduado' | 'praca';
 type EditForm = { trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string };
 
 export function Usuarios() {
+  const { showToast } = useToast();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
@@ -100,7 +102,7 @@ export function Usuarios() {
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/visitante`, patch);
-      setMsg(`${u.trigrama}: atualizado`);
+      showToast(`${u.trigrama}: atualizado`, 'success');
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao salvar');
