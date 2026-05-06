@@ -9,6 +9,7 @@ interface CadastroData {
   saram: string;
   whatsapp: string;
   categoria: 'oficial' | 'graduado' | 'praca';
+  data_nascimento?: string | null;
   aceite_lgpd: boolean;
 }
 
