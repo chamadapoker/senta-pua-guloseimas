@@ -33,7 +33,12 @@ interface UserAuthState {
 
 export const useUserAuth = create<UserAuthState>((set, get) => ({
   token: localStorage.getItem('user_token'),
-  user: null,
+  user: (() => {
+    try {
+      const cached = localStorage.getItem('user_data');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  })(),
   loading: false,
 
   login: async (email, senha) => {
@@ -44,6 +49,7 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
         { email, senha }
       );
       localStorage.setItem('user_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
       set({ token, user, loading: false });
     } catch (e) {
       set({ loading: false });
@@ -59,6 +65,7 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
         dados
       );
       localStorage.setItem('user_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
       set({ token, user, loading: false });
     } catch (e) {
       set({ loading: false });
@@ -74,6 +81,7 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
         dados
       );
       localStorage.setItem('user_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
       set({ token, user, loading: false });
     } catch (e) {
       set({ loading: false });
@@ -83,31 +91,41 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('user_token');
+    localStorage.removeItem('user_data');
     set({ token: null, user: null });
   },
 
   checkAuth: async () => {
     const token = localStorage.getItem('user_token');
     if (!token) return false;
+
+    // Carrega do cache primeiro para evitar "piscar" deslogado
+    const cachedUser = localStorage.getItem('user_data');
+    if (cachedUser && !get().user) {
+      try {
+        set({ user: JSON.parse(cachedUser) });
+      } catch {}
+    }
+
     try {
       const user = await api.get<Usuario>('/api/usuarios/me');
+      localStorage.setItem('user_data', JSON.stringify(user));
       set({ token, user });
       return true;
     } catch (e: any) {
-      // SÓ desloga se for erro de autenticação (401 ou 403)
-      // Se for erro de rede (offline, timeout), mantém o token e tenta de novo depois
       if (e?.status === 401 || e?.status === 403) {
         localStorage.removeItem('user_token');
+        localStorage.removeItem('user_data');
         set({ token: null, user: null });
         return false;
       }
-      // Em erro de rede, assume que ainda está logado para não deslogar o usuário
       return true; 
     }
   },
 
   updateProfile: async (dados) => {
     const user = await api.put<Usuario>('/api/usuarios/me', dados);
+    localStorage.setItem('user_data', JSON.stringify(user));
     set({ user });
   },
 
