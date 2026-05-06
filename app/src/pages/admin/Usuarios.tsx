@@ -576,7 +576,16 @@ export function Usuarios() {
                   className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
                 />
               </div>
-
+              {editModal.is_visitante === 1 && (
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">Esquadrão de Origem</label>
+                  <input
+                    type="text"
+                    value={editForm.esquadrao_origem}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
+                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  />
+                </div>
               )}
 
               <div>
