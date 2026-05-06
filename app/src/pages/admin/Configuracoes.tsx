@@ -148,17 +148,34 @@ export function Configuracoes() {
 
             <Card title="PIX — Café Graduados">
               <div>
-                <Label>Chave PIX</Label>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Chave PIX</label>
                 <input value={v('pix_cafe_graduado_chave')} onChange={e => set('pix_cafe_graduado_chave', e.target.value)} className={inputClass} required />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Nome recebedor</Label>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">Nome recebedor</label>
                   <input value={v('pix_cafe_graduado_nome')} onChange={e => set('pix_cafe_graduado_nome', e.target.value)} className={inputClass} required maxLength={25} />
                 </div>
                 <div>
-                  <Label>WhatsApp</Label>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp</label>
                   <input value={v('pix_cafe_graduado_whatsapp')} onChange={e => set('pix_cafe_graduado_whatsapp', e.target.value.replace(/\D/g, ''))} className={inputClass} required />
+                </div>
+              </div>
+            </Card>
+
+            <Card title="PIX — Ximboca">
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Chave PIX</label>
+                <input value={v('pix_ximboca_chave')} onChange={e => set('pix_ximboca_chave', e.target.value)} className={inputClass} required />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">Nome recebedor</label>
+                  <input value={v('pix_ximboca_nome')} onChange={e => set('pix_ximboca_nome', e.target.value)} className={inputClass} required maxLength={25} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp</label>
+                  <input value={v('pix_ximboca_whatsapp')} onChange={e => set('pix_ximboca_whatsapp', e.target.value.replace(/\D/g, ''))} className={inputClass} required />
                 </div>
               </div>
             </Card>

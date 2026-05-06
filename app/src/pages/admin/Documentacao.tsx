@@ -97,15 +97,41 @@ export function Documentacao() {
 
           {ativo === 'ximboca' && (
             <div className="animate-fade-in">
-              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Ximboca</h2>
+              <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Gestão de Ximbocas (Eventos)</h2>
               <div className="space-y-4 text-sm text-texto leading-relaxed">
-                <p>Gestão de eventos e confraternizações do esquadrão.</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Eventos</strong>: Criação de eventos com data, local e valor por pessoa.</li>
-                  <li><strong>Participantes</strong>: Lista de confirmados e status de pagamento individual.</li>
-                  <li><strong>Estoque Dedicado</strong>: Itens (bebidas, carnes) podem ser lançados especificamente para um evento, abatendo do saldo arrecadado.</li>
-                  <li><strong>Balanço</strong>: O sistema calcula automaticamente se o evento deu lucro ou prejuízo (Saldo Final).</li>
-                </ul>
+                <p>O módulo Ximboca foi desenhado para organizar churrascos, festas e confraternizações com rateio de custos.</p>
+                
+                <div className="bg-fundo p-4 rounded-xl border border-borda">
+                  <h3 className="font-bold text-azul text-xs uppercase mb-2">1. Criando o Evento</h3>
+                  <p className="text-xs text-texto-fraco">
+                    Ao criar um evento, você define o <strong>Valor Padrão</strong> e valores opcionais para <strong>Cerveja</strong> e <strong>Refrigerante</strong>. 
+                    Isso permite que quem não bebe pague menos, facilitando a adesão.
+                  </p>
+                </div>
+
+                <div className="bg-fundo p-4 rounded-xl border border-borda">
+                  <h3 className="font-bold text-azul text-xs uppercase mb-2">2. O Fluxo do Militar</h3>
+                  <p className="text-xs text-texto-fraco">
+                    O militar entra na aba "Ximboca", escolhe sua categoria de consumo e confirma a presença. 
+                    O sistema gera o PIX configurado para aquele evento específico e ele pode enviar o comprovante direto para o WhatsApp do responsável.
+                  </p>
+                </div>
+
+                <div className="bg-fundo p-4 rounded-xl border border-borda">
+                  <h3 className="font-bold text-azul text-xs uppercase mb-2">3. Uso do Estoque</h3>
+                  <p className="text-xs text-texto-fraco">
+                    Sabe aquela caixa de cerveja que sobrou do último churrasco? Você a cadastra no <strong>Estoque da Ximboca</strong>. 
+                    No novo evento, use o botão "Consumir Estoque". O sistema debita o item e lança uma despesa de R$ 0,00 no evento atual (pois o item já foi pago anteriormente), garantindo que o balanço financeiro seja real.
+                  </p>
+                </div>
+
+                <div className="bg-fundo p-4 rounded-xl border border-borda">
+                  <h3 className="font-bold text-azul text-xs uppercase mb-2">4. Balanço Final</h3>
+                  <p className="text-xs text-texto-fraco">
+                    O sistema subtrai as <strong>Despesas</strong> (compras de carne, carvão, etc) do <strong>Total Arrecadado</strong> (pagamentos confirmados). 
+                    O "Saldo do Evento" mostra se a vaquinha cobriu os custos ou se houve prejuízo.
+                  </p>
+                </div>
               </div>
             </div>
           )}
