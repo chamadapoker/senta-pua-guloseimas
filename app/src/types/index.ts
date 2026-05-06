@@ -14,6 +14,7 @@ export interface Produto {
 export interface Cliente {
   id: string;
   nome_guerra: string;
+  saram?: string;
   visitante?: number;
   esquadrao_origem?: string;
   ativo: number;

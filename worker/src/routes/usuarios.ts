@@ -60,11 +60,11 @@ usuarios.post('/cadastro', async (c) => {
   ).bind(trigramaClean).first();
 
   if (!existCliente) {
-    await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, whatsapp) VALUES (?, ?)')
-      .bind(trigramaClean, whatsappClean).run();
+    await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, saram, whatsapp) VALUES (?, ?, ?)')
+      .bind(trigramaClean, saramClean, whatsappClean).run();
   } else {
-    await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE nome_guerra = ? COLLATE NOCASE')
-      .bind(whatsappClean, trigramaClean).run();
+    await c.env.DB.prepare('UPDATE clientes SET saram = ?, whatsapp = ? WHERE nome_guerra = ? COLLATE NOCASE')
+      .bind(saramClean, whatsappClean, trigramaClean).run();
   }
 
   const token = await sign(
@@ -136,12 +136,12 @@ usuarios.post('/cadastro/visitante', async (c) => {
 
   if (!existCliente) {
     await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, 1, ?)'
-    ).bind(trigramaClean, whatsappClean, esquadraoClean).run();
+      'INSERT INTO clientes (nome_guerra, saram, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, 1, ?)'
+    ).bind(trigramaClean, saramClean, whatsappClean, esquadraoClean).run();
   } else {
     await c.env.DB.prepare(
-      'UPDATE clientes SET whatsapp = ?, visitante = 1, esquadrao_origem = ? WHERE nome_guerra = ? COLLATE NOCASE'
-    ).bind(whatsappClean, esquadraoClean, trigramaClean).run();
+      'UPDATE clientes SET saram = ?, whatsapp = ?, visitante = 1, esquadrao_origem = ? WHERE nome_guerra = ? COLLATE NOCASE'
+    ).bind(saramClean, whatsappClean, esquadraoClean, trigramaClean).run();
   }
 
   const token = await sign(
@@ -903,6 +903,7 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
   let novoTrigrama: string | null = null;
   let novoWhatsapp: string | null = null;
   let novoEsquadrao: string | null | undefined = undefined;
+  let novoSaram: string | null = null;
 
   if (typeof body.trigrama === 'string') {
     const tri = body.trigrama.trim().toUpperCase();
@@ -935,6 +936,7 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
       if (ex) return c.json({ error: 'SARAM já cadastrado por outro usuário' }, 409);
       updates.push('saram = ?');
       params.push(sa);
+      novoSaram = sa;
     }
   }
 
@@ -974,18 +976,27 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
     return c.json({ error: 'Erro no banco de dados. Verifique se a coluna data_nascimento existe.' }, 500);
   }
 
-  // Sincroniza tabela clientes (linkada por nome_guerra = trigrama)
-  if (novoTrigrama || novoWhatsapp !== null || novoEsquadrao !== undefined) {
+  // Sincroniza tabela clientes (Ancorado pelo SARAM ou Trigrama antigo como fallback)
+  if (novoTrigrama || novoWhatsapp !== null || novoEsquadrao !== undefined || novoSaram) {
     const clienteUpdates: string[] = [];
     const clienteParams: unknown[] = [];
     if (novoTrigrama) { clienteUpdates.push('nome_guerra = ?'); clienteParams.push(novoTrigrama); }
     if (novoWhatsapp !== null) { clienteUpdates.push('whatsapp = ?'); clienteParams.push(novoWhatsapp); }
     if (novoEsquadrao !== undefined) { clienteUpdates.push('esquadrao_origem = ?'); clienteParams.push(novoEsquadrao); }
+    if (novoSaram) { clienteUpdates.push('saram = ?'); clienteParams.push(novoSaram); }
+
     if (clienteUpdates.length) {
-      clienteParams.push(antes.trigrama);
-      await c.env.DB.prepare(
-        `UPDATE clientes SET ${clienteUpdates.join(', ')} WHERE nome_guerra = ? COLLATE NOCASE`
-      ).bind(...clienteParams).run();
+      // Tenta atualizar primeiro pelo SARAM (âncora estável)
+      const res = await c.env.DB.prepare(
+        `UPDATE clientes SET ${clienteUpdates.join(', ')} WHERE saram = ?`
+      ).bind(...clienteParams, antes.saram).run();
+
+      // Se não encontrou pelo SARAM, tenta pelo Trigrama antigo (fallback)
+      if (!res.meta.changes) {
+        await c.env.DB.prepare(
+          `UPDATE clientes SET ${clienteUpdates.join(', ')} WHERE nome_guerra = ? COLLATE NOCASE`
+        ).bind(...clienteParams, antes.trigrama).run();
+      }
     }
   }
 

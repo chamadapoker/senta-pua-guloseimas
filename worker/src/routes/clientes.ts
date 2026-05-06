@@ -20,7 +20,7 @@ clientes.get('/buscar', async (c) => {
 clientes.get('/', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT
-      cl.id, cl.nome_guerra, cl.ativo, cl.visitante, cl.esquadrao_origem, cl.created_at,
+      cl.id, cl.nome_guerra, cl.saram, cl.ativo, cl.visitante, cl.esquadrao_origem, cl.created_at,
       COALESCE(SUM(p.total), 0) as total_comprado,
       COALESCE(SUM(CASE WHEN p.status = 'pago' THEN p.total ELSE 0 END), 0) as total_pago,
       COALESCE(SUM(CASE WHEN p.status IN ('pendente', 'fiado') THEN p.total ELSE 0 END), 0) as saldo_devedor,
