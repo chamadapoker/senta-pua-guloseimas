@@ -136,9 +136,9 @@ async function gerarRelatorioCobrancaRP(env: Env) {
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(Promise.all([
-      gerarCobrancasAutomaticas(env),
-      gerarRelatorioCobrancaRP(env)
-    ]));
+    ctx.waitUntil((async () => {
+      await gerarCobrancasAutomaticas(env);
+      await gerarRelatorioCobrancaRP(env);
+    })());
   },
 };
