@@ -25,7 +25,7 @@ interface UserAuthState {
   cadastrarVisitante: (dados: CadastroVisitanteData) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
-  updateProfile: (dados: { whatsapp?: string; saram?: string }) => Promise<void>;
+  updateProfile: (dados: { whatsapp?: string; saram?: string; data_nascimento?: string | null }) => Promise<void>;
   updateFoto: (file: File) => Promise<void>;
   removeFoto: () => Promise<void>;
   excluirConta: () => Promise<void>;

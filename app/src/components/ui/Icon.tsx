@@ -5,7 +5,7 @@ type IconName =
   | 'note' | 'check' | 'x' | 'clock' | 'document' | 'archive' | 'paper-clip' | 'upload'
   | 'download' | 'printer' | 'user' | 'trash' | 'alarm' | 'warning' | 'arrow-left'
   | 'arrow-right' | 'chevron-up' | 'chevron-down' | 'chevron-right' | 'close' | 'pix'
-  | 'plus' | 'qr-code' | 'refresh' | 'info' | 'eye';
+  | 'plus' | 'qr-code' | 'refresh' | 'info' | 'eye' | 'bell';
 
 interface Props extends Omit<SVGProps<SVGSVGElement>, 'name'> {
   name: IconName;
@@ -46,6 +46,7 @@ const PATHS: Record<IconName, string | ReactElement> = {
   'refresh':       'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99',
   'info':          'm11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z',
   'eye':           'M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
+  'bell':          'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
 };
 
 export function Icon({ name, size = 16, className = '', ...rest }: Props) {

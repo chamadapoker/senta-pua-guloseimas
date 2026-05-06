@@ -217,7 +217,7 @@ usuarios.post('/login', async (c) => {
 usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, data_nascimento, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first<{
     is_visitante: number; expira_em: string | null; acesso_pausado: number;
     [k: string]: unknown;
@@ -237,7 +237,7 @@ usuarios.get('/me', userAuthMiddleware, async (c) => {
 // Usuario logado: atualizar perfil
 usuarios.put('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
-  const { whatsapp, saram } = await c.req.json<{ whatsapp?: string; saram?: string }>();
+  const { whatsapp, saram, data_nascimento } = await c.req.json<{ whatsapp?: string; saram?: string; data_nascimento?: string | null }>();
 
   const updates: string[] = [];
   const params: unknown[] = [];
@@ -251,6 +251,11 @@ usuarios.put('/me', userAuthMiddleware, async (c) => {
     if (existSaram) return c.json({ error: 'SARAM já cadastrado por outro usuário' }, 409);
     updates.push('saram = ?');
     params.push(saramClean);
+  }
+
+  if (data_nascimento !== undefined) {
+    updates.push('data_nascimento = ?');
+    params.push(data_nascimento);
   }
 
   if (!updates.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);

@@ -18,6 +18,7 @@ export function Perfil() {
   const { user, token, checkAuth, updateProfile, updateFoto, removeFoto, logout, excluirConta } = useUserAuth();
   const [whatsapp, setWhatsapp] = useState('');
   const [saram, setSaram] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
@@ -44,6 +45,7 @@ export function Perfil() {
     if (user) {
       setWhatsapp(user.whatsapp);
       setSaram(user.saram);
+      setDataNascimento(user.data_nascimento || '');
     }
   }, [user]);
 
@@ -56,7 +58,11 @@ export function Perfil() {
     setErro(''); setMsg('');
     setSalvando(true);
     try {
-      await updateProfile({ whatsapp: whatsapp.trim(), saram: saram.trim() });
+      await updateProfile({ 
+        whatsapp: whatsapp.trim(), 
+        saram: saram.trim(),
+        data_nascimento: dataNascimento || null
+      });
       setMsg('Dados atualizados!');
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao salvar');
@@ -150,6 +156,17 @@ export function Perfil() {
               onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
               className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Data de Nascimento</label>
+            <input
+              type="date"
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
+              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+            />
+            <p className="text-[10px] text-texto-fraco mt-1 ml-1 uppercase font-medium">Para receber surpresas no seu aniversário</p>
           </div>
 
           {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
