@@ -173,16 +173,16 @@ export function Documentacao() {
                   
                   <div className="space-y-4">
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
-                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. O Trigrama</h3>
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">1. O SARAM (Âncora de Identidade)</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        O trigrama é o ID vital. Ele conecta o Login do usuário ao Extrato Financeiro. Nunca altere um trigrama sem garantir que o militar não tenha dívidas pendentes.
+                        O SARAM é o identificador mestre e imutável. Ele serve como a âncora que conecta o login do militar ao seu extrato financeiro. Diferente do trigrama, o SARAM nunca muda, o que garante a preservação do histórico de dívidas e créditos mesmo em caso de promoções ou mudanças de nome de guerra.
                       </p>
                     </div>
 
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
                       <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Gestão de Aniversariantes</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        O sistema monitora as datas de nascimento. Na página de <strong>Aniversariantes</strong>, o RP pode configurar uma foto e mensagem especial que aparecerá no Dashboard do militar no dia do aniversário dele.
+                        O sistema monitora as datas de nascimento em formato padronizado (ISO). Na página de <strong>Aniversariantes</strong>, o RP pode configurar fotos e mensagens especiais. Novos usuários informam a data já no cadastro, garantindo que ninguém fique de fora do radar de comemorações.
                       </p>
                     </div>
 
@@ -211,9 +211,9 @@ export function Documentacao() {
                     </div>
 
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
-                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Auditoria e Logs</h3>
+                      <h3 className="font-bold text-azul text-xs uppercase mb-2">2. Integridade via SARAM</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        Toda alteração de saldo ou status de pedido é registrada. O Admin pode ver quem alterou, quando e qual era o valor antigo, garantindo transparência total para o Conselho do Esquadrão.
+                        Para evitar perda de histórico financeiro, todas as buscas de extrato priorizam o SARAM. Se um militar mudar de trigrama (ex: de TEN para CAP), o sistema reconhece o SARAM e mantém todas as dívidas e saldos vinculados à nova conta automaticamente.
                       </p>
                     </div>
 
@@ -268,7 +268,7 @@ export function Documentacao() {
                     <div className="bg-fundo p-5 rounded-2xl border border-borda">
                       <h3 className="font-bold text-azul text-xs uppercase mb-2">🎂 Radar de Aniversariantes</h3>
                       <p className="text-xs text-texto-fraco leading-relaxed">
-                        Diariamente o sistema verifica quem faz aniversário e envia uma mensagem de parabéns automática, convidando o militar a passar no RP para sua homenagem.
+                        Diariamente o sistema verifica quem faz aniversário e envia uma mensagem motivacional automática. O RP pode personalizar estas mensagens individualmente para dar um toque especial à homenagem.
                       </p>
                     </div>
 
