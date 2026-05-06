@@ -55,9 +55,16 @@ usuarios.post('/cadastro', async (c) => {
 
   const userId = results[0].id;
 
-  const existCliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(trigramaClean).first();
+  // Tenta encontrar cliente preexistente pelo SARAM (âncora estável) ou Trigrama
+  let existCliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE saram = ?'
+  ).bind(saramClean).first<{ id: string }>();
+
+  if (!existCliente) {
+    existCliente = await c.env.DB.prepare(
+      'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+    ).bind(trigramaClean).first<{ id: string }>();
+  }
 
   if (!existCliente) {
     await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, saram, whatsapp) VALUES (?, ?, ?)')
@@ -130,9 +137,16 @@ usuarios.post('/cadastro/visitante', async (c) => {
 
   const userId = results[0].id;
 
-  const existCliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(trigramaClean).first();
+  // Tenta encontrar cliente preexistente pelo SARAM ou Trigrama
+  let existCliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE saram = ?'
+  ).bind(saramClean).first<{ id: string }>();
+
+  if (!existCliente) {
+    existCliente = await c.env.DB.prepare(
+      'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+    ).bind(trigramaClean).first<{ id: string }>();
+  }
 
   if (!existCliente) {
     await c.env.DB.prepare(
@@ -680,10 +694,10 @@ usuarios.delete('/me/foto', userAuthMiddleware, async (c) => {
 usuarios.get('/admin/lista', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
-            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at, u.data_nascimento,
             c.id AS cliente_id
      FROM usuarios u
-     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     LEFT JOIN clientes c ON c.saram = u.saram
      ORDER BY u.trigrama`
   ).all();
   return c.json(results);
@@ -777,10 +791,10 @@ usuarios.get('/admin/por-trigrama/:trigrama', authMiddleware, async (c) => {
   const trigrama = (c.req.param('trigrama') || '').toUpperCase();
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
-            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at, u.data_nascimento,
             c.id AS cliente_id
      FROM usuarios u
-     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     LEFT JOIN clientes c ON c.saram = u.saram
      WHERE u.trigrama = ? COLLATE NOCASE`
   ).bind(trigrama).first();
 
@@ -1005,7 +1019,7 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
             u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.permite_fiado, u.created_at, u.data_nascimento,
             c.id AS cliente_id
      FROM usuarios u
-     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     LEFT JOIN clientes c ON c.saram = u.saram
      WHERE u.id = ?`
   ).bind(id).first();
 
