@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 import type { Usuario, Categoria } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -20,10 +21,14 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
 type FiltroStatus = 'todos' | 'ativos' | 'desativados' | 'visitantes' | 'expirados';
 type FiltroCategoria = 'todas' | 'oficial' | 'graduado' | 'praca';
 
+type EditForm = { trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string };
+
 export function Usuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
+  const admin = useAuth(s => s.admin);
+  const isSuperAdmin = admin?.role === 'super_admin';
   const filtroStatus: FiltroStatus = (() => {
     const f = searchParams.get('f');
     if (f === 'ativos' || f === 'desativados' || f === 'visitantes' || f === 'expirados') return f;
@@ -34,6 +39,23 @@ export function Usuarios() {
 
   const [senhaModal, setSenhaModal] = useState<Usuario | null>(null);
   const [novaSenha, setNovaSenha] = useState('');
+  const [editModal, setEditModal] = useState<Usuario | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({
+    trigrama: '', email: '', saram: '', whatsapp: '', esquadrao_origem: '',
+  });
+  const [editErro, setEditErro] = useState('');
+  const [novoModal, setNovoModal] = useState(false);
+  const [novoForm, setNovoForm] = useState({
+    trigrama: '', 
+    email: '', 
+    saram: '', 
+    whatsapp: '', 
+    categoria: 'oficial' as Categoria, 
+    senha: '',
+    is_visitante: false, 
+    esquadrao_origem: '', 
+    expira_em: ''
+  });
   const [acaoLoading, setAcaoLoading] = useState<number | null>(null);
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
@@ -141,6 +163,72 @@ export function Usuarios() {
     }
   };
 
+  const abrirEditar = (u: Usuario) => {
+    setEditModal(u);
+    setEditForm({
+      trigrama: u.trigrama,
+      email: u.email,
+      saram: u.saram,
+      whatsapp: u.whatsapp,
+      esquadrao_origem: u.esquadrao_origem || '',
+    });
+    setEditErro('');
+  };
+
+  const salvarEditar = async () => {
+    if (!editModal) return;
+    setEditErro(''); setMsg(''); setErro('');
+
+    const tri = editForm.trigrama.trim().toUpperCase();
+    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(tri)) { setEditErro('Trigrama deve ter exatamente 3 letras'); return; }
+    const em = editForm.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setEditErro('Email inválido'); return; }
+    const sa = editForm.saram.trim();
+    if (!/^\d+$/.test(sa)) { setEditErro('SARAM deve conter apenas números'); return; }
+    const wp = editForm.whatsapp.trim();
+    if (!wp) { setEditErro('WhatsApp obrigatório'); return; }
+
+    const payload: Record<string, string | null> = {
+      trigrama: tri,
+      email: em,
+      saram: sa,
+      whatsapp: wp,
+    };
+    if (editModal.is_visitante === 1) {
+      payload.esquadrao_origem = editForm.esquadrao_origem.trim().toUpperCase() || null;
+    }
+
+    setAcaoLoading(editModal.id);
+    try {
+      await api.put(`/api/usuarios/admin/${editModal.id}`, payload);
+      setMsg(`${tri}: dados atualizados`);
+      setEditModal(null);
+      await carregar();
+    } catch (e) {
+      setEditErro(e instanceof Error ? e.message : 'Erro ao salvar');
+    } finally {
+      setAcaoLoading(null);
+    }
+  };
+
+  const excluirUsuario = async (u: Usuario) => {
+    const aviso = `EXCLUIR usuário ${u.trigrama}?\n\nEsta ação é IRREVERSÍVEL e remove:\n- Conta do usuário\n- Cliente vinculado\n- Pedidos da cantina e itens\n- Pedidos da loja, parcelas e itens\n- Assinaturas e pagamentos do café\n- Foto de perfil\n\nDigite OK para confirmar.`;
+    const resp = window.prompt(aviso);
+    if (resp?.trim().toUpperCase() !== 'OK') return;
+
+    setErro(''); setMsg('');
+    setAcaoLoading(u.id);
+    try {
+      await api.delete(`/api/usuarios/admin/${u.id}`);
+      setMsg(`${u.trigrama}: usuário excluído`);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao excluir usuário');
+    } finally {
+      setAcaoLoading(null);
+    }
+  };
+
   const toggleAtivo = async (u: Usuario) => {
     const acao = u.ativo === 1 ? 'desativar' : 'ativar';
     if (!window.confirm(`Confirma ${acao} conta de ${u.trigrama}?`)) return;
@@ -157,15 +245,49 @@ export function Usuarios() {
     }
   };
 
+  const salvarNovo = async () => {
+    setErro(''); setMsg('');
+    const { trigrama, email, saram, whatsapp, categoria, senha, is_visitante, esquadrao_origem, expira_em } = novoForm;
+
+    if (!trigrama || !email || !saram || !whatsapp || !categoria || !senha) {
+      setErro('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    setAcaoLoading(999999);
+    try {
+      await api.post('/api/usuarios/admin', {
+        ...novoForm,
+        is_visitante: is_visitante ? 1 : 0,
+        expira_em: expira_em || null,
+        esquadrao_origem: esquadrao_origem || null,
+      });
+      setMsg(`Usuário ${trigrama} criado com sucesso`);
+      setNovoModal(false);
+      setNovoForm({
+        trigrama: '', email: '', saram: '', whatsapp: '', categoria: 'oficial', senha: '',
+        is_visitante: false, esquadrao_origem: '', expira_em: ''
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao criar usuário');
+    } finally {
+      setAcaoLoading(null);
+    }
+  };
+
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">
-        {filtroStatus === 'visitantes' ? 'USUÁRIOS — VISITANTES' :
-          filtroStatus === 'expirados' ? 'USUÁRIOS — EXPIRADOS' :
-          filtroStatus === 'ativos' ? 'USUÁRIOS — ATIVOS' :
-          filtroStatus === 'desativados' ? 'USUÁRIOS — DESATIVADOS' :
-          'USUÁRIOS'}
-      </h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-display text-2xl text-azul tracking-wider">
+          {filtroStatus === 'visitantes' ? 'USUÁRIOS — VISITANTES' :
+            filtroStatus === 'expirados' ? 'USUÁRIOS — EXPIRADOS' :
+            filtroStatus === 'ativos' ? 'USUÁRIOS — ATIVOS' :
+            filtroStatus === 'desativados' ? 'USUÁRIOS — DESATIVADOS' :
+            'USUÁRIOS'}
+        </h1>
+        <Button size="sm" onClick={() => setNovoModal(true)}>+ Novo Usuário</Button>
+      </div>
 
       {/* Busca */}
       <div className="mb-4">
@@ -346,6 +468,9 @@ export function Usuarios() {
 
               {/* Linha 3: acoes */}
               <div className="flex gap-2 flex-wrap">
+                <Button variant="primary" size="sm" onClick={() => abrirEditar(u)} disabled={acaoLoading === u.id}>
+                  Gerenciar conta
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => abrirResetSenha(u)} disabled={acaoLoading === u.id}>
                   Resetar senha
                 </Button>
@@ -357,6 +482,11 @@ export function Usuarios() {
                 >
                   {u.ativo === 1 ? 'Desativar' : 'Reativar'}
                 </Button>
+                {isSuperAdmin && (
+                  <Button variant="danger" size="sm" onClick={() => excluirUsuario(u)} disabled={acaoLoading === u.id}>
+                    Excluir
+                  </Button>
+                )}
                 {u.cliente_id ? (
                   <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto text-xs text-azul hover:underline self-center">
                     Ver extrato financeiro →
@@ -388,6 +518,197 @@ export function Usuarios() {
               <Button variant="ghost" size="sm" onClick={() => setSenhaModal(null)}>Cancelar</Button>
               <Button size="sm" onClick={confirmarResetSenha} disabled={acaoLoading === senhaModal.id}>
                 {acaoLoading === senhaModal.id ? 'Salvando...' : 'Resetar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar dados */}
+      {editModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setEditModal(null)}>
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-xl text-azul tracking-wider mb-4">Gerenciar {editModal.trigrama}</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Trigrama (3 letras)</label>
+                <input
+                  type="text"
+                  maxLength={3}
+                  value={editForm.trigrama}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, trigrama: e.target.value.toUpperCase() }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">E-mail</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">SARAM (apenas números)</label>
+                <input
+                  type="text"
+                  value={editForm.saram}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, saram: e.target.value.replace(/\D/g, '') }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp</label>
+                <input
+                  type="text"
+                  value={editForm.whatsapp}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                />
+              </div>
+
+              {editModal.is_visitante === 1 && (
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">Esquadrão de Origem</label>
+                  <input
+                    type="text"
+                    value={editForm.esquadrao_origem}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
+                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  />
+                </div>
+              )}
+            </div>
+
+            {editErro && <p className="text-vermelho text-xs mt-4">{editErro}</p>}
+            
+            <div className="flex gap-2 justify-end mt-6">
+              <Button variant="ghost" size="sm" onClick={() => setEditModal(null)}>Cancelar</Button>
+              <Button size="sm" onClick={salvarEditar} disabled={acaoLoading === editModal.id}>
+                {acaoLoading === editModal.id ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal novo usuario */}
+      {novoModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNovoModal(false)}>
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-xl text-azul tracking-wider mb-4">Novo Usuário</h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Trigrama (3 letras)*</label>
+                <input
+                  type="text"
+                  maxLength={3}
+                  value={novoForm.trigrama}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, trigrama: e.target.value.toUpperCase() }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">SARAM*</label>
+                  <input
+                    type="text"
+                    value={novoForm.saram}
+                    onChange={(e) => setNovoForm(prev => ({ ...prev, saram: e.target.value.replace(/\D/g, '') }))}
+                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp*</label>
+                  <input
+                    type="text"
+                    value={novoForm.whatsapp}
+                    onChange={(e) => setNovoForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">E-mail*</label>
+                <input
+                  type="email"
+                  value={novoForm.email}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Senha inicial*</label>
+                <input
+                  type="password"
+                  value={novoForm.senha}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, senha: e.target.value }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-texto-fraco mb-1">Categoria*</label>
+                <select
+                  value={novoForm.categoria}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, categoria: e.target.value as Categoria }))}
+                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                >
+                  <option value="oficial">Oficial</option>
+                  <option value="graduado">Graduado/SO</option>
+                  <option value="praca">Praça</option>
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={novoForm.is_visitante}
+                    onChange={(e) => setNovoForm(prev => ({ ...prev, is_visitante: e.target.checked }))}
+                    className="accent-azul"
+                  />
+                  <span className="text-sm font-medium text-texto">É visitante?</span>
+                </label>
+              </div>
+
+              {novoForm.is_visitante && (
+                <div className="grid grid-cols-2 gap-3 p-3 bg-fundo rounded-xl border border-borda">
+                  <div>
+                    <label className="block text-[10px] font-medium text-texto-fraco mb-1 uppercase">Esquadrão Origem</label>
+                    <input
+                      type="text"
+                      value={novoForm.esquadrao_origem}
+                      onChange={(e) => setNovoForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
+                      className="w-full bg-white border border-borda rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-medium text-texto-fraco mb-1 uppercase">Expira em</label>
+                    <input
+                      type="date"
+                      value={novoForm.expira_em}
+                      onChange={(e) => setNovoForm(prev => ({ ...prev, expira_em: e.target.value }))}
+                      className="w-full bg-white border border-borda rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-6">
+              <Button variant="ghost" size="sm" onClick={() => setNovoModal(false)}>Cancelar</Button>
+              <Button size="sm" onClick={salvarNovo} disabled={acaoLoading === 999999}>
+                {acaoLoading === 999999 ? 'Criando...' : 'Criar Usuário'}
               </Button>
             </div>
           </div>

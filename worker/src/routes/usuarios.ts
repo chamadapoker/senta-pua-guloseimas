@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import { sign } from '../lib/jwt';
 import { hashPassword, verifyPassword } from '../lib/password';
 import { userAuthMiddleware } from '../middleware/userAuth';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, superAdminMiddleware } from '../middleware/auth';
 import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categoria';
 import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante';
 import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const usuarios = new Hono<AppType>();
@@ -752,6 +753,226 @@ usuarios.put('/admin/:id/ativar', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const result = await c.env.DB.prepare('UPDATE usuarios SET ativo = 1 WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
+// Admin: criar usuario
+usuarios.post('/admin', authMiddleware, async (c) => {
+  const { email, senha, trigrama, saram, whatsapp, categoria, is_visitante, esquadrao_origem, expira_em } = await c.req.json<{
+    email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
+    categoria: string; is_visitante?: number; esquadrao_origem?: string; expira_em?: string;
+  }>();
+
+  if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
+    return c.json({ error: 'Campos obrigatórios: email, senha, trigrama, saram, whatsapp, categoria' }, 400);
+  }
+
+  const tri = trigrama.trim().toUpperCase();
+  if (!/^[A-ZÀ-ÚÖ]{3}$/.test(tri)) return c.json({ error: 'Trigrama deve ter exatamente 3 letras' }, 400);
+
+  const sa = saram.trim();
+  if (!/^\d+$/.test(sa)) return c.json({ error: 'SARAM deve conter apenas números' }, 400);
+
+  const em = email.trim().toLowerCase();
+  
+  const existEmail = await c.env.DB.prepare('SELECT id FROM usuarios WHERE email = ?').bind(em).first();
+  if (existEmail) return c.json({ error: 'Email já cadastrado' }, 409);
+
+  const existTrigrama = await c.env.DB.prepare('SELECT id FROM usuarios WHERE trigrama = ?').bind(tri).first();
+  if (existTrigrama) return c.json({ error: 'Trigrama já cadastrado' }, 409);
+
+  const existSaram = await c.env.DB.prepare('SELECT id FROM usuarios WHERE saram = ?').bind(sa).first();
+  if (existSaram) return c.json({ error: 'SARAM já cadastrado' }, 409);
+
+  const senhaHash = await hashPassword(senha);
+  const wp = whatsapp.trim();
+  const salaCafe = derivarSalaCafe(categoria as Categoria);
+
+  const columns = ['email', 'senha_hash', 'trigrama', 'saram', 'whatsapp', 'categoria', 'sala_cafe', 'ativo'];
+  const values = [em, senhaHash, tri, sa, wp, categoria, salaCafe, 1];
+  const placeholders = ['?', '?', '?', '?', '?', '?', '?', '?'];
+
+  if (is_visitante === 1) {
+    columns.push('is_visitante', 'esquadrao_origem', 'expira_em');
+    values.push(1, esquadrao_origem?.trim().toUpperCase() || null, expira_em || null);
+    placeholders.push('?', '?', '?');
+  }
+
+  const { results } = await c.env.DB.prepare(
+    `INSERT INTO usuarios (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`
+  ).bind(...values).all<{ id: number }>();
+
+  const userId = results[0].id;
+
+  // Sincroniza tabela clientes
+  const existCliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(tri).first();
+
+  if (!existCliente) {
+    await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, whatsapp, esquadrao_origem) VALUES (?, ?, ?)')
+      .bind(tri, wp, (is_visitante === 1 ? esquadrao_origem?.trim().toUpperCase() || null : null)).run();
+  } else {
+    await c.env.DB.prepare('UPDATE clientes SET whatsapp = ?, esquadrao_origem = ? WHERE nome_guerra = ? COLLATE NOCASE')
+      .bind(wp, (is_visitante === 1 ? esquadrao_origem?.trim().toUpperCase() || null : null), tri).run();
+  }
+
+  await audit(c, 'criar_usuario', 'usuarios', String(userId), null, { email: em, trigrama: tri });
+
+  return c.json({ ok: true, id: userId }, 201);
+});
+
+// Admin: editar dados gerais do usuario (trigrama, email, saram, whatsapp, esquadrao_origem)
+usuarios.put('/admin/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json<{
+    trigrama?: string;
+    email?: string;
+    saram?: string;
+    whatsapp?: string;
+    esquadrao_origem?: string | null;
+  }>();
+
+  const antes = await c.env.DB.prepare(
+    'SELECT id, trigrama, email, saram, whatsapp, esquadrao_origem FROM usuarios WHERE id = ?'
+  ).bind(id).first<{ id: number; trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string | null }>();
+  if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+  let novoTrigrama: string | null = null;
+  let novoWhatsapp: string | null = null;
+  let novoEsquadrao: string | null | undefined = undefined;
+
+  if (typeof body.trigrama === 'string') {
+    const tri = body.trigrama.trim().toUpperCase();
+    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(tri)) return c.json({ error: 'Trigrama deve ter exatamente 3 letras' }, 400);
+    if (tri !== antes.trigrama) {
+      const ex = await c.env.DB.prepare('SELECT id FROM usuarios WHERE trigrama = ? AND id != ?').bind(tri, id).first();
+      if (ex) return c.json({ error: 'Trigrama já cadastrado por outro usuário' }, 409);
+      updates.push('trigrama = ?');
+      params.push(tri);
+      novoTrigrama = tri;
+    }
+  }
+
+  if (typeof body.email === 'string') {
+    const em = body.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return c.json({ error: 'Email inválido' }, 400);
+    if (em !== antes.email) {
+      const ex = await c.env.DB.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').bind(em, id).first();
+      if (ex) return c.json({ error: 'Email já cadastrado por outro usuário' }, 409);
+      updates.push('email = ?');
+      params.push(em);
+    }
+  }
+
+  if (typeof body.saram === 'string') {
+    const sa = body.saram.trim();
+    if (!/^\d+$/.test(sa)) return c.json({ error: 'SARAM deve conter apenas números' }, 400);
+    if (sa !== antes.saram) {
+      const ex = await c.env.DB.prepare('SELECT id FROM usuarios WHERE saram = ? AND id != ?').bind(sa, id).first();
+      if (ex) return c.json({ error: 'SARAM já cadastrado por outro usuário' }, 409);
+      updates.push('saram = ?');
+      params.push(sa);
+    }
+  }
+
+  if (typeof body.whatsapp === 'string') {
+    const wp = body.whatsapp.trim();
+    if (wp !== antes.whatsapp) {
+      updates.push('whatsapp = ?');
+      params.push(wp);
+      novoWhatsapp = wp;
+    }
+  }
+
+  if (body.esquadrao_origem !== undefined) {
+    const es = body.esquadrao_origem === null ? null : String(body.esquadrao_origem).trim().toUpperCase() || null;
+    if (es !== antes.esquadrao_origem) {
+      updates.push('esquadrao_origem = ?');
+      params.push(es);
+      novoEsquadrao = es;
+    }
+  }
+
+  if (!updates.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
+
+  params.push(id);
+  await c.env.DB.prepare(`UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  // Sincroniza tabela clientes (linkada por nome_guerra = trigrama)
+  if (novoTrigrama || novoWhatsapp !== null || novoEsquadrao !== undefined) {
+    const clienteUpdates: string[] = [];
+    const clienteParams: unknown[] = [];
+    if (novoTrigrama) { clienteUpdates.push('nome_guerra = ?'); clienteParams.push(novoTrigrama); }
+    if (novoWhatsapp !== null) { clienteUpdates.push('whatsapp = ?'); clienteParams.push(novoWhatsapp); }
+    if (novoEsquadrao !== undefined) { clienteUpdates.push('esquadrao_origem = ?'); clienteParams.push(novoEsquadrao); }
+    if (clienteUpdates.length) {
+      clienteParams.push(antes.trigrama);
+      await c.env.DB.prepare(
+        `UPDATE clientes SET ${clienteUpdates.join(', ')} WHERE nome_guerra = ? COLLATE NOCASE`
+      ).bind(...clienteParams).run();
+    }
+  }
+
+  const depois = await c.env.DB.prepare(
+    `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.permite_fiado, u.created_at,
+            c.id AS cliente_id
+     FROM usuarios u
+     LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
+     WHERE u.id = ?`
+  ).bind(id).first();
+
+  await audit(c, 'editar_usuario', 'usuarios', String(id), antes, depois);
+  return c.json(depois);
+});
+
+// Admin: excluir usuario (super_admin only). Cascata manual seguindo padrao do DELETE /me
+usuarios.delete('/admin/:id', authMiddleware, superAdminMiddleware, async (c) => {
+  const id = c.req.param('id');
+
+  const user = await c.env.DB.prepare(
+    'SELECT id, trigrama, email, foto_url FROM usuarios WHERE id = ?'
+  ).bind(id).first<{ id: number; trigrama: string; email: string; foto_url: string | null }>();
+  if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  if (user.foto_url) {
+    const key = user.foto_url.replace('/api/images/', '');
+    await c.env.IMAGES.delete(key).catch(() => {});
+  }
+
+  const cliente = await c.env.DB.prepare(
+    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+  ).bind(user.trigrama).first<{ id: string }>();
+
+  if (cliente) {
+    const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const p of pedidos) {
+      await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(p.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id).run();
+
+    const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const a of assinantes) {
+      await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind(a.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).run();
+
+    const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
+    for (const p of lojaPedidos) {
+      await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(p.id).run();
+      await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind(p.id).run();
+    }
+    await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).run();
+
+    await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id).run();
+  }
+
+  await c.env.DB.prepare('DELETE FROM usuarios WHERE id = ?').bind(id).run();
+
+  await audit(c, 'excluir_usuario', 'usuarios', String(id), { trigrama: user.trigrama, email: user.email }, null);
   return c.json({ ok: true });
 });
 
