@@ -94,16 +94,16 @@ async function gerarCobrancasAutomaticas(env: Env) {
     if (!jaMes.has(a.id)) {
       batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
       const frases = [
-        "A disciplina financeira e a base da operatividade. Sua mensalidade do cafe foi lancada no extrato.",
-        "Radar limpo e conta paga. Esse e o lema. Confira seu extrato, a mensalidade do cafe ja esta disponivel.",
-        "O esquadrao conta com sua pontualidade para manter o cafe quente. Mensalidade lancada com sucesso.",
-        "Missao dada e missao cumprida. Sua mensalidade do cafe foi registrada. Mantenha seu radar em dia."
+        "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
+        "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
+        "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
+        "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
       ];
       const msg = frases[Math.floor(Math.random() * frases.length)];
 
       batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
         a.nome_guerra, 
-        'MENSALIDADE CAFE', 
+        'MENSALIDADE CAFÉ', 
         msg
       ));
     }
@@ -115,16 +115,16 @@ async function gerarCobrancasAutomaticas(env: Env) {
         batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
         // NOTIFICAÇÃO
         const frases = [
-          "A disciplina financeira e a base da operatividade. Sua mensalidade do cafe foi lancada no extrato.",
-          "Radar limpo e conta paga. Esse e o lema. Confira seu extrato, a mensalidade do cafe ja esta disponivel.",
-          "O esquadrao conta com sua pontualidade para manter o cafe quente. Mensalidade lancada com sucesso.",
-          "Missao dada e missao cumprida. Sua mensalidade do cafe foi registrada. Mantenha seu radar em dia."
+          "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
+          "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
+          "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
+          "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
         ];
         const msg = frases[Math.floor(Math.random() * frases.length)];
 
         batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
           a.nome_guerra, 
-          'MENSALIDADE CAFE', 
+          'MENSALIDADE CAFÉ', 
           msg
         ));
       }
@@ -186,8 +186,8 @@ async function verificarAniversariantes(env: Env) {
   if (aniversariantes.length === 0) return;
 
   const batch: D1PreparedStatement[] = aniversariantes.map(a => 
-    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSARIO!', ?)")
-      .bind(a.trigrama, "O Esquadrao Senta Pua te deseja um excelente dia e um feliz aniversario! Lembre-se: o RP pode ate esquecer o proprio nome, mas nunca esquece da sua divida. Senta a Pua!")
+    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSÁRIO!', ?)")
+      .bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Senta a Pua!")
   );
 
   await env.DB.batch(batch);
