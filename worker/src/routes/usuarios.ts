@@ -807,9 +807,9 @@ usuarios.put('/admin/:id/ativar', authMiddleware, async (c) => {
 
 // Admin: criar usuario
 usuarios.post('/admin', authMiddleware, async (c) => {
-  const { email, senha, trigrama, saram, whatsapp, categoria, is_visitante, esquadrao_origem, expira_em } = await c.req.json<{
+  const { email, senha, trigrama, saram, whatsapp, categoria, is_visitante, esquadrao_origem, expira_em, data_nascimento } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
-    categoria: string; is_visitante?: number; esquadrao_origem?: string; expira_em?: string;
+    categoria: string; is_visitante?: number; esquadrao_origem?: string; expira_em?: string; data_nascimento?: string;
   }>();
 
   if (!email || !senha || !trigrama || !saram || !whatsapp || !categoria) {
@@ -847,6 +847,12 @@ usuarios.post('/admin', authMiddleware, async (c) => {
     placeholders.push('?', '?', '?');
   }
 
+  if (data_nascimento) {
+    columns.push('data_nascimento');
+    values.push(data_nascimento);
+    placeholders.push('?');
+  }
+
   const { results } = await c.env.DB.prepare(
     `INSERT INTO usuarios (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id`
   ).bind(...values).all<{ id: number }>();
@@ -880,11 +886,12 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
     saram?: string;
     whatsapp?: string;
     esquadrao_origem?: string | null;
+    data_nascimento?: string | null;
   }>();
 
   const antes = await c.env.DB.prepare(
-    'SELECT id, trigrama, email, saram, whatsapp, esquadrao_origem FROM usuarios WHERE id = ?'
-  ).bind(id).first<{ id: number; trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string | null }>();
+    'SELECT id, trigrama, email, saram, whatsapp, esquadrao_origem, data_nascimento FROM usuarios WHERE id = ?'
+  ).bind(id).first<{ id: number; trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string | null; data_nascimento: string | null }>();
   if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
 
   const updates: string[] = [];
@@ -945,6 +952,14 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
     }
   }
 
+  if (body.data_nascimento !== undefined) {
+    const dn = body.data_nascimento === null ? null : String(body.data_nascimento).trim() || null;
+    if (dn !== antes.data_nascimento) {
+      updates.push('data_nascimento = ?');
+      params.push(dn);
+    }
+  }
+
   if (!updates.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
 
   params.push(id);
@@ -967,7 +982,7 @@ usuarios.put('/admin/:id', authMiddleware, async (c) => {
 
   const depois = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
-            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.permite_fiado, u.created_at,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.permite_fiado, u.created_at, u.data_nascimento,
             c.id AS cliente_id
      FROM usuarios u
      LEFT JOIN clientes c ON c.nome_guerra = u.trigrama COLLATE NOCASE
