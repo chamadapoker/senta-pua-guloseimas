@@ -2,7 +2,9 @@ name: Deploy App (Cloudflare Pages)
 on:
   push:
     branches: [main]
-    paths: ['app/**']
+    paths: 
+      - 'app/**'
+      - '.github/workflows/deploy-app.yml'
   workflow_dispatch:
 jobs:
   deploy:
