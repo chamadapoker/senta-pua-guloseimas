@@ -49,8 +49,8 @@ usuarios.post('/cadastro', async (c) => {
   const salaCafe = derivarSalaCafe(categoria as Categoria);
 
   const { results } = await c.env.DB.prepare(
-    `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, aceitou_lgpd_em)
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now')) RETURNING id`
+    `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe, aceitou_lgpd_em, data_nascimento)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), NULL) RETURNING id`
   ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe).all<{ id: number }>();
 
   const userId = results[0].id;
@@ -131,8 +131,8 @@ usuarios.post('/cadastro/visitante', async (c) => {
 
   const { results } = await c.env.DB.prepare(
     `INSERT INTO usuarios (email, senha_hash, trigrama, saram, whatsapp, categoria, sala_cafe,
-       is_visitante, esquadrao_origem, expira_em, permite_fiado, aceitou_lgpd_em)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, datetime('now')) RETURNING id`
+       is_visitante, esquadrao_origem, expira_em, permite_fiado, aceitou_lgpd_em, data_nascimento)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 0, datetime('now'), NULL) RETURNING id`
   ).bind(emailClean, senhaHash, trigramaClean, saramClean, whatsappClean, categoria, salaCafe, esquadraoClean, expiraEm).all<{ id: number }>();
 
   const userId = results[0].id;

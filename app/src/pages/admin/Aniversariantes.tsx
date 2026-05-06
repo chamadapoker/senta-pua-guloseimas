@@ -64,7 +64,11 @@ export function Aniversariantes() {
   };
 
   const formatData = (iso: string) => {
-    const [y, m, d] = iso.split('-');
+    if (!iso) return '--/--';
+    if (iso.includes('/')) return iso.substring(0, 5); // Fallback para DD/MM
+    const partes = iso.split('-');
+    if (partes.length < 3) return iso;
+    const [y, m, d] = partes;
     return `${d}/${m}`;
   };
 
