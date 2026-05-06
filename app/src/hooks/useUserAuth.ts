@@ -93,10 +93,16 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
       const user = await api.get<Usuario>('/api/usuarios/me');
       set({ token, user });
       return true;
-    } catch {
-      localStorage.removeItem('user_token');
-      set({ token: null, user: null });
-      return false;
+    } catch (e: any) {
+      // SÓ desloga se for erro de autenticação (401 ou 403)
+      // Se for erro de rede (offline, timeout), mantém o token e tenta de novo depois
+      if (e?.status === 401 || e?.status === 403) {
+        localStorage.removeItem('user_token');
+        set({ token: null, user: null });
+        return false;
+      }
+      // Em erro de rede, assume que ainda está logado para não deslogar o usuário
+      return true; 
     }
   },
 

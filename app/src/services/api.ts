@@ -18,6 +18,7 @@ function pickToken(path: string, method?: string): string | null {
     if (method === 'POST') return userToken || adminToken;
   }
   if (path === '/api/comprovantes/me') return userToken;
+  if (path.startsWith('/api/notificacoes/me')) return userToken;
 
   return adminToken || userToken;
 }
@@ -48,7 +49,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         window.location.href = '/acesso-expirado';
       }
     }
-    throw new Error(body.error || `HTTP ${res.status}`);
+    const error: any = new Error(body.error || `HTTP ${res.status}`);
+    error.status = res.status;
+    throw error;
   }
 
   return res.json() as Promise<T>;
