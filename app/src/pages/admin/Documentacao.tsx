@@ -12,7 +12,7 @@ export function Documentacao() {
     { id: 'loja', label: 'Lojinha Militar', icon: 'trash' }, // Usando ícones disponíveis no Icon.tsx
     { id: 'cafe', label: 'Caixinha do Café', icon: 'check' },
     { id: 'ximboca', label: 'Ximboca', icon: 'user' },
-    { id: 'usuarios', label: 'Usuários & Militares', icon: 'user' },
+    { id: 'usuarios', label: 'Usuários & Aniversários', icon: 'user' },
     { id: 'financeiro', label: 'Financeiro & Caixa', icon: 'note' },
     { id: 'seguranca', label: 'Segurança & Auditoria', icon: 'x' },
     { id: 'automacoes', label: 'Automações (Crons)', icon: 'alarm' },
@@ -117,9 +117,10 @@ export function Documentacao() {
                 <p>O coração da plataforma. Gerencia quem pode acessar e comprar.</p>
                 <ul className="list-disc pl-5 space-y-2">
                   <li><strong>Trigrama</strong>: Identificador único de 3 letras. É sincronizado automaticamente com a tabela de Clientes (Militares).</li>
+                  <li><strong>Data de Nascimento</strong>: Essencial para o sistema de homenagens. Deve ser cadastrada no botão "Gerenciar Conta".</li>
+                  <li><strong>Homenagens</strong>: O RP pode configurar mensagens e fotos especiais para cada militar na página de Aniversariantes.</li>
                   <li><strong>Visitantes</strong>: Contas temporárias com data de expiração. Após a data, o acesso é bloqueado automaticamente.</li>
-                  <li><strong>Exclusão Nuclear</strong>: Recurso de Super-Admin que remove um usuário e TODOS os seus rastros (pedidos, assinaturas, arquivos) para conformidade com a LGPD.</li>
-                  <li><strong>Bloqueio de Fiado</strong>: O admin pode impedir que um militar compre "no fiado" individualmente.</li>
+                  <li><strong>Exclusão Nuclear</strong>: Recurso de Super-Admin que remove um usuário e TODOS os seus rastros para conformidade com a LGPD.</li>
                 </ul>
               </div>
             </div>
@@ -130,10 +131,15 @@ export function Documentacao() {
               <h2 className="text-xl font-display text-azul mb-4 uppercase tracking-wider">Financeiro & Caixa</h2>
               <div className="space-y-4 text-sm text-texto leading-relaxed">
                 <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Comprovantes</strong>: Militares enviam prints de PIX. O admin deve conferir e clicar em "Aprovar" para o sistema dar baixa na dívida automaticamente.</li>
-                  <li><strong>Cobranças</strong>: Painel centralizado que gera links diretos de WhatsApp para devedores, já incluindo o valor total consolidado.</li>
-                  <li><strong>Caixa Consolidado</strong>: Única tela que soma o faturamento de todos os módulos (Lojinha + Café + Cantina + Ximboca).</li>
-                  <li><strong>Lucratividade</strong>: Relatório que compara preço de custo vs preço de venda para mostrar o lucro real por item.</li>
+                  <li><strong>Fluxo PIX / "Já Paguei"</strong>:
+                    <br/>1. O militar copia o PIX e paga no banco.
+                    <br/>2. Ele clica em "Já Paguei" (o pedido fica amarelo no Admin, mas sem arquivo).
+                    <br/>3. O militar pode enviar o comprovante na hora ou <strong>depois pelo Dashboard</strong>.
+                    <br/>4. O Admin só dá baixa após conferir o arquivo ou o extrato bancário.
+                  </li>
+                  <li><strong>Dashboard do Militar</strong>: Caso ele esqueça de mandar o comprovante, um botão "Enviar Comprovante" aparecerá nos pedidos pendentes dele.</li>
+                  <li><strong>Cobranças</strong>: Painel que gera links de WhatsApp para devedores, com o valor consolidado de todos os módulos.</li>
+                  <li><strong>Caixa Consolidado</strong>: Tela que soma o faturamento de Lojinha + Café + Cantina + Ximboca.</li>
                 </ul>
               </div>
             </div>
