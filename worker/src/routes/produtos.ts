@@ -8,11 +8,11 @@ const produtos = new Hono<AppType>();
 // Público: lista produtos disponíveis (filtro opcional por categoria)
 produtos.get('/', async (c) => {
   const cat = c.req.query('categoria');
-  let sql = 'SELECT * FROM produtos WHERE 1=1';
+  let sql = 'SELECT * FROM produtos';
   const params: string[] = [];
 
-  if (cat && cat !== 'geral') {
-    sql += " AND (categoria = ? OR categoria = 'geral')";
+  if (cat) {
+    sql += ' WHERE categoria = ?';
     params.push(cat);
   }
 
@@ -44,7 +44,7 @@ produtos.post('/', authMiddleware, async (c) => {
 
   const { results } = await c.env.DB.prepare(
     'INSERT INTO produtos (nome, emoji, preco, preco_custo, disponivel, ordem, imagem_url, categoria, estoque) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
-  ).bind(nome, emoji || '🍬', preco, preco_custo ?? null, disponivel ?? 1, ordem ?? 0, imagem_url || null, categoria || 'geral', estoque ?? null).all<Produto>();
+  ).bind(nome, emoji || '🍬', preco, preco_custo ?? null, disponivel ?? 1, ordem ?? 0, imagem_url || null, categoria || 'oficiais', estoque ?? null).all<Produto>();
 
   return c.json(results[0], 201);
 });
@@ -67,6 +67,17 @@ produtos.put('/:id', authMiddleware, async (c) => {
   if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
   if ('categoria' in body) { fields.push('categoria = ?'); values.push(body.categoria); }
   if ('estoque' in body) { fields.push('estoque = ?'); values.push(body.estoque); }
+
+  // Reabastecimento: disponibilidade acompanha o estoque, salvo override explícito.
+  // Só age quando 'disponivel' NÃO veio no corpo (admin no controle quando manda explícito).
+  if ('estoque' in body && !('disponivel' in body)) {
+    const est = body.estoque;
+    if (typeof est === 'number') {
+      if (est > 0) { fields.push('disponivel = ?'); values.push(1); }
+      else if (est === 0) { fields.push('disponivel = ?'); values.push(0); }
+      // est === null (ilimitado) → não mexe em disponivel
+    }
+  }
 
   if (!fields.length) return c.json({ error: 'Nenhum campo para atualizar' }, 400);
 
