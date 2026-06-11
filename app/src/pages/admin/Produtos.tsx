@@ -36,7 +36,7 @@ export function Produtos() {
   const [preco, setPreco] = useState('');
   const [precoCusto, setPrecoCusto] = useState('');
   const [ordem, setOrdem] = useState('0');
-  const [categoria, setCategoria] = useState<'oficiais' | 'graduados' | 'geral'>('geral');
+  const [categoria, setCategoria] = useState<'oficiais' | 'graduados'>('oficiais');
   const [disponivel, setDisponivel] = useState(true);
   const [imagemUrl, setImagemUrl] = useState('');
   const [previewImg, setPreviewImg] = useState('');
@@ -49,7 +49,7 @@ export function Produtos() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setNome(''); setEmoji('🍬'); setPreco(''); setPrecoCusto(''); setOrdem('0'); setCategoria('geral'); setDisponivel(true);
+    setNome(''); setEmoji('🍬'); setPreco(''); setPrecoCusto(''); setOrdem('0'); setCategoria('oficiais'); setDisponivel(true);
     setEstoque('');
     setImagemUrl(''); setPreviewImg('');
     setModalAberto(true);
@@ -57,7 +57,7 @@ export function Produtos() {
 
   const abrirEditar = (p: Produto) => {
     setEditando(p);
-    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setPrecoCusto(p.preco_custo != null ? String(p.preco_custo) : ''); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'geral'); setDisponivel(!!p.disponivel);
+    setNome(p.nome); setEmoji(p.emoji); setPreco(String(p.preco)); setPrecoCusto(p.preco_custo != null ? String(p.preco_custo) : ''); setOrdem(String(p.ordem)); setCategoria(p.categoria || 'oficiais'); setDisponivel(!!p.disponivel);
     setEstoque(p.estoque != null ? String(p.estoque) : '');
     setImagemUrl(p.imagem_url || '');
     setPreviewImg(resolveImg(p.imagem_url) || '');
@@ -134,7 +134,7 @@ export function Produtos() {
                 <Toggle checked={!!p.disponivel} onChange={() => toggleDisponivel(p)} />
               </div>
               <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
-                {p.categoria === 'oficiais' ? '🎖️ Oficiais' : p.categoria === 'graduados' ? '⭐ Graduados' : '📋 Geral'}
+                {p.categoria === 'oficiais' ? '🎖️ Oficiais' : '⭐ Graduados'}
               </span>
             </div>
             <div className="bg-azul p-3">
@@ -232,10 +232,9 @@ export function Produtos() {
               <label className="block text-sm font-medium mb-1">Sala</label>
               <select
                 value={categoria}
-                onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados' | 'geral')}
+                onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados')}
                 className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
               >
-                <option value="geral">Geral (ambas)</option>
                 <option value="oficiais">Sala dos Oficiais</option>
                 <option value="graduados">Sala dos Graduados</option>
               </select>
@@ -248,7 +247,15 @@ export function Produtos() {
               type="number"
               min="0"
               value={estoque}
-              onChange={(e) => setEstoque(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEstoque(v);
+                const n = v === '' ? null : parseInt(v);
+                if (n !== null && !Number.isNaN(n)) {
+                  if (n > 0) setDisponivel(true);
+                  else if (n === 0) setDisponivel(false);
+                }
+              }}
               placeholder="Vazio = sem limite"
               className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
             />
