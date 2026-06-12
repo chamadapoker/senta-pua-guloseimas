@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
@@ -86,10 +87,7 @@ export function Admins() {
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-azul tracking-wider">ADMINISTRADORES</h1>
-        {isSuperAdmin && <Button size="sm" onClick={abrirCriar}>+ Novo Admin</Button>}
-      </div>
+      <PageHeader title="ADMINISTRADORES" right={isSuperAdmin && <Button size="sm" onClick={abrirCriar}>+ Novo Admin</Button>} />
 
       {!isSuperAdmin && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-900">

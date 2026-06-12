@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { Toggle } from '../../../components/ui/Toggle';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -180,10 +181,7 @@ export function LojaProdutos() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-azul tracking-wider">PRODUTOS - LOJA</h1>
-        <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
-      </div>
+      <PageHeader title="PRODUTOS - LOJA" right={<Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {produtos.map((p) => (

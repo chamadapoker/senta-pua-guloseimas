@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -71,10 +72,7 @@ export function CafeDespesas() {
   return (
     <AppLayout>
       <BackButton to="/admin/cafe" className="mb-3" />
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-azul tracking-wider">DESPESAS DO CAFÉ</h1>
-        <Button size="sm" onClick={() => setModal(true)}>+ Nova Despesa</Button>
-      </div>
+      <PageHeader title="DESPESAS DO CAFÉ" right={<Button size="sm" onClick={() => setModal(true)}>+ Nova Despesa</Button>} />
 
       <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-4">
         {(['', 'oficial', 'graduado'] as const).map(t => (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -137,10 +138,7 @@ export function CafeAssinantes() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-display text-2xl text-azul tracking-wider">ASSINANTES</h1>
-        <Button size="sm" onClick={() => { setEditando(null); setTipo(sala); setModalAberto(true); }}>+ Adicionar</Button>
-      </div>
+      <PageHeader title="ASSINANTES" right={<Button size="sm" onClick={() => { setEditando(null); setTipo(sala); setModalAberto(true); }}>+ Adicionar</Button>} />
       <div className="flex gap-1 mb-5">
         <button onClick={() => setSala('oficial')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${sala === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>

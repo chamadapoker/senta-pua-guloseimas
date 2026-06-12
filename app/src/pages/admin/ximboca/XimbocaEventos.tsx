@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -106,10 +107,7 @@ export function XimbocaEventos() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-azul tracking-wider">EVENTOS</h1>
-        <Button size="sm" onClick={abrirCriar}>+ Novo Evento</Button>
-      </div>
+      <PageHeader title="EVENTOS" right={<Button size="sm" onClick={abrirCriar}>+ Novo Evento</Button>} />
 
       <div className="space-y-3">
         {eventos.map(ev => {

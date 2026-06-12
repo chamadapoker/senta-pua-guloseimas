@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
+import { PageHeader } from '../../../components/ui/PageHeader';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -60,10 +61,7 @@ export function CafeInsumos() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-display text-2xl text-azul tracking-wider">ESTOQUE INSUMOS</h1>
-        <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
-      </div>
+      <PageHeader title="ESTOQUE INSUMOS" right={<Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>} />
       <div className="flex gap-1 mb-5">
         <button onClick={() => setTipo('oficial')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>

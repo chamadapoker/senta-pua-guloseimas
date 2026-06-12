@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -121,12 +122,14 @@ export function Aniversariantes() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl text-azul tracking-wider uppercase">Aniversariantes</h1>
-        <div className="text-xs text-texto-fraco bg-white px-3 py-1.5 rounded-full border border-borda">
-          {lista.length} militares com data cadastrada
-        </div>
-      </div>
+      <PageHeader
+        title="Aniversariantes"
+        right={
+          <div className="text-xs text-texto-fraco bg-white px-3 py-1.5 rounded-full border border-borda">
+            {lista.length} militares com data cadastrada
+          </div>
+        }
+      />
 
       {loading ? (
         <Loading />
