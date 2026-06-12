@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { Cliente } from '../../types';
 
 export function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [filtro, setFiltro] = useState<'todos' | 'divida' | 'dia' | 'bloqueados'>('todos');
   const navigate = useNavigate();
+  const confirmar = useConfirm();
 
   const carregar = () => api.get<Cliente[]>('/api/clientes').then(setClientes);
   useEffect(() => { carregar(); }, []);
@@ -17,16 +19,34 @@ export function Clientes() {
     e.stopPropagation();
     const novoStatus = c.ativo ? 0 : 1;
     const acao = novoStatus ? 'desbloquear' : 'bloquear';
-    if (!window.confirm(`Tem certeza que deseja ${acao} ${c.nome_guerra}?`)) return;
-    await api.put(`/api/clientes/${c.id}/bloquear`, { ativo: novoStatus });
-    carregar();
+    if (!(await confirmar({
+      title: 'Confirmar',
+      message: `Deseja ${acao} ${c.nome_guerra}?`,
+      confirmText: acao.charAt(0).toUpperCase() + acao.slice(1),
+      danger: !novoStatus,
+    }))) return;
+    try {
+      await api.put(`/api/clientes/${c.id}/bloquear`, { ativo: novoStatus });
+      carregar();
+    } catch {
+      alert('Erro ao atualizar. Tente novamente.');
+    }
   };
 
   const excluirMilitar = async (e: React.MouseEvent, c: Cliente) => {
     e.stopPropagation();
-    if (!window.confirm(`Excluir ${c.nome_guerra} permanentemente? Todos os pedidos, pagamentos e dados desse militar serao apagados.`)) return;
-    await api.delete(`/api/clientes/${c.id}`);
-    carregar();
+    if (!(await confirmar({
+      title: 'Excluir militar',
+      message: `Excluir ${c.nome_guerra} permanentemente? Todos os pedidos, pagamentos e dados desse militar serão apagados.`,
+      confirmText: 'Excluir',
+      danger: true,
+    }))) return;
+    try {
+      await api.delete(`/api/clientes/${c.id}`);
+      carregar();
+    } catch {
+      alert('Erro ao excluir. Tente novamente.');
+    }
   };
 
   const filtrados = clientes.filter((c) => {

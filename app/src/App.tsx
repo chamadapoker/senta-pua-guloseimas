@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { ToastProvider } from './hooks/useToast';
+import { ConfirmProvider } from './hooks/useConfirm';
 import { Home } from './pages/Home';
 import { Catalogo } from './pages/Catalogo';
 import { Checkout } from './pages/Checkout';
@@ -102,6 +103,7 @@ function VisitorGuard({ children }: { children: React.ReactNode }) {
 export function App() {
   return (
     <ToastProvider>
+      <ConfirmProvider>
       <BrowserRouter>
         <UserAuthLoader />
         <UpdatePrompt />
@@ -157,6 +159,7 @@ export function App() {
       </Routes>
         </Suspense>
     </BrowserRouter>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

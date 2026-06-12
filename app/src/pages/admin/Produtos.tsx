@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { Produto } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -44,6 +45,7 @@ export function Produtos() {
   const [uploading, setUploading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const confirmar = useConfirm();
 
   const carregar = () => api.get<Produto[]>('/api/produtos/todos').then(setProdutos);
   useEffect(() => { carregar(); }, []);
@@ -118,9 +120,13 @@ export function Produtos() {
   };
 
   const excluir = async (p: Produto) => {
-    if (!confirm(`Excluir "${p.nome}"?`)) return;
-    await api.delete(`/api/produtos/${p.id}`);
-    carregar();
+    if (!(await confirmar({ title: 'Excluir produto', message: `Excluir "${p.nome}"?`, confirmText: 'Excluir', danger: true }))) return;
+    try {
+      await api.delete(`/api/produtos/${p.id}`);
+      carregar();
+    } catch {
+      alert('Erro ao excluir. Tente novamente.');
+    }
   };
 
   return (

@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { Pedido } from '../../types';
 
 interface Resp {
@@ -22,13 +23,19 @@ export function Pedidos() {
   const [ate, setAte] = useState('');
   const [offset, setOffset] = useState(0);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const confirmar = useConfirm();
 
-  const carregar = () => {
-    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+  // Aceita overrides para evitar ler estado obsoleto logo após setState (ex: limpar filtros).
+  const carregar = (o?: { q?: string; de?: string; ate?: string; offset?: number }) => {
+    const off = o?.offset ?? offset;
+    const qVal = o?.q ?? q;
+    const deVal = o?.de ?? de;
+    const ateVal = o?.ate ?? ate;
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
     if (filtroStatus) qs.set('status', filtroStatus);
-    if (q.trim()) qs.set('q', q.trim());
-    if (de) qs.set('de', de);
-    if (ate) qs.set('ate', ate);
+    if (qVal.trim()) qs.set('q', qVal.trim());
+    if (deVal) qs.set('de', deVal);
+    if (ateVal) qs.set('ate', ateVal);
     api.get<Resp>(`/api/pedidos?${qs}`).then(setData);
   };
 
@@ -41,7 +48,7 @@ export function Pedidos() {
 
   const trocarStatus = (s: string) => { setFiltroStatus(s); setOffset(0); };
   const aplicarFiltros = () => { setOffset(0); carregar(); };
-  const limparFiltros = () => { setQ(''); setDe(''); setAte(''); setOffset(0); setTimeout(carregar, 0); };
+  const limparFiltros = () => { setQ(''); setDe(''); setAte(''); setOffset(0); carregar({ q: '', de: '', ate: '', offset: 0 }); };
 
   const marcarPago = async (pedidoId: string) => {
     await api.put(`/api/pedidos/${pedidoId}/pagar`, {});
@@ -58,7 +65,7 @@ export function Pedidos() {
   };
 
   const excluirPedido = async (pedidoId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este pedido? Essa ação não pode ser desfeita.')) return;
+    if (!(await confirmar({ title: 'Excluir pedido', message: 'Tem certeza? Essa ação não pode ser desfeita.', confirmText: 'Excluir', danger: true }))) return;
     try {
       await api.delete(`/api/pedidos/${pedidoId}`);
       carregar();
