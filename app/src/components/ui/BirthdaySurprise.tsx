@@ -19,7 +19,7 @@ export function BirthdaySurprise({ titulo, texto, imagemUrl, onClose }: Birthday
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-azul/90 backdrop-blur-md animate-fade-in">
-      <Confetti width={windowSize.width} height={windowSize.height} recycle={true} numberOfPieces={200} gravity={0.1} />
+      <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} gravity={0.15} />
       
       <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-md w-full relative animate-scale-in">
         {imagemUrl && (

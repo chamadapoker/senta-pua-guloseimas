@@ -12,11 +12,8 @@ function pickToken(path: string, method?: string): string | null {
   if (path.startsWith('/api/admin')) return adminToken;
   if (path.startsWith('/api/admins')) return adminToken;
 
-  // Comprovantes: user para upload/próprios, admin para fila/aprovação
-  if (path === '/api/comprovantes' && (method === 'POST' || !method)) {
-    // Upload é do usuário; listagem (GET) é admin — só que GET admin cai no else abaixo
-    if (method === 'POST') return userToken || adminToken;
-  }
+  // Comprovantes: POST (upload) é do usuário; o resto (fila/aprovação) é admin.
+  if (path === '/api/comprovantes' && method === 'POST') return userToken || adminToken;
   if (path === '/api/comprovantes/me') return userToken;
   if (path.startsWith('/api/notificacoes/me')) return userToken;
 

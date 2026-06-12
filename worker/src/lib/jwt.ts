@@ -41,20 +41,27 @@ export async function sign(payload: Record<string, unknown>, secret: string, exp
 }
 
 export async function verify(token: string, secret: string): Promise<Record<string, unknown> | null> {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
 
-  const [headerB64, bodyB64, signatureB64] = parts;
-  const message = `${headerB64}.${bodyB64}`;
+    const [headerB64, bodyB64, signatureB64] = parts;
 
-  const key = await getKey(secret);
-  const signature = base64urlDecode(signatureB64);
-  const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(message));
+    // Só aceitamos HS256 (evita confusão de algoritmo, ex.: "none").
+    const header = JSON.parse(new TextDecoder().decode(base64urlDecode(headerB64)));
+    if (header.alg !== 'HS256') return null;
 
-  if (!valid) return null;
+    const message = `${headerB64}.${bodyB64}`;
+    const key = await getKey(secret);
+    const signature = base64urlDecode(signatureB64);
+    const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(message));
+    if (!valid) return null;
 
-  const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(bodyB64)));
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(bodyB64)));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
 
-  return payload;
+    return payload;
+  } catch {
+    return null;
+  }
 }

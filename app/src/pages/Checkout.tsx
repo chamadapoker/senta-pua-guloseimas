@@ -147,7 +147,7 @@ export function Checkout() {
         <Button variant="primary" size="lg" className="w-full" onClick={() => enviarPedido('dinheiro')} disabled={loading}>
           Paguei em Dinheiro
         </Button>
-        {user.permite_fiado !== 0 && (
+        {user.permite_fiado === 1 && (
           <Button variant="outline" size="lg" className="w-full" onClick={() => enviarPedido('fiado')} disabled={loading}>
             Anotar no Fiado
           </Button>
