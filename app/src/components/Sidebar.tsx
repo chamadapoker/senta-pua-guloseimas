@@ -249,6 +249,9 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
               {!collapsed && <span>Entrar / Cadastrar</span>}
             </Link>
           )}
+          {!collapsed && (
+            <div className="px-2 pt-2 text-center text-[10px] text-texto-fraco/60">v{__APP_VERSION__}</div>
+          )}
         </div>
       </aside>
     </>
