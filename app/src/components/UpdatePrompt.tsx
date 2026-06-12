@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react';
 
 export function UpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [atualizando, setAtualizando] = useState(false);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
+
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update().catch(() => {}));
+      }
+    };
 
     navigator.serviceWorker.getRegistration().then((reg) => {
       if (!reg) return;
@@ -22,25 +30,35 @@ export function UpdatePrompt() {
       });
 
       // Checa por atualizacoes a cada 30 min e tambem quando a aba volta a ser visivel
-      const interval = setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
-      const onVis = () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); };
+      interval = setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
       document.addEventListener('visibilitychange', onVis);
-      return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVis); };
     });
 
     // Recarrega quando o SW novo assumir o controle
     let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const onControllerChange = () => {
       if (refreshing) return;
       refreshing = true;
       window.location.reload();
-    });
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVis);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+    };
   }, []);
 
   if (!waitingWorker) return null;
 
   const atualizar = () => {
+    setAtualizando(true);
+    // Pede ao SW que está esperando para assumir o controle (dispara controllerchange → reload)
     waitingWorker.postMessage('SKIP_WAITING');
+    // Garantia: o HTML é network-first, então recarregar já traz a versão nova
+    // mesmo que o controllerchange demore/não dispare.
+    setTimeout(() => window.location.reload(), 1200);
   };
 
   return (
@@ -54,9 +72,10 @@ export function UpdatePrompt() {
           <div className="text-xs text-white/80 mb-3">Atualize para ter as últimas melhorias.</div>
           <button
             onClick={atualizar}
-            className="w-full bg-white text-azul text-sm font-medium py-2 rounded-lg hover:bg-fundo transition-colors"
+            disabled={atualizando}
+            className="w-full bg-white text-azul text-sm font-medium py-2 rounded-lg hover:bg-fundo transition-colors disabled:opacity-70"
           >
-            Atualizar agora
+            {atualizando ? 'Atualizando...' : 'Atualizar agora'}
           </button>
         </div>
       </div>

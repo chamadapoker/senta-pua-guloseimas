@@ -1,9 +1,11 @@
-const CACHE_NAME = 'senta-pua-v1.0.5';
+const CACHE_NAME = 'senta-pua-v1.0.6';
 const PRECACHE = ['/', '/logo.png', '/sabre.png', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
+  // NÃO chamar skipWaiting aqui: o SW novo fica "esperando" até o usuário
+  // clicar "Atualizar agora" (que dispara o SKIP_WAITING via postMessage).
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
   );
 });
 
