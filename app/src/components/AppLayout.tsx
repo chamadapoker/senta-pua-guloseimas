@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { useAuth } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { api } from '../services/api';
@@ -67,7 +68,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-fundo"
+            className="hidden w-10 h-10 items-center justify-center rounded-xl hover:bg-fundo"
             aria-label="Abrir menu"
           >
             <svg className="w-6 h-6 text-texto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,16 +161,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className={`transition-all duration-300 ${sidebarPl}`}>
+      <main className={`transition-all duration-300 ${sidebarPl} pb-24 lg:pb-0`}>
         <div className="max-w-5xl mx-auto px-4 py-5">
           {children}
         </div>
       </main>
 
-      <footer className={`transition-all duration-300 ${sidebarPl} text-center py-4 text-[10px] text-texto-fraco tracking-wider space-y-1`}>
+      <footer className={`transition-all duration-300 ${sidebarPl} text-center py-4 pb-24 lg:pb-4 text-[10px] text-texto-fraco tracking-wider space-y-1`}>
         <div>Desenvolvido pelo 3S TIN HÖEHR</div>
         <Link to="/privacidade" className="hover:text-azul hover:underline">Política de Privacidade</Link>
       </footer>
+
+      <BottomNav onAbrirMenu={() => setSidebarOpen(true)} />
     </div>
   );
 }
