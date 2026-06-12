@@ -4,6 +4,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
+import { PageHeader } from '../../../components/ui/PageHeader';
 
 interface XimbocaStats {
   total_eventos: number;
@@ -38,7 +39,7 @@ export function XimbocaDashboard() {
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">XIMBOCA</h1>
+      <PageHeader title="XIMBOCA" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard label="Total arrecadado" value={`R$ ${stats.total_arrecadado.toFixed(2)}`} color="text-verde" />

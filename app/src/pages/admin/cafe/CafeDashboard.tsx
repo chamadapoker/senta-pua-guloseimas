@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
+import { PageHeader } from '../../../components/ui/PageHeader';
 
 interface CafeStats {
   total_assinantes: number;
@@ -27,9 +28,7 @@ export function CafeDashboard() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-display text-2xl text-azul tracking-wider">CAIXINHA DO CAFE</h1>
-      </div>
+      <PageHeader title="CAIXINHA DO CAFE" />
       <div className="flex gap-1 mb-5">
         <button onClick={() => setTipo('oficial')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>

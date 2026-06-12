@@ -5,6 +5,7 @@ import { Toggle } from '../../components/ui/Toggle';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { PageHeader } from '../../components/ui/PageHeader';
 import type { Produto } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -131,10 +132,7 @@ export function Produtos() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-display text-2xl text-azul tracking-wider">PRODUTOS</h1>
-        <Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>
-      </div>
+      <PageHeader title="PRODUTOS" right={<Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {produtos.map((p) => (

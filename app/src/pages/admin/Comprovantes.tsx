@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -87,7 +88,7 @@ export function Comprovantes() {
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-4">COMPROVANTES</h1>
+      <PageHeader title="COMPROVANTES" />
 
       <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-3">
         {(['aguardando', 'aprovado', 'rejeitado'] as const).map(s => (

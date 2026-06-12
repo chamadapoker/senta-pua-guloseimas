@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import type { DashboardStats } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -23,7 +24,7 @@ export function Dashboard() {
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">DASHBOARD</h1>
+      <PageHeader title="DASHBOARD" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard 

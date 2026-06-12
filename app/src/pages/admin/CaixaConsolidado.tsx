@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { api } from '../../services/api';
 
 interface Origem { pago: number; pendente: number; qtd_pago: number }
@@ -41,7 +42,7 @@ export function CaixaConsolidado() {
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-4">CAIXA CONSOLIDADO</h1>
+      <PageHeader title="CAIXA CONSOLIDADO" />
 
       <div className="bg-white rounded-xl border border-borda p-3 mb-4 flex flex-wrap gap-3 items-end">
         <div>

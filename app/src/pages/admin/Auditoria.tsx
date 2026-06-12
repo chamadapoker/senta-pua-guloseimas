@@ -4,6 +4,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 interface Log {
   id: string;
@@ -56,7 +57,7 @@ export function Auditoria() {
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-4">AUDITORIA</h1>
+      <PageHeader title="AUDITORIA" />
 
       <form onSubmit={buscar} className="flex gap-2 mb-4">
         <input

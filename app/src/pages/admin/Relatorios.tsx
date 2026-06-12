@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Relatorio {
@@ -40,7 +41,7 @@ export function Relatorios() {
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">RELATÓRIOS</h1>
+      <PageHeader title="RELATÓRIOS" />
 
       <div className="bg-white rounded-xl border border-borda shadow-sm p-5 mb-6">
         <div className="flex flex-wrap gap-3 items-end">

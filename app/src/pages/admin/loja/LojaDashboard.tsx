@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
+import { PageHeader } from '../../../components/ui/PageHeader';
 
 interface LojaStats {
   vendido_mes: number;
@@ -20,7 +21,7 @@ export function LojaDashboard() {
 
   return (
     <AppLayout>
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">LOJA MILITAR</h1>
+      <PageHeader title="LOJA MILITAR" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard label="Vendido no mês" value={`R$ ${stats.vendido_mes.toFixed(2)}`} />
         <StatCard label="Recebido" value={`R$ ${stats.recebido_mes.toFixed(2)}`} color="text-verde" />

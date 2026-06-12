@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { clearConfigCache } from '../../services/config';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 
@@ -68,7 +69,7 @@ export function Configuracoes() {
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-4">CONFIGURAÇÕES</h1>
+      <PageHeader title="CONFIGURAÇÕES" />
 
       {/* Abas */}
       <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-4 sticky top-2 z-10">
