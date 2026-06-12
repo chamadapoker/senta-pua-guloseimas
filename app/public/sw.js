@@ -22,6 +22,9 @@ self.addEventListener('message', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Cache API só suporta GET — nunca interceptar POST/PUT/DELETE (quebra com erro).
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
   // API: network only (nunca cacheia)
