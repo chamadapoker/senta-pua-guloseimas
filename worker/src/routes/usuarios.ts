@@ -445,27 +445,25 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
       ximboca: { pago: ximbocaPagoTotal, pendente: ximbocaPendenteTotal },
       geral: { pago: totalPagoGeral, pendente: totalPendenteGeral },
     },
-    aniversario: await checarAniversario(user, c.env)
+    aniversario: checarAniversario(user)
   });
 });
 
-async function checarAniversario(u: any, env: any) {
+function checarAniversario(u: any) {
   if (!u.data_nascimento) return null;
-  const hoje = new Date();
-  // Obtém MM-DD em fuso local/Brasília (simplificado)
-  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoje.getDate()).padStart(2, '0');
+  // Data de hoje em horário de Brasília (UTC-3), evitando erro na virada do dia
+  const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const mes = String(hoje.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getUTCDate()).padStart(2, '0');
   const hojeMMDD = `${mes}-${dia}`;
   const niverMMDD = u.data_nascimento.slice(5, 10); // Assume YYYY-MM-DD
   if (hojeMMDD !== niverMMDD) return null;
 
-  // Busca config padrão
-  const config = await env.DB.prepare('SELECT niver_titulo_padrao, niver_texto_padrao, niver_imagem_url_padrao FROM config').first<{ niver_titulo_padrao: string; niver_texto_padrao: string; niver_imagem_url_padrao: string }>();
-
+  // Usa a homenagem personalizada do militar (se houver) ou textos padrão.
   return {
-    titulo: u.niver_titulo || config?.niver_titulo_padrao || 'Feliz Aniversário!',
-    texto: u.niver_texto || config?.niver_texto_padrao || 'O 1/10 GpAv deseja a você muitas felicidades e sucesso!',
-    imagem_url: u.niver_imagem_url || config?.niver_imagem_url_padrao || null
+    titulo: u.niver_titulo || 'Feliz Aniversário!',
+    texto: u.niver_texto || 'O 1/10 GpAv deseja a você muitas felicidades e sucesso!',
+    imagem_url: u.niver_imagem_url || null,
   };
 }
 
