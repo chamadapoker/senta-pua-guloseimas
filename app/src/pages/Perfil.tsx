@@ -4,6 +4,7 @@ import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { Loading } from '../components/ui/Loading';
 import { MeuCafe } from '../components/perfil/MeuCafe';
 import { api } from '../services/api';
 import { gerarExtratoUnificadoPDF } from '../services/pdf';
@@ -50,7 +51,7 @@ export function Perfil() {
   }, [user]);
 
   if (verificando || !user) {
-    return <AppLayout><div className="text-center py-20 text-gray-400">Carregando...</div></AppLayout>;
+    return <AppLayout><Loading /></AppLayout>;
   }
 
   const handleSave = async (e: React.FormEvent) => {

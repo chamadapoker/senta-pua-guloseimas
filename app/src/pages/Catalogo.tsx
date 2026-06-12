@@ -5,6 +5,8 @@ import { getConfig } from '../services/config';
 import type { Produto } from '../types';
 import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
+import { PageHeader } from '../components/ui/PageHeader';
+import { EmptyState } from '../components/ui/EmptyState';
 import { ProductCard } from '../components/catalogo/ProductCard';
 import { CartBar } from '../components/catalogo/CartBar';
 
@@ -34,10 +36,7 @@ export function Catalogo() {
   return (
     <AppLayout>
       <BackButton to="/" className="mb-3" />
-      <div className="mb-5">
-        <h1 className="font-display text-2xl text-azul tracking-wider">{titulo}</h1>
-        <p className="text-sm text-texto-fraco mt-1">Toque no + para adicionar ao pedido</p>
-      </div>
+      <PageHeader title={titulo} subtitle="Toque no + para adicionar ao pedido" />
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3">
@@ -57,7 +56,7 @@ export function Catalogo() {
           <button onClick={() => window.location.reload()} className="underline">Tentar de novo</button>
         </div>
       ) : produtos.length === 0 ? (
-        <div className="text-center py-16 text-texto-fraco">Nenhum produto disponível</div>
+        <EmptyState message="Nenhum produto disponível" />
       ) : (
         <div className="grid grid-cols-2 gap-3 pb-28">
           {produtos.map((p, i) => (

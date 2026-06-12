@@ -4,6 +4,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import { getConfig } from '../services/config';
+import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
 
@@ -114,7 +115,7 @@ export function CafePublico() {
           <p className="text-sm text-texto-fraco mb-5">{nomeCantina}</p>
 
           {loadingStatus ? (
-            <div className="text-center py-10 text-texto-fraco">Carregando...</div>
+            <Loading />
           ) : !meuStatus?.tem_assinatura ? (
             <div className="bg-white rounded-2xl border border-borda p-6 text-center shadow-sm">
               <p className="text-sm text-texto-fraco mb-2">Você ainda não é assinante.</p>

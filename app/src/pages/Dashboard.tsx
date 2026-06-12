@@ -7,6 +7,7 @@ import { useComprovantesStatus } from '../hooks/useComprovantesStatus';
 import { BirthdaySurprise } from '../components/ui/BirthdaySurprise';
 import { api } from '../services/api';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { Loading } from '../components/ui/Loading';
 import type { Usuario } from '../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -135,7 +136,7 @@ export function Dashboard() {
         </div>
       )}
 
-      {loading && <div className="text-center py-10 text-texto-fraco">Carregando...</div>}
+      {loading && <Loading />}
 
       {!loading && data && (
         <>

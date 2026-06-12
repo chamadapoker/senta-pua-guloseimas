@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
 import { useCart } from '../hooks/useCart';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { api } from '../services/api';
@@ -76,10 +78,10 @@ export function Checkout() {
   return (
     <AppLayout>
       <BackButton className="mb-3" />
-      <h1 className="font-display text-2xl text-azul tracking-wider mb-5">FECHAR PEDIDO</h1>
+      <PageHeader title="FECHAR PEDIDO" />
 
       {/* Militar identificado */}
-      <div className="bg-white rounded-xl border border-borda p-4 mb-5 flex items-center gap-3">
+      <Card className="mb-5 flex items-center gap-3">
         {resolveImg(user.foto_url) ? (
           <img src={resolveImg(user.foto_url)!} alt={user.trigrama} className="w-10 h-10 rounded-full object-cover" />
         ) : (
@@ -92,7 +94,7 @@ export function Checkout() {
           <div className="text-xs text-texto-fraco">{user.whatsapp}</div>
         </div>
         <Link to="/perfil" className="text-xs text-azul hover:underline flex-shrink-0">Editar</Link>
-      </div>
+      </Card>
 
       <div className="space-y-2 mb-6">
         {itens.map(({ produto, quantidade }) => (

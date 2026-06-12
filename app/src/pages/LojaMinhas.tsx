@@ -3,6 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { EnviarComprovante } from '../components/ui/EnviarComprovante';
 import { api } from '../services/api';
+import { Loading } from '../components/ui/Loading';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,7 +55,7 @@ export function LojaMinhas() {
       <h1 className="font-display text-2xl text-azul tracking-wider mb-4">MINHAS COMPRAS</h1>
 
       {loading ? (
-        <div className="text-center py-10 text-texto-fraco">Carregando...</div>
+        <Loading />
       ) : pedidos.length === 0 ? (
         <div className="bg-white rounded-xl border border-borda p-10 text-center text-texto-fraco">
           Você ainda não comprou nada na loja.

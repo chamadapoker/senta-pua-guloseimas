@@ -5,6 +5,7 @@ import { Modal } from '../components/ui/Modal';
 import { NomeGuerraInput } from '../components/checkout/NomeGuerraInput';
 import { api } from '../services/api';
 import { getConfig } from '../services/config';
+import { EmptyState } from '../components/ui/EmptyState';
 import { gerarPayloadPix } from '../services/pix';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -315,7 +316,7 @@ export function LojaPublica() {
           ))}
         </div>
       ) : produtos.length === 0 ? (
-        <div className="text-center py-16 text-texto-fraco">Nenhum produto disponivel</div>
+        <EmptyState message="Nenhum produto disponível" />
       ) : (
         <div className="grid grid-cols-2 gap-3 pb-28">
           {produtos.map(p => {
