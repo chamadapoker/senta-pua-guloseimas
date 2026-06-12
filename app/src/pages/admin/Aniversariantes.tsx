@@ -1,8 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+
+function resolveImg(url: string | null): string | null {
+  if (!url) return null;
+  return url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
+}
+
+async function uploadImagem(file: File): Promise<string> {
+  const token = localStorage.getItem('token');
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${WORKER_URL}/api/images/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
+  if (!res.ok) throw new Error('Falha no upload');
+  const data = await res.json() as { url: string };
+  return data.url;
+}
 
 interface Aniversariante {
   id: number;
@@ -21,6 +42,8 @@ export function Aniversariantes() {
   const [editModal, setEditModal] = useState<Aniversariante | null>(null);
   const [form, setForm] = useState({ titulo: '', texto: '', imagem_url: '' });
   const [salvando, setSalvando] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const carregar = async () => {
     try {
@@ -60,6 +83,29 @@ export function Aniversariantes() {
       showToast('Erro ao salvar homenagem', 'error');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      showToast('Formato inválido. Use JPG, PNG, WEBP ou GIF', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Imagem muito grande (máx 5MB)', 'error');
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadImagem(file);
+      setForm(p => ({ ...p, imagem_url: url }));
+    } catch {
+      showToast('Erro ao enviar imagem', 'error');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -156,12 +202,37 @@ export function Aniversariantes() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-texto-fraco uppercase tracking-widest mb-1.5 ml-1">URL da Imagem Especial</label>
+                <label className="block text-[10px] font-bold text-texto-fraco uppercase tracking-widest mb-1.5 ml-1">Imagem Especial</label>
+
+                <div
+                  onClick={() => !uploading && fileRef.current?.click()}
+                  className="w-full border-2 border-dashed border-borda rounded-2xl p-4 text-center cursor-pointer hover:border-azul transition-colors mb-2"
+                >
+                  {uploading ? (
+                    <div className="text-sm text-texto-fraco animate-pulse py-6">Enviando...</div>
+                  ) : form.imagem_url ? (
+                    <img src={resolveImg(form.imagem_url)!} alt="Prévia" className="max-h-40 mx-auto rounded-xl object-contain" />
+                  ) : (
+                    <div className="py-6 text-sm text-texto-fraco">Toque para enviar uma foto<br /><span className="text-[10px]">JPG, PNG, WEBP · máx 5MB</span></div>
+                  )}
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+
+                {form.imagem_url && (
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, imagem_url: '' }))}
+                    className="text-xs text-vermelho hover:underline mb-2"
+                  >
+                    Remover imagem
+                  </button>
+                )}
+
                 <input
                   type="text"
                   value={form.imagem_url}
                   onChange={e => setForm(p => ({ ...p, imagem_url: e.target.value }))}
-                  placeholder="Link da foto ou escudo do esquadrão"
+                  placeholder="Ou cole um link de imagem"
                   className="w-full bg-fundo border border-borda rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-azul/20 outline-none"
                 />
               </div>
@@ -169,8 +240,8 @@ export function Aniversariantes() {
 
             <div className="grid grid-cols-2 gap-3 mt-8">
               <Button variant="ghost" onClick={() => setEditModal(null)}>Cancelar</Button>
-              <Button onClick={salvar} disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar Homenagem'}
+              <Button onClick={salvar} disabled={salvando || uploading}>
+                {salvando ? 'Salvando...' : uploading ? 'Enviando foto...' : 'Salvar Homenagem'}
               </Button>
             </div>
           </div>
