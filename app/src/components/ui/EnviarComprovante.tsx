@@ -71,7 +71,17 @@ export function EnviarComprovante({ origem, referenciaId, onEnviado, size = 'sm'
               ref={fileRef}
               type="file"
               accept="image/*,application/pdf"
-              onChange={e => setFile(e.target.files?.[0] || null)}
+              onChange={e => {
+                const f = e.target.files?.[0] || null;
+                if (f) {
+                  const tipoOk = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(f.type)
+                    || /\.(jpe?g|png|webp|pdf)$/i.test(f.name);
+                  if (!tipoOk) { setMsg('Formato inválido. Use JPG, PNG, WEBP ou PDF'); setFile(null); return; }
+                  if (f.size > 5 * 1024 * 1024) { setMsg('Arquivo muito grande (máx 5MB)'); setFile(null); return; }
+                }
+                setMsg('');
+                setFile(f);
+              }}
               className="hidden"
             />
 

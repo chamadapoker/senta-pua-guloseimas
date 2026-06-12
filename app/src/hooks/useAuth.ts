@@ -49,10 +49,14 @@ export const useAuth = create<AuthState>((set) => ({
       const adminInfo = 'role' in res ? res as AdminInfo : null;
       set({ token, email: res.email, admin: adminInfo });
       return true;
-    } catch {
-      localStorage.removeItem('token');
-      set({ token: null, email: null, admin: null });
-      return false;
+    } catch (e: any) {
+      // Só desloga em token inválido/expirado. Erro de rede mantém a sessão.
+      if (e?.status === 401 || e?.status === 403) {
+        localStorage.removeItem('token');
+        set({ token: null, email: null, admin: null });
+        return false;
+      }
+      return true;
     }
   },
 }));

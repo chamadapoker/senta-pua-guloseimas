@@ -62,6 +62,8 @@ app.get('/api/health', (c) => c.json({ status: 'ok' }));
 // Cron handler: gera mensalidades e anuais automaticamente
 async function gerarCobrancasAutomaticas(env: Env) {
   const now = new Date();
+  // O cron roda diariamente (para aniversários). As cobranças só no dia 1.
+  if (now.getUTCDate() !== 1) return { mes: '', ano: '', total_criado: 0 };
   const ano = String(now.getUTCFullYear());
   const mes = `${ano}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
@@ -113,18 +115,17 @@ async function gerarCobrancasAutomaticas(env: Env) {
     for (const a of anuais) {
       if (!jaAno.has(a.id)) {
         batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
-        // NOTIFICAÇÃO
-        const frases = [
-          "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
-          "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
-          "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
-          "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
+        // NOTIFICAÇÃO (anuidade)
+        const frasesAnual = [
+          "Anuidade do café lançada no seu extrato. Disciplina o ano inteiro mantém o radar limpo!",
+          "Sua contribuição anual do café foi registrada. Café quente garantido, Senta a Pua!",
+          "Anuidade do café no extrato. Missão de um ano, cumprida de uma vez. Mantenha o radar em dia."
         ];
-        const msg = frases[Math.floor(Math.random() * frases.length)];
+        const msg = frasesAnual[Math.floor(Math.random() * frasesAnual.length)];
 
         batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
-          a.nome_guerra, 
-          'MENSALIDADE CAFÉ', 
+          a.nome_guerra,
+          'ANUIDADE CAFÉ',
           msg
         ));
       }

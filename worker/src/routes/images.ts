@@ -13,6 +13,10 @@ images.post('/upload', authMiddleware, async (c) => {
     return c.json({ error: 'Nenhum arquivo enviado' }, 400);
   }
 
+  if (file.size > 5 * 1024 * 1024) {
+    return c.json({ error: 'Arquivo deve ter no máximo 5MB' }, 400);
+  }
+
   const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
   const allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
   if (!allowed.includes(ext)) {

@@ -60,6 +60,10 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
     return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
   }
 
+  if (itens.some(i => !Number.isInteger(i.quantidade) || i.quantidade < 1)) {
+    return c.json({ error: 'Quantidade inválida' }, 400);
+  }
+
   // Valida permissao de fiado
   const fiadoCheck = await podeFazerFiado(c, metodo);
   if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);
@@ -142,8 +146,12 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
 
   await c.env.DB.batch([...batch, ...estoqueUpdates]);
 
-  // Generate parcelas
-  const numParcelas = Math.min(Math.max(parseInt(String(parcelas)) || 1, 1), 3);
+  // Generate parcelas — limite máximo vem da config (loja_max_parcelas)
+  const maxCfg = await c.env.DB.prepare(
+    "SELECT valor FROM configuracoes WHERE chave = 'loja_max_parcelas'"
+  ).first<{ valor: string }>();
+  const maxParcelas = Math.max(parseInt(maxCfg?.valor || '1') || 1, 1);
+  const numParcelas = Math.min(Math.max(parseInt(String(parcelas)) || 1, 1), maxParcelas);
   const valorParcela = Math.round((total / numParcelas) * 100) / 100;
   const parcelaBatch = [];
   for (let i = 1; i <= numParcelas; i++) {

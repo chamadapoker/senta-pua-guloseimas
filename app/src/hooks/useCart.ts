@@ -16,15 +16,21 @@ export const useCart = create<CartState>((set, get) => ({
 
   adicionar: (produto) =>
     set((state) => {
-      const existente = state.itens.find((i) => i.produto.id === produto.id);
+      // Carrinho é por cantina: ao adicionar item de outra categoria, recomeça
+      // (não dá para fechar um pedido misturando Oficiais e Graduados).
+      const outraCantina =
+        state.itens.length > 0 && state.itens[0].produto.categoria !== produto.categoria;
+      const base = outraCantina ? [] : state.itens;
+
+      const existente = base.find((i) => i.produto.id === produto.id);
       if (existente) {
         return {
-          itens: state.itens.map((i) =>
+          itens: base.map((i) =>
             i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + 1 } : i
           ),
         };
       }
-      return { itens: [...state.itens, { produto, quantidade: 1 }] };
+      return { itens: [...base, { produto, quantidade: 1 }] };
     }),
 
   remover: (produtoId) =>

@@ -42,6 +42,27 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json<{ nome?: string; role?: string; ativo?: boolean; senha?: string }>();
 
+  const alvo = await c.env.DB.prepare('SELECT role, ativo FROM admins WHERE id = ?').bind(id).first<{ role: string; ativo: number }>();
+  if (!alvo) return c.json({ error: 'Admin não encontrado' }, 404);
+
+  const vaiDesativar = body.ativo === false;
+  const vaiRebaixar = !!body.role && body.role !== 'super_admin';
+
+  // Não pode rebaixar/desativar a si mesmo (evita auto-lockout)
+  if (id === c.get('adminId') && (vaiDesativar || vaiRebaixar)) {
+    return c.json({ error: 'Você não pode rebaixar ou desativar a si mesmo' }, 400);
+  }
+
+  // Não pode remover o último super_admin ativo
+  if (alvo.role === 'super_admin' && (vaiDesativar || vaiRebaixar)) {
+    const sa = await c.env.DB.prepare(
+      "SELECT COUNT(*) as n FROM admins WHERE role = 'super_admin' AND ativo = 1"
+    ).first<{ n: number }>();
+    if ((sa?.n || 0) <= 1) {
+      return c.json({ error: 'Não é possível remover o último super admin ativo' }, 400);
+    }
+  }
+
   const fields: string[] = [];
   const values: unknown[] = [];
 

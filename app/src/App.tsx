@@ -72,10 +72,11 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }, [token, checkAuth]);
 
   if (verificando) return <div className="text-center py-20 text-gray-400">Verificando...</div>;
-  
-  // Se não autenticou, mas foi erro de rede (não limpou o token), permite continuar
-  if (!autenticado && !token) return <Navigate to="/admin/login" replace />;
-  
+
+  // checkAuth retorna false só quando o token é inválido/expirado (401/403);
+  // erro de rede retorna true e mantém a sessão.
+  if (!autenticado) return <Navigate to="/admin/login" replace />;
+
   return <>{children}</>;
 }
 

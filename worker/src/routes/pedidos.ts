@@ -32,6 +32,10 @@ pedidos.post('/', checkVisitanteSeLogado, async (c) => {
     return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
   }
 
+  if (itens.some(i => !Number.isInteger(i.quantidade) || i.quantidade < 1)) {
+    return c.json({ error: 'Quantidade inválida' }, 400);
+  }
+
   // Valida permissao de fiado
   const fiadoCheck = await podeFazerFiado(c, metodo);
   if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);

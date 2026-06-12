@@ -15,6 +15,7 @@ bucket_name  = "senta-pua-images"
 [vars]
 AMBIENTE = "production"
 
-# Cron: dia 1 de cada mês às 03:00 UTC (00:00 Brasília) gera mensalidades/anuais
+# Cron diário às 03:00 UTC (00:00 Brasília): checa aniversariantes todo dia;
+# as cobranças (mensalidades/anuais) só são geradas no dia 1 (guard no código).
 [triggers]
-crons = ["0 3 1 * *"]
+crons = ["0 3 * * *"]

@@ -41,5 +41,7 @@ export async function clearAttempts(c: Context<AppType>, acao: string, key: stri
 }
 
 export function clientKey(c: Context<AppType>): string {
-  return c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+  // CF-Connecting-IP é setado pela borda da Cloudflare e não é spoofável pelo cliente.
+  // Não usar X-Forwarded-For como fallback (cliente pode forjar e burlar o rate limit).
+  return c.req.header('CF-Connecting-IP') || 'unknown';
 }
