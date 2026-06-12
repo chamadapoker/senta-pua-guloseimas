@@ -5,6 +5,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
+import { Loading } from '../../components/ui/Loading';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoUnificadoPDF } from '../../services/pdf';
 import { Link } from 'react-router-dom';
@@ -50,7 +51,7 @@ export function ClienteExtrato() {
     carregar();
   };
 
-  if (!data) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
+  if (!data) return <AppLayout><Loading /></AppLayout>;
 
   const { cliente, guloseimas, loja, cafe, ximboca } = data;
 

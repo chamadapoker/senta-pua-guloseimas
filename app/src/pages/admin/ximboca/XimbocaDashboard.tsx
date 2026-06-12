@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
+import { Loading } from '../../../components/ui/Loading';
 
 interface XimbocaStats {
   total_eventos: number;
@@ -33,7 +34,7 @@ export function XimbocaDashboard() {
     api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
   }, []);
 
-  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
+  if (!stats) return <AppLayout><Loading /></AppLayout>;
 
   return (
     <AppLayout>

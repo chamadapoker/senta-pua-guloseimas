@@ -8,6 +8,7 @@ import { Icon } from '../../../components/ui/Icon';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { Loading } from '../../../components/ui/Loading';
 import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
@@ -171,7 +172,7 @@ export function XimbocaEvento() {
 
   const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/ximboca` : '';
 
-  if (!evento) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
+  if (!evento) return <AppLayout><Loading /></AppLayout>;
 
   const valorEfetivo = (p: Participante) => p.valor_individual ?? evento.valor_por_pessoa;
   const totalPagos = participantes.filter(p => p.status === 'pago').length;

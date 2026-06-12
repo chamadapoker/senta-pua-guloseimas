@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
+import { Loading } from '../../../components/ui/Loading';
 
 interface LojaStats {
   vendido_mes: number;
@@ -15,7 +16,7 @@ export function LojaDashboard() {
 
   useEffect(() => { api.get<LojaStats>('/api/loja/admin/stats').then(setStats); }, []);
 
-  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
+  if (!stats) return <AppLayout><Loading /></AppLayout>;
 
   return (
     <AppLayout>

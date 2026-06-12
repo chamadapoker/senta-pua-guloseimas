@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { Loading } from '../../components/ui/Loading';
 
 interface Log {
   id: string;
@@ -76,7 +77,7 @@ export function Auditoria() {
 
       <div className="bg-white rounded-xl border border-borda overflow-hidden">
         {!data ? (
-          <div className="text-center py-10 text-texto-fraco">Carregando...</div>
+          <Loading />
         ) : data.items.length === 0 ? (
           <div className="text-center py-10 text-texto-fraco">Nenhum log encontrado</div>
         ) : (

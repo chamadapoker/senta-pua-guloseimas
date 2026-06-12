@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { StatCard } from '../../../components/admin/StatCard';
 import { api } from '../../../services/api';
+import { Loading } from '../../../components/ui/Loading';
 
 interface CafeStats {
   total_assinantes: number;
@@ -22,7 +23,7 @@ export function CafeDashboard() {
     api.get<CafeStats>(`/api/cafe/admin/stats?tipo=${tipo}`).then(setStats);
   }, [tipo]);
 
-  if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
+  if (!stats) return <AppLayout><Loading /></AppLayout>;
 
   return (
     <AppLayout>

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
+import { Loading } from '../../components/ui/Loading';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import type { Usuario, Categoria } from '../../types';
@@ -343,7 +344,7 @@ export function Usuarios() {
       {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3">{erro}</p>}
 
       {loading ? (
-        <div className="text-center py-10 text-texto-fraco">Carregando...</div>
+        <Loading />
       ) : filtrados.length === 0 ? (
         <div className="bg-white rounded-xl border border-borda p-10 text-center text-texto-fraco">
           {usuarios.length === 0 ? 'Nenhum usuário cadastrado ainda.' : 'Nenhum usuário encontrado com esses filtros.'}

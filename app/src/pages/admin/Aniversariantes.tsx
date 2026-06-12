@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import { Loading } from '../../components/ui/Loading';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -128,7 +129,7 @@ export function Aniversariantes() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-texto-fraco">Carregando...</div>
+        <Loading />
       ) : lista.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {lista.map(u => (

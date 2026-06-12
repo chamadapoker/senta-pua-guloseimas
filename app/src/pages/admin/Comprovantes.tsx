@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { Loading } from '../../components/ui/Loading';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -127,7 +128,7 @@ export function Comprovantes() {
       )}
 
       {loading ? (
-        <div className="text-center py-10 text-texto-fraco">Carregando...</div>
+        <Loading />
       ) : !data || data.items.length === 0 ? (
         <div className="bg-white rounded-xl border border-borda p-10 text-center text-texto-fraco">
           Nenhum comprovante {aba}.
