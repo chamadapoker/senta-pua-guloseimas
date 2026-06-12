@@ -8,12 +8,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [erro, setErro] = useState(false);
 
-  useEffect(() => { api.get<DashboardStats>('/api/admin/stats').then(setStats); }, []);
+  useEffect(() => { api.get<DashboardStats>('/api/admin/stats').then(setStats).catch(() => setErro(true)); }, []);
 
+  if (erro) return <AppLayout><div className="text-center py-10 text-vermelho">Erro ao carregar o dashboard. <button onClick={() => window.location.reload()} className="underline">Tentar de novo</button></div></AppLayout>;
   if (!stats) return <AppLayout><div className="text-center py-10 text-texto-fraco">Carregando...</div></AppLayout>;
 
-  const chartData = stats.ultimos_7_dias.map((d) => ({
+  const chartData = (stats.ultimos_7_dias ?? []).map((d) => ({
     data: new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
     total: d.total,
   }));

@@ -59,6 +59,12 @@ app.route('/api/notificacoes', notificacoes);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
+// Tratador global de erros: evita 500 com stack cru e dá resposta JSON limpa.
+app.onError((err, c) => {
+  console.error('Erro não tratado:', err);
+  return c.json({ error: 'Erro interno do servidor' }, 500);
+});
+
 // Cron handler: gera mensalidades e anuais automaticamente
 async function gerarCobrancasAutomaticas(env: Env) {
   const now = new Date();

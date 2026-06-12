@@ -22,6 +22,7 @@ export function PixPage() {
   const [copiadoEmail, setCopiadoEmail] = useState(false);
   const [saiuDoApp, setSaiuDoApp] = useState(false);
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   const [frase] = useState(() => FRASES_PAGOU[Math.floor(Math.random() * FRASES_PAGOU.length)]);
   const [pixConfig, setPixConfig] = useState({ chave: '', whatsapp: '' });
 
@@ -49,7 +50,7 @@ export function PixPage() {
 
   useEffect(() => {
     if (pago) {
-      const t = setTimeout(() => navigate('/obrigado', { state: { nome: 'MILITAR', metodo: 'pix' } }), 2000);
+      const t = setTimeout(() => navigate('/obrigado', { state: { nome: pedido?.nome_guerra || 'MILITAR', metodo: 'pix' } }), 2000);
       return () => clearTimeout(t);
     }
   }, [pago, navigate]);
@@ -68,6 +69,8 @@ export function PixPage() {
   };
 
   const confirmarPagamento = async () => {
+    if (confirmando) return;
+    setConfirmando(true);
     try {
       await api.put(`/api/pedidos/${pedidoId}/confirmar-pagamento`, {});
     } catch {
@@ -168,10 +171,10 @@ export function PixPage() {
             {saiuDoApp && (
               <div className="bg-white rounded-2xl p-5 mb-4 border-2 border-verde shadow-sm animate-slide-up">
                 <p className="text-sm font-medium text-texto mb-3">Já fez o PIX?</p>
-                <Button variant="success" size="lg" className="w-full" onClick={confirmarPagamento}>
+                <Button variant="success" size="lg" className="w-full" onClick={confirmarPagamento} disabled={confirmando}>
                   <span className="flex items-center justify-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                    JÁ PAGUEI
+                    {confirmando ? 'CONFIRMANDO...' : 'JÁ PAGUEI'}
                   </span>
                 </Button>
               </div>

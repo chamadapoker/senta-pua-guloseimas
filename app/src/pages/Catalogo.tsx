@@ -11,6 +11,7 @@ export function Catalogo() {
   const { categoria } = useParams<{ categoria: string }>();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
   const [titulo, setTitulo] = useState('CATÁLOGO');
 
   useEffect(() => {
@@ -24,7 +25,8 @@ export function Catalogo() {
     setLoading(true);
     const query = categoria ? `?categoria=${categoria}` : '';
     api.get<Produto[]>(`/api/produtos${query}`)
-      .then(setProdutos)
+      .then((p) => { setProdutos(p); setErro(false); })
+      .catch(() => setErro(true))
       .finally(() => setLoading(false));
   }, [categoria]);
 
@@ -47,6 +49,11 @@ export function Catalogo() {
               </div>
             </div>
           ))}
+        </div>
+      ) : erro ? (
+        <div className="text-center py-16 text-vermelho">
+          Erro ao carregar os produtos.{' '}
+          <button onClick={() => window.location.reload()} className="underline">Tentar de novo</button>
         </div>
       ) : produtos.length === 0 ? (
         <div className="text-center py-16 text-texto-fraco">Nenhum produto disponível</div>

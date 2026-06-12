@@ -194,7 +194,7 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
       "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO APROVADO', ?)"
     ).bind(
       aprovado.trigrama, 
-      `Missão Cumprida! Seu pagamento de R$ ${aprovado.valor.toFixed(2)} (${comp.origem.toUpperCase()}) foi confirmado. Disciplina e pontualidade são marcas do nosso esquadrão.`
+      `Missão Cumprida! Seu pagamento de R$ ${(aprovado.valor ?? 0).toFixed(2)} (${comp.origem.toUpperCase()}) foi confirmado. Disciplina e pontualidade são marcas do nosso esquadrão.`
     ).run();
   } catch (err) {
     console.error('Erro ao enviar notificação de aprovação:', err);
@@ -223,7 +223,7 @@ comprovantes.put('/:id/rejeitar', authMiddleware, async (c) => {
       "INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PAGAMENTO REJEITADO', ?)"
     ).bind(
       rejeitado.trigrama, 
-      `Atenção no Radar: Seu comprovante de R$ ${rejeitado.valor.toFixed(2)} não pôde ser validado. Motivo: ${motivo || 'Não informado'}. Por favor, verifique e reenvie para manter sua ficha limpa!`
+      `Atenção no Radar: Seu comprovante de R$ ${(rejeitado.valor ?? 0).toFixed(2)} não pôde ser validado. Motivo: ${motivo || 'Não informado'}. Por favor, verifique e reenvie para manter sua ficha limpa!`
     ).run();
   } catch (err) {
     console.error('Erro ao enviar notificação de rejeição:', err);

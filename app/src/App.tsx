@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { ToastProvider } from './hooks/useToast';
 import { Home } from './pages/Home';
 import { Catalogo } from './pages/Catalogo';
@@ -13,35 +13,36 @@ import { UserCadastroVisitante } from './pages/UserCadastroVisitante';
 import { AcessoExpirado } from './pages/AcessoExpirado';
 import { PoliticaPrivacidade } from './pages/PoliticaPrivacidade';
 import { Perfil } from './pages/Perfil';
-import { Login } from './pages/admin/Login';
-import { Dashboard } from './pages/admin/Dashboard';
-import { Produtos } from './pages/admin/Produtos';
-import { Clientes } from './pages/admin/Clientes';
-import { ClienteExtrato } from './pages/admin/ClienteExtrato';
-import { Pedidos } from './pages/admin/Pedidos';
-import { Configuracoes } from './pages/admin/Configuracoes';
-import { Relatorios } from './pages/admin/Relatorios';
-import { Usuarios } from './pages/admin/Usuarios';
-import { Admins } from './pages/admin/Admins';
-import { Comprovantes } from './pages/admin/Comprovantes';
-import { Auditoria } from './pages/admin/Auditoria';
-import { CafeDespesas } from './pages/admin/cafe/CafeDespesas';
-import { Lucratividade } from './pages/admin/Lucratividade';
-import { Cobrancas } from './pages/admin/Cobrancas';
-import { CaixaConsolidado } from './pages/admin/CaixaConsolidado';
-import { LojaDashboard } from './pages/admin/loja/LojaDashboard';
-import { LojaProdutos } from './pages/admin/loja/LojaProdutos';
-import { LojaPedidos } from './pages/admin/loja/LojaPedidos';
-import { CafeDashboard } from './pages/admin/cafe/CafeDashboard';
-import { CafeMensalidades } from './pages/admin/cafe/CafeMensalidades';
-import { CafeInsumos } from './pages/admin/cafe/CafeInsumos';
-import { CafeAssinantes } from './pages/admin/cafe/CafeAssinantes';
-import { XimbocaDashboard } from './pages/admin/ximboca/XimbocaDashboard';
-import { XimbocaEventos } from './pages/admin/ximboca/XimbocaEventos';
-import { XimbocaEvento } from './pages/admin/ximboca/XimbocaEvento';
-import { XimbocaEstoque } from './pages/admin/ximboca/XimbocaEstoque';
-import { Documentacao } from './pages/admin/Documentacao';
-import { Aniversariantes } from './pages/admin/Aniversariantes';
+// Páginas admin carregadas sob demanda (code-splitting) — saem do bundle inicial.
+const Login = lazy(() => import('./pages/admin/Login').then(m => ({ default: m.Login })));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard').then(m => ({ default: m.Dashboard })));
+const Produtos = lazy(() => import('./pages/admin/Produtos').then(m => ({ default: m.Produtos })));
+const Clientes = lazy(() => import('./pages/admin/Clientes').then(m => ({ default: m.Clientes })));
+const ClienteExtrato = lazy(() => import('./pages/admin/ClienteExtrato').then(m => ({ default: m.ClienteExtrato })));
+const Pedidos = lazy(() => import('./pages/admin/Pedidos').then(m => ({ default: m.Pedidos })));
+const Configuracoes = lazy(() => import('./pages/admin/Configuracoes').then(m => ({ default: m.Configuracoes })));
+const Relatorios = lazy(() => import('./pages/admin/Relatorios').then(m => ({ default: m.Relatorios })));
+const Usuarios = lazy(() => import('./pages/admin/Usuarios').then(m => ({ default: m.Usuarios })));
+const Admins = lazy(() => import('./pages/admin/Admins').then(m => ({ default: m.Admins })));
+const Comprovantes = lazy(() => import('./pages/admin/Comprovantes').then(m => ({ default: m.Comprovantes })));
+const Auditoria = lazy(() => import('./pages/admin/Auditoria').then(m => ({ default: m.Auditoria })));
+const CafeDespesas = lazy(() => import('./pages/admin/cafe/CafeDespesas').then(m => ({ default: m.CafeDespesas })));
+const Lucratividade = lazy(() => import('./pages/admin/Lucratividade').then(m => ({ default: m.Lucratividade })));
+const Cobrancas = lazy(() => import('./pages/admin/Cobrancas').then(m => ({ default: m.Cobrancas })));
+const CaixaConsolidado = lazy(() => import('./pages/admin/CaixaConsolidado').then(m => ({ default: m.CaixaConsolidado })));
+const LojaDashboard = lazy(() => import('./pages/admin/loja/LojaDashboard').then(m => ({ default: m.LojaDashboard })));
+const LojaProdutos = lazy(() => import('./pages/admin/loja/LojaProdutos').then(m => ({ default: m.LojaProdutos })));
+const LojaPedidos = lazy(() => import('./pages/admin/loja/LojaPedidos').then(m => ({ default: m.LojaPedidos })));
+const CafeDashboard = lazy(() => import('./pages/admin/cafe/CafeDashboard').then(m => ({ default: m.CafeDashboard })));
+const CafeMensalidades = lazy(() => import('./pages/admin/cafe/CafeMensalidades').then(m => ({ default: m.CafeMensalidades })));
+const CafeInsumos = lazy(() => import('./pages/admin/cafe/CafeInsumos').then(m => ({ default: m.CafeInsumos })));
+const CafeAssinantes = lazy(() => import('./pages/admin/cafe/CafeAssinantes').then(m => ({ default: m.CafeAssinantes })));
+const XimbocaDashboard = lazy(() => import('./pages/admin/ximboca/XimbocaDashboard').then(m => ({ default: m.XimbocaDashboard })));
+const XimbocaEventos = lazy(() => import('./pages/admin/ximboca/XimbocaEventos').then(m => ({ default: m.XimbocaEventos })));
+const XimbocaEvento = lazy(() => import('./pages/admin/ximboca/XimbocaEvento').then(m => ({ default: m.XimbocaEvento })));
+const XimbocaEstoque = lazy(() => import('./pages/admin/ximboca/XimbocaEstoque').then(m => ({ default: m.XimbocaEstoque })));
+const Documentacao = lazy(() => import('./pages/admin/Documentacao').then(m => ({ default: m.Documentacao })));
+const Aniversariantes = lazy(() => import('./pages/admin/Aniversariantes').then(m => ({ default: m.Aniversariantes })));
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -103,6 +104,7 @@ export function App() {
       <BrowserRouter>
         <UserAuthLoader />
         <UpdatePrompt />
+        <Suspense fallback={<div className="text-center py-20 text-gray-400">Carregando...</div>}>
         <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/catalogo/:categoria" element={<VisitorGuard><Catalogo /></VisitorGuard>} />
@@ -152,6 +154,7 @@ export function App() {
         <Route path="/admin/documentacao" element={<AdminGuard><Documentacao /></AdminGuard>} />
         <Route path="/admin/aniversariantes" element={<AdminGuard><Aniversariantes /></AdminGuard>} />
       </Routes>
+        </Suspense>
     </BrowserRouter>
     </ToastProvider>
   );

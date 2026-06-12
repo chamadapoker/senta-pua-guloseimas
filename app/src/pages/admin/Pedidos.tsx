@@ -49,9 +49,12 @@ export function Pedidos() {
   };
 
   const marcarLotePago = async () => {
-    await Promise.all([...selecionados].map(id => api.put(`/api/pedidos/${id}/pagar`, {})));
+    const ids = [...selecionados];
+    const res = await Promise.allSettled(ids.map(id => api.put(`/api/pedidos/${id}/pagar`, {})));
     setSelecionados(new Set());
     carregar();
+    const falhas = res.filter(r => r.status === 'rejected').length;
+    if (falhas > 0) alert(`${falhas} de ${ids.length} pedido(s) não puderam ser marcados como pagos. Tente novamente.`);
   };
 
   const excluirPedido = async (pedidoId: string) => {

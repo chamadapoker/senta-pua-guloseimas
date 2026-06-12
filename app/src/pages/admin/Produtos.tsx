@@ -42,6 +42,7 @@ export function Produtos() {
   const [previewImg, setPreviewImg] = useState('');
   const [estoque, setEstoque] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const carregar = () => api.get<Produto[]>('/api/produtos/todos').then(setProdutos);
@@ -94,13 +95,21 @@ export function Produtos() {
       disponivel: disponivel ? 1 : 0,
       estoque: estoque !== '' ? parseInt(estoque) : null,
     };
-    if (editando) {
-      await api.put(`/api/produtos/${editando.id}`, data);
-    } else {
-      await api.post('/api/produtos', data);
+    if (salvando) return;
+    setSalvando(true);
+    try {
+      if (editando) {
+        await api.put(`/api/produtos/${editando.id}`, data);
+      } else {
+        await api.post('/api/produtos', data);
+      }
+      setModalAberto(false);
+      carregar();
+    } catch (err) {
+      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'));
+    } finally {
+      setSalvando(false);
     }
-    setModalAberto(false);
-    carregar();
   };
 
   const toggleDisponivel = async (p: Produto) => {
@@ -271,8 +280,8 @@ export function Produtos() {
             <Toggle checked={disponivel} onChange={setDisponivel} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={uploading}>
-            {uploading ? 'Aguarde o upload...' : editando ? 'Salvar' : 'Criar'}
+          <Button type="submit" className="w-full" disabled={uploading || salvando}>
+            {uploading ? 'Aguarde o upload...' : salvando ? 'Salvando...' : editando ? 'Salvar' : 'Criar'}
           </Button>
         </form>
       </Modal>
