@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { NomeGuerraInput } from '../components/checkout/NomeGuerraInput';
 import { api } from '../services/api';
+import { getConfig } from '../services/config';
 import { gerarPayloadPix } from '../services/pix';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -70,7 +71,7 @@ export function LojaPublica() {
 
   useEffect(() => {
     api.get<Produto[]>('/api/loja/produtos').then(setProdutos).finally(() => setLoading(false));
-    api.get<Record<string, string>>('/api/config').then(c => {
+    getConfig().then(c => {
       const max = parseInt(c.loja_max_parcelas) || 1;
       setMaxParcelas(Math.min(Math.max(max, 1), 3));
       setPixConfig({ chave: c.pix_guloseimas_chave || '', whatsapp: c.pix_guloseimas_whatsapp || '' });

@@ -4,6 +4,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { getConfig } from '../../../services/config';
 import { gerarCobrancaCafePDF } from '../../../services/pdf';
 
 interface Mensalidade {
@@ -31,7 +32,7 @@ export function CafeMensalidades() {
 
   useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
   useEffect(() => {
-    api.get<Record<string, string>>('/api/config').then(c => {
+    getConfig().then(c => {
       setPixConfig({ oficial: c.pix_cafe_oficial_chave || '', graduado: c.pix_cafe_graduado_chave || '' });
     }).catch(() => {});
   }, []);

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
+import { getConfig } from '../services/config';
 import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
 
@@ -52,7 +53,7 @@ export function CafePublico() {
   const [copiadoCodigo, setCopiadoCodigo] = useState(false);
 
   useEffect(() => {
-    api.get<Record<string, string>>('/api/config').then(setConfig).catch(() => {});
+    getConfig().then(setConfig).catch(() => {});
   }, []);
 
   useEffect(() => {

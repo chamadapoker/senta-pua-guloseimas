@@ -51,10 +51,11 @@ import { UpdatePrompt } from './components/UpdatePrompt';
 import { useAuth } from './hooks/useAuth';
 import { useUserAuth } from './hooks/useUserAuth';
 import { api } from './services/api';
+import { getConfig } from './services/config';
 import { setPixDefaults } from './services/pix';
 
 // Load PIX config once on app start
-api.get<Record<string, string>>('/api/config').then(c => {
+getConfig().then(c => {
   setPixDefaults(
     c.pix_guloseimas_chave || '',
     c.pix_guloseimas_nome || '',

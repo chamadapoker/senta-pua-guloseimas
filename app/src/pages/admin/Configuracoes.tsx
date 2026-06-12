@@ -5,6 +5,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { clearConfigCache } from '../../services/config';
 
 type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 
@@ -43,6 +44,7 @@ export function Configuracoes() {
     setSalvo(false);
     try {
       await api.put('/api/config', config);
+      clearConfigCache();
       setSalvo(true);
       setTimeout(() => setSalvo(false), 3000);
     } catch {

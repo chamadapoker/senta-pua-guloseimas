@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
-import { api } from '../services/api';
+import { getConfig } from '../services/config';
 
 export function AcessoExpirado() {
   const { logout } = useUserAuth();
@@ -11,7 +11,7 @@ export function AcessoExpirado() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get<Record<string, string>>('/api/config')
+    getConfig()
       .then(c => setWhatsapp(c.pix_guloseimas_whatsapp || ''))
       .catch(() => {});
   }, []);

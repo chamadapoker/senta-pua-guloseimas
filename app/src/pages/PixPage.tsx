@@ -4,6 +4,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { usePixPolling } from '../hooks/usePixPolling';
 import { api } from '../services/api';
+import { getConfig } from '../services/config';
 import { gerarPayloadPix } from '../services/pix';
 
 const FRASES_PAGOU = [
@@ -27,7 +28,7 @@ export function PixPage() {
   const [pixConfig, setPixConfig] = useState({ chave: '', whatsapp: '' });
 
   useEffect(() => {
-    api.get<Record<string, string>>('/api/config').then(c => {
+    getConfig().then(c => {
       setPixConfig({ chave: c.pix_guloseimas_chave || '', whatsapp: c.pix_guloseimas_whatsapp || '' });
     }).catch(() => {});
   }, []);

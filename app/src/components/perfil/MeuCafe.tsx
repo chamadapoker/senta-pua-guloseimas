@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { EnviarComprovante } from '../ui/EnviarComprovante';
 import { api } from '../../services/api';
+import { getConfig } from '../../services/config';
 import { gerarPayloadPix } from '../../services/pix';
 
 interface HistoricoItem { id?: string; referencia: string; valor: number; status: string; paid_at: string | null }
@@ -27,7 +28,7 @@ export function MeuCafe() {
   useEffect(() => {
     Promise.all([
       api.get<CafeStatus>('/api/usuarios/me/cafe'),
-      api.get<Record<string, string>>('/api/config'),
+      getConfig(),
     ]).then(([s, c]) => { setStatus(s); setConfig(c); }).finally(() => setLoading(false));
   }, []);
 

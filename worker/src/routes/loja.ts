@@ -123,6 +123,29 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   total = Math.round(total * 100) / 100;
   const status = metodo === 'fiado' ? 'fiado' : 'pendente';
 
+  // Decrementa estoque das variações de forma atômica (evita oversell sob concorrência).
+  // UPDATE condicional: só decrementa se houver estoque; changes=0 => insuficiente.
+  const itensComVariacao = itensCalculados.filter(i => i.variacao_id);
+  if (itensComVariacao.length) {
+    const decResults = await c.env.DB.batch(
+      itensComVariacao.map(i =>
+        c.env.DB.prepare('UPDATE loja_variacoes SET estoque = estoque - ? WHERE id = ? AND estoque >= ?')
+          .bind(i.quantidade, i.variacao_id, i.quantidade)
+      )
+    );
+    const idxFalha = decResults.findIndex(r => (r.meta?.changes ?? 0) === 0);
+    if (idxFalha !== -1) {
+      // Reverte os que foram decrementados com sucesso e rejeita o pedido.
+      const reverter = decResults
+        .map((r, idx) => ({ ok: (r.meta?.changes ?? 0) > 0, item: itensComVariacao[idx] }))
+        .filter(x => x.ok)
+        .map(x => c.env.DB.prepare('UPDATE loja_variacoes SET estoque = estoque + ? WHERE id = ?')
+          .bind(x.item.quantidade, x.item.variacao_id));
+      if (reverter.length) await c.env.DB.batch(reverter);
+      return c.json({ error: `Estoque insuficiente para ${itensComVariacao[idxFalha].nome_produto}` }, 400);
+    }
+  }
+
   const { results: pedidoResult } = await c.env.DB.prepare(
     'INSERT INTO loja_pedidos (cliente_id, total, status, metodo_pagamento) VALUES (?, ?, ?, ?) RETURNING id'
   ).bind(cliente.id, total, status, metodo).all<{ id: string }>();
@@ -135,16 +158,7 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
     ).bind(pedidoId, item.produto_id, item.variacao_id, item.nome_produto, item.nome_variacao, item.preco_unitario, item.quantidade, item.subtotal)
   );
 
-  // Decrement variation stock
-  const estoqueUpdates = itensCalculados
-    .filter(item => item.variacao_id)
-    .map(item =>
-      c.env.DB.prepare(
-        'UPDATE loja_variacoes SET estoque = MAX(estoque - ?, 0) WHERE id = ?'
-      ).bind(item.quantidade, item.variacao_id)
-    );
-
-  await c.env.DB.batch([...batch, ...estoqueUpdates]);
+  await c.env.DB.batch(batch);
 
   // Generate parcelas — limite máximo vem da config (loja_max_parcelas)
   const maxCfg = await c.env.DB.prepare(

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../services/api';
+import { getConfig } from '../services/config';
 import type { Produto } from '../types';
 import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
@@ -15,7 +16,7 @@ export function Catalogo() {
   const [titulo, setTitulo] = useState('CATÁLOGO');
 
   useEffect(() => {
-    api.get<Record<string, string>>('/api/config').then((c) => {
+    getConfig().then((c) => {
       if (categoria === 'oficiais' && c.nome_sala_oficiais) setTitulo(c.nome_sala_oficiais.toUpperCase());
       if (categoria === 'graduados' && c.nome_sala_graduados) setTitulo(c.nome_sala_graduados.toUpperCase());
     }).catch(() => {});
