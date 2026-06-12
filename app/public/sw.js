@@ -1,4 +1,4 @@
-const CACHE_NAME = 'senta-pua-v1.0.19';
+const CACHE_NAME = 'senta-pua-v1.0.20';
 const PRECACHE = ['/', '/logo.png', '/sabre.png', '/manifest.json'];
 
 self.addEventListener('install', (e) => {

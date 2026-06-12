@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -72,16 +73,16 @@ export function XimbocaEstoque() {
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: Carvao, Cerveja, Copo..." />
+            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required placeholder="Ex: Carvao, Cerveja, Copo..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Quantidade</label>
-              <input type="number" step="0.01" value={quantidade} onChange={e => setQuantidade(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" step="0.01" value={quantidade} onChange={e => setQuantidade(e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Unidade</label>
-              <select value={unidade} onChange={e => setUnidade(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={unidade} onChange={e => setUnidade(e.target.value)} className={inputClass}>
                 <option value="un">un</option>
                 <option value="kg">kg</option>
                 <option value="L">L</option>
@@ -94,7 +95,7 @@ export function XimbocaEstoque() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Sobra de qual evento (opcional)</label>
-            <input value={origem} onChange={e => setOrigem(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: Churrasco Abril" />
+            <input value={origem} onChange={e => setOrigem(e.target.value)} className={inputClass} placeholder="Ex: Churrasco Abril" />
           </div>
           <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Criar'}</Button>
         </form>

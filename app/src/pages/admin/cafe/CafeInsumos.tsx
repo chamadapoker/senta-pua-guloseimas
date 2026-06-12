@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -102,12 +103,12 @@ export function CafeInsumos() {
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: Cafe, Acucar, Copos..." />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required placeholder="Ex: Cafe, Acucar, Copos..." />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Unidade</label>
-              <select value={unidade} onChange={(e) => setUnidade(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={unidade} onChange={(e) => setUnidade(e.target.value)} className={inputClass}>
                 <option value="un">un</option>
                 <option value="kg">kg</option>
                 <option value="g">g</option>
@@ -119,11 +120,11 @@ export function CafeInsumos() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Estoque</label>
-              <input type="number" step="0.01" value={estoque} onChange={(e) => setEstoque(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" step="0.01" value={estoque} onChange={(e) => setEstoque(e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Minimo</label>
-              <input type="number" step="0.01" value={estoqueMin} onChange={(e) => setEstoqueMin(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" step="0.01" value={estoqueMin} onChange={(e) => setEstoqueMin(e.target.value)} className={inputClass} />
             </div>
           </div>
           <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Criar'}</Button>

@@ -6,6 +6,7 @@ import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { inputClass } from '../../components/ui/Field';
 import type { Produto } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -220,14 +221,14 @@ export function Produtos() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Preço venda (R$)</label>
-            <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className={inputClass} required />
             <label className="block text-sm font-medium mb-1 mt-3">Preço custo (R$) <span className="text-texto-fraco font-normal">— opcional, para calcular margem</span></label>
-            <input type="number" step="0.01" value={precoCusto} onChange={(e) => setPrecoCusto(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio se não souber" />
+            <input type="number" step="0.01" value={precoCusto} onChange={(e) => setPrecoCusto(e.target.value)} className={inputClass} placeholder="Deixe vazio se não souber" />
             {preco && precoCusto && parseFloat(preco) > 0 && parseFloat(precoCusto) > 0 && (
               <div className="text-xs text-texto-fraco mt-1">
                 Margem: <span className="font-medium text-verde-escuro">R$ {(parseFloat(preco) - parseFloat(precoCusto)).toFixed(2)}</span>
@@ -239,14 +240,14 @@ export function Produtos() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Ordem</label>
-              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Sala</label>
               <select
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value as 'oficiais' | 'graduados')}
-                className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
+                className={inputClass}
               >
                 <option value="oficiais">Sala dos Oficiais</option>
                 <option value="graduados">Sala dos Graduados</option>
@@ -270,7 +271,7 @@ export function Produtos() {
                 }
               }}
               placeholder="Vazio = sem limite"
-              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto"
+              className={inputClass}
             />
             <p className="text-xs text-texto-fraco mt-1">Deixe vazio para estoque ilimitado</p>
           </div>

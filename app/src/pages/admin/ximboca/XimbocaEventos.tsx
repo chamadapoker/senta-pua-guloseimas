@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -162,31 +163,31 @@ export function XimbocaEventos() {
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome do evento</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: Churrasco de Aniversario" />
+            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required placeholder="Ex: Churrasco de Aniversario" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Data</label>
-              <input type="date" value={data} onChange={e => setData(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              <input type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Valor por pessoa (R$)</label>
-              <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="0.00" />
+              <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className={inputClass} placeholder="0.00" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">🍺 Cerveja (opcional)</label>
-              <input type="number" step="0.01" value={valorCerveja} onChange={e => setValorCerveja(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio pra não oferecer" />
+              <input type="number" step="0.01" value={valorCerveja} onChange={e => setValorCerveja(e.target.value)} className={inputClass} placeholder="Deixe vazio pra não oferecer" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">🥤 Refri (opcional)</label>
-              <input type="number" step="0.01" value={valorRefri} onChange={e => setValorRefri(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Deixe vazio pra não oferecer" />
+              <input type="number" step="0.01" value={valorRefri} onChange={e => setValorRefri(e.target.value)} className={inputClass} placeholder="Deixe vazio pra não oferecer" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Descricao</label>
-            <input value={descricao} onChange={e => setDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Opcional" />
+            <input value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} placeholder="Opcional" />
           </div>
           <p className="text-xs text-texto-fraco">
             Se preencher Cerveja ou Refri, o participante poderá escolher entre essas opções. Caso contrário, usa o valor padrão.
@@ -197,7 +198,7 @@ export function XimbocaEventos() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo da chave</label>
-                <select value={pixTipo} onChange={e => setPixTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <select value={pixTipo} onChange={e => setPixTipo(e.target.value)} className={inputClass}>
                   <option value="cpf">CPF</option>
                   <option value="email">E-mail</option>
                   <option value="telefone">Telefone</option>
@@ -206,16 +207,16 @@ export function XimbocaEventos() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Chave PIX</label>
-                <input value={pixChave} onChange={e => setPixChave(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Digite a chave" />
+                <input value={pixChave} onChange={e => setPixChave(e.target.value)} className={inputClass} placeholder="Digite a chave" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
-              <input value={pixNome} onChange={e => setPixNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: JOAO SILVA" />
+              <input value={pixNome} onChange={e => setPixNome(e.target.value)} className={inputClass} placeholder="Ex: JOAO SILVA" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
-              <input type="tel" value={pixWhatsapp} onChange={e => setPixWhatsapp(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+              <input type="tel" value={pixWhatsapp} onChange={e => setPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
             </div>
           </div>
 

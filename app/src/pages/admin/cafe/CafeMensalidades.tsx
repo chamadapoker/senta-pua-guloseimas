@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 import { getConfig } from '../../../services/config';
@@ -158,7 +159,7 @@ export function CafeMensalidades() {
           <div>
             <label className="block text-sm font-medium mb-1">Referencia (mes)</label>
             <input type="month" value={referencia} onChange={(e) => setReferencia(e.target.value)}
-              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              className={inputClass} />
             <p className="text-xs text-texto-fraco mt-1">Mensal: cobra o mes selecionado. Anual: cobra 1x por ano automaticamente.</p>
           </div>
           <Button className="w-full" onClick={gerarMensalidades} disabled={gerando}>

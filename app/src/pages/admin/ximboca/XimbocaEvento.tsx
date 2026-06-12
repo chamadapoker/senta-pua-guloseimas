@@ -9,6 +9,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
+import { inputClass } from '../../../components/ui/Field';
 import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
@@ -285,12 +286,12 @@ export function XimbocaEvento() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp (opcional)</label>
-            <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+            <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Consumo</label>
-              <select value={partCategoria} onChange={e => setPartCategoria(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={partCategoria} onChange={e => setPartCategoria(e.target.value)} className={inputClass}>
                 <option value="padrao">Padrao (R$ {evento?.valor_por_pessoa.toFixed(2)})</option>
                 <option value="refri">So refri</option>
                 <option value="cerveja">Cerveja</option>
@@ -299,7 +300,7 @@ export function XimbocaEvento() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-              <input type="number" step="0.01" value={partValor} onChange={e => setPartValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder={evento?.valor_por_pessoa.toFixed(2)} />
+              <input type="number" step="0.01" value={partValor} onChange={e => setPartValor(e.target.value)} className={inputClass} placeholder={evento?.valor_por_pessoa.toFixed(2)} />
               <p className="text-xs text-texto-fraco mt-0.5">Deixe vazio para valor padrao</p>
             </div>
           </div>
@@ -317,7 +318,7 @@ export function XimbocaEvento() {
             <>
               <div>
                 <label className="block text-sm font-medium mb-1">Item</label>
-                <select value={estoqueId} onChange={e => setEstoqueId(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required>
+                <select value={estoqueId} onChange={e => setEstoqueId(e.target.value)} className={inputClass} required>
                   <option value="">Selecione...</option>
                   {estoqueLista.map(it => (
                     <option key={it.id} value={it.id}>{it.nome} — {it.quantidade} {it.unidade} disponível</option>
@@ -326,7 +327,7 @@ export function XimbocaEvento() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Quantidade a consumir</label>
-                <input type="number" step="0.01" min="0.01" value={estoqueQtd} onChange={e => setEstoqueQtd(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+                <input type="number" step="0.01" min="0.01" value={estoqueQtd} onChange={e => setEstoqueQtd(e.target.value)} className={inputClass} required />
               </div>
               <Button type="submit" className="w-full" disabled={!estoqueId || !estoqueQtd}>Confirmar Consumo</Button>
             </>
@@ -339,31 +340,31 @@ export function XimbocaEvento() {
         <form onSubmit={salvarEdicao} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={edNome} onChange={e => setEdNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input value={edNome} onChange={e => setEdNome(e.target.value)} className={inputClass} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Data</label>
-              <input type="date" value={edData} onChange={e => setEdData(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              <input type="date" value={edData} onChange={e => setEdData(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">R$/pessoa</label>
-              <input type="number" step="0.01" value={edValor} onChange={e => setEdValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" step="0.01" value={edValor} onChange={e => setEdValor(e.target.value)} className={inputClass} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">🍺 Cerveja</label>
-              <input type="number" step="0.01" value={edCerveja} onChange={e => setEdCerveja(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Vazio = não oferece" />
+              <input type="number" step="0.01" value={edCerveja} onChange={e => setEdCerveja(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">🥤 Refri</label>
-              <input type="number" step="0.01" value={edRefri} onChange={e => setEdRefri(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Vazio = não oferece" />
+              <input type="number" step="0.01" value={edRefri} onChange={e => setEdRefri(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Descrição</label>
-            <input value={edDescricao} onChange={e => setEdDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+            <input value={edDescricao} onChange={e => setEdDescricao(e.target.value)} className={inputClass} />
           </div>
 
           <div className="border-t border-borda pt-3 space-y-3">
@@ -371,7 +372,7 @@ export function XimbocaEvento() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo</label>
-                <select value={edPixTipo} onChange={e => setEdPixTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+                <select value={edPixTipo} onChange={e => setEdPixTipo(e.target.value)} className={inputClass}>
                   <option value="cpf">CPF</option>
                   <option value="email">E-mail</option>
                   <option value="telefone">Telefone</option>
@@ -380,16 +381,16 @@ export function XimbocaEvento() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Chave PIX</label>
-                <input value={edPixChave} onChange={e => setEdPixChave(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+                <input value={edPixChave} onChange={e => setEdPixChave(e.target.value)} className={inputClass} />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
-              <input value={edPixNome} onChange={e => setEdPixNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input value={edPixNome} onChange={e => setEdPixNome(e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
-              <input type="tel" value={edPixWhatsapp} onChange={e => setEdPixWhatsapp(e.target.value.replace(/\D/g, ''))} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 62999998888" />
+              <input type="tel" value={edPixWhatsapp} onChange={e => setEdPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
             </div>
           </div>
 
@@ -417,16 +418,16 @@ export function XimbocaEvento() {
         <form onSubmit={adicionarDespesa} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Descricao</label>
-            <input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required placeholder="Ex: 10kg Picanha, Carvao..." />
+            <input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className={inputClass} required placeholder="Ex: 10kg Picanha, Carvao..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-              <input type="number" step="0.01" value={despValor} onChange={e => setDespValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              <input type="number" step="0.01" value={despValor} onChange={e => setDespValor(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Categoria</label>
-              <select value={despCategoria} onChange={e => setDespCategoria(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={despCategoria} onChange={e => setDespCategoria(e.target.value)} className={inputClass}>
                 <option value="carne">Carne</option>
                 <option value="bebida">Bebida</option>
                 <option value="carvao">Carvao</option>
@@ -439,11 +440,11 @@ export function XimbocaEvento() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Quantidade</label>
-              <input type="number" step="0.01" value={despQtd} onChange={e => setDespQtd(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Ex: 10" />
+              <input type="number" step="0.01" value={despQtd} onChange={e => setDespQtd(e.target.value)} className={inputClass} placeholder="Ex: 10" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Unidade</label>
-              <select value={despUnidade} onChange={e => setDespUnidade(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={despUnidade} onChange={e => setDespUnidade(e.target.value)} className={inputClass}>
                 <option value="">-</option>
                 <option value="kg">kg</option>
                 <option value="un">un</option>

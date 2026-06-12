@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -147,14 +148,14 @@ export function CafeDespesas() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">Sala</label>
-              <select value={novoTipo} onChange={e => setNovoTipo(e.target.value as 'oficial' | 'graduado')} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm">
+              <select value={novoTipo} onChange={e => setNovoTipo(e.target.value as 'oficial' | 'graduado')} className={inputClass}>
                 <option value="graduado">Graduados</option>
                 <option value="oficial">Oficiais</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Categoria</label>
-              <select value={categoria} onChange={e => setCategoria(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm">
+              <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
                 <option value="cafe">Café (pó)</option>
                 <option value="acucar">Açúcar</option>
                 <option value="leite">Leite</option>
@@ -168,25 +169,25 @@ export function CafeDespesas() {
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Descrição</label>
-            <input value={descricao} onChange={e => setDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" required placeholder="Ex: 1kg de café Melitta" />
+            <input value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} required placeholder="Ex: 1kg de café Melitta" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">Valor (R$)</label>
-              <input type="number" step="0.01" min="0" value={valor} onChange={e => setValor(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" required />
+              <input type="number" step="0.01" min="0" value={valor} onChange={e => setValor(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Data</label>
-              <input type="date" value={data} onChange={e => setData(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" required />
+              <input type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
             </div>
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Nota Fiscal (opcional)</label>
-            <input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" placeholder="Número da NF" />
+            <input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} className={inputClass} placeholder="Número da NF" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Observação</label>
-            <input value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-sm" />
+            <input value={observacao} onChange={e => setObservacao(e.target.value)} className={inputClass} />
           </div>
           <Button type="submit" className="w-full">Salvar</Button>
         </form>

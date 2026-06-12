@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Toggle } from '../../../components/ui/Toggle';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
@@ -283,20 +284,20 @@ export function LojaProdutos() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Descrição</label>
-            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className={inputClass} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Ordem</label>
-              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" />
+              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className={inputClass} />
             </div>
           </div>
 

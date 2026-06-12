@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
+import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 
@@ -222,14 +223,14 @@ export function CafeAssinantes() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Tipo</label>
-              <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={inputClass}>
                 <option value="oficial">Oficial</option>
                 <option value="graduado">Graduado</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Plano</label>
-              <select value={plano} onChange={(e) => setPlano(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+              <select value={plano} onChange={(e) => setPlano(e.target.value)} className={inputClass}>
                 <option value="mensal">Mensal</option>
                 <option value="anual">Anual</option>
               </select>
@@ -238,7 +239,7 @@ export function CafeAssinantes() {
           <div>
             <label className="block text-sm font-medium mb-1">Valor (R$)</label>
             <input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)}
-              className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+              className={inputClass} required />
           </div>
           <Button type="submit" className="w-full">{editando ? 'Salvar' : 'Adicionar'}</Button>
         </form>

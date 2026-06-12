@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { inputClass } from '../../components/ui/Field';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
@@ -146,7 +147,7 @@ export function Admins() {
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" required />
+            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
@@ -156,11 +157,11 @@ export function Admins() {
             <label className="block text-sm font-medium mb-1">
               {editando ? 'Nova senha (deixe vazio para manter)' : 'Senha'}
             </label>
-            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} minLength={8} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto" placeholder="Mínimo 8 caracteres" />
+            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} minLength={8} className={inputClass} placeholder="Mínimo 8 caracteres" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Papel</label>
-            <select value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto">
+            <select value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className={inputClass}>
               <option value="admin">Admin (uso normal)</option>
               <option value="super_admin">Super Admin (gerencia outros admins)</option>
             </select>
