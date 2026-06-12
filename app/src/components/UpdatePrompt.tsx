@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 export function UpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [atualizando, setAtualizando] = useState(false);
+  const [dispensado, setDispensado] = useState(false);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -50,7 +51,7 @@ export function UpdatePrompt() {
     };
   }, []);
 
-  if (!waitingWorker) return null;
+  if (!waitingWorker || dispensado) return null;
 
   const atualizar = () => {
     setAtualizando(true);
@@ -62,8 +63,15 @@ export function UpdatePrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-[60] bg-azul text-white rounded-2xl shadow-2xl p-4 border border-azul-claro/30 animate-fade-in">
-      <div className="flex items-start gap-3">
+    <div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-80 z-[60] bg-azul text-white rounded-2xl shadow-2xl p-4 border border-azul-claro/30 animate-fade-in">
+      <button
+        onClick={() => setDispensado(true)}
+        aria-label="Fechar"
+        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+      <div className="flex items-start gap-3 pr-6">
         <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
