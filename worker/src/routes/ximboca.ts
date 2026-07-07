@@ -23,7 +23,18 @@ ximboca.get('/publico/eventos', userAuthMiddleware, visitorActiveCheck, async (c
     ORDER BY e.data ASC
   `).bind(trigrama, trigrama, trigrama).all();
 
-  return c.json(results);
+  const eventoIds = (results as { id: string }[]).map(e => e.id);
+  let tiposPorEvento: Record<string, unknown[]> = {};
+  if (eventoIds.length) {
+    const ph = eventoIds.map(() => '?').join(',');
+    const { results: tipos } = await c.env.DB.prepare(
+      `SELECT * FROM ximboca_ingresso_tipos WHERE evento_id IN (${ph}) ORDER BY ordem ASC, nome ASC`
+    ).bind(...eventoIds).all();
+    tiposPorEvento = (tipos as { evento_id: string }[]).reduce((acc, t) => {
+      (acc[t.evento_id] ||= []).push(t); return acc;
+    }, {} as Record<string, unknown[]>);
+  }
+  return c.json((results as { id: string }[]).map(e => ({ ...e, tipos: tiposPorEvento[e.id] || [] })));
 });
 
 // Lista eventos que o usuario participa (qualquer status)
@@ -165,7 +176,11 @@ ximboca.get('/eventos/:id', async (c) => {
     'SELECT * FROM ximboca_despesas WHERE evento_id = ? ORDER BY created_at DESC'
   ).bind(id).all();
 
-  return c.json({ evento, participantes, despesas });
+  const { results: tipos } = await c.env.DB.prepare(
+    'SELECT * FROM ximboca_ingresso_tipos WHERE evento_id = ? ORDER BY ordem ASC, nome ASC'
+  ).bind(id).all();
+
+  return c.json({ evento, participantes, despesas, tipos });
 });
 
 // Update event
@@ -338,6 +353,52 @@ ximboca.delete('/estoque/:id', async (c) => {
   const id = c.req.param('id');
   const result = await c.env.DB.prepare('DELETE FROM ximboca_estoque WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Item não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
+// ============ TIPOS DE INGRESSO (admin) ============
+ximboca.get('/eventos/:id/tipos', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM ximboca_ingresso_tipos WHERE evento_id = ? ORDER BY ordem ASC, nome ASC'
+  ).bind(c.req.param('id')).all();
+  return c.json(results);
+});
+
+ximboca.post('/eventos/:id/tipos', async (c) => {
+  const evento_id = c.req.param('id');
+  const { nome, valor, ordem } = await c.req.json<{ nome: string; valor: number; ordem?: number }>();
+  if (!nome || valor == null) return c.json({ error: 'Nome e valor obrigatórios' }, 400);
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO ximboca_ingresso_tipos (evento_id, nome, valor, ordem) VALUES (?, ?, ?, ?) RETURNING *'
+  ).bind(evento_id, nome.trim(), valor, ordem ?? 0).all();
+  return c.json(results[0], 201);
+});
+
+ximboca.put('/tipos/:tipoId', async (c) => {
+  const id = c.req.param('tipoId');
+  const body = await c.req.json();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
+  if ('valor' in body) { fields.push('valor = ?'); values.push(body.valor); }
+  if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
+  if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
+  values.push(id);
+  const { results } = await c.env.DB.prepare(
+    `UPDATE ximboca_ingresso_tipos SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+  ).bind(...values).all();
+  if (!results.length) return c.json({ error: 'Tipo não encontrado' }, 404);
+  return c.json(results[0]);
+});
+
+ximboca.delete('/tipos/:tipoId', async (c) => {
+  const id = c.req.param('tipoId');
+  const emUso = await c.env.DB.prepare(
+    'SELECT id FROM ximboca_participantes WHERE tipo_ingresso_id = ? LIMIT 1'
+  ).bind(id).first();
+  if (emUso) return c.json({ error: 'Tipo já usado por um participante — não pode ser removido' }, 400);
+  const result = await c.env.DB.prepare('DELETE FROM ximboca_ingresso_tipos WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return c.json({ error: 'Tipo não encontrado' }, 404);
   return c.json({ ok: true });
 });
 
