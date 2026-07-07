@@ -187,13 +187,13 @@ usuarios.post('/login', async (c) => {
   if (!rl.ok) return c.json({ error: `Muitas tentativas. Tente de novo em ${rl.retry_after_min} minutos.` }, 429);
 
   const user = await c.env.DB.prepare(
-    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado FROM usuarios WHERE email = ?'
+    'SELECT id, email, senha_hash, trigrama, saram, whatsapp, foto_url, ativo, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, is_recepcionista FROM usuarios WHERE email = ?'
   ).bind(email.trim().toLowerCase()).first<{
     id: number; email: string; senha_hash: string; trigrama: string; saram: string;
     whatsapp: string; foto_url: string | null; ativo: number;
     categoria: string; sala_cafe: string | null;
     is_visitante: number; esquadrao_origem: string | null; expira_em: string | null; acesso_pausado: number;
-    permite_fiado: number;
+    permite_fiado: number; is_recepcionista: number;
   }>();
 
   if (!user) { await recordAttempt(c, 'user_login', key); return c.json({ error: 'Email ou senha incorretos' }, 401); }
@@ -222,7 +222,7 @@ usuarios.post('/login', async (c) => {
       whatsapp: user.whatsapp, foto_url: user.foto_url, categoria: user.categoria, sala_cafe: user.sala_cafe,
       is_visitante: user.is_visitante, esquadrao_origem: user.esquadrao_origem,
       expira_em: user.expira_em, acesso_pausado: user.acesso_pausado, acesso_bloqueado,
-      permite_fiado: user.permite_fiado,
+      permite_fiado: user.permite_fiado, is_recepcionista: user.is_recepcionista,
     }
   });
 });
@@ -231,7 +231,7 @@ usuarios.post('/login', async (c) => {
 usuarios.get('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
-    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, data_nascimento, created_at FROM usuarios WHERE id = ?'
+    'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, is_recepcionista, data_nascimento, created_at FROM usuarios WHERE id = ?'
   ).bind(userId).first<any>();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
@@ -692,7 +692,8 @@ usuarios.delete('/me/foto', userAuthMiddleware, async (c) => {
 usuarios.get('/admin/lista', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.trigrama, u.saram, u.whatsapp, u.foto_url, u.categoria, u.sala_cafe, u.ativo,
-            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.created_at, u.data_nascimento,
+            u.is_visitante, u.esquadrao_origem, u.expira_em, u.acesso_pausado, u.permite_fiado, u.is_recepcionista,
+            u.created_at, u.data_nascimento,
             c.id AS cliente_id
      FROM usuarios u
      LEFT JOIN clientes c ON c.saram = u.saram
@@ -750,6 +751,15 @@ usuarios.put('/admin/:id/fiado', authMiddleware, async (c) => {
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
   return c.json({ ok: true, permite_fiado });
+});
+
+// Admin: atualizar is_recepcionista
+usuarios.put('/admin/:id/recepcionista', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { is_recepcionista } = await c.req.json<{ is_recepcionista: number }>();
+  await c.env.DB.prepare('UPDATE usuarios SET is_recepcionista = ? WHERE id = ?')
+    .bind(is_recepcionista ? 1 : 0, id).run();
+  return c.json({ ok: true });
 });
 
 // Admin: atualizar campos de visitante
