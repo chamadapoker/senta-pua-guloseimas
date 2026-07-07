@@ -42,9 +42,12 @@ ximboca.get('/publico/meus-eventos', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
 
   const { results } = await c.env.DB.prepare(`
-    SELECT e.*, p.id as participante_id, p.categoria_consumo, p.valor_individual, p.status as meu_status, p.paid_at
+    SELECT e.*, p.id as participante_id, p.categoria_consumo, p.valor_individual,
+           p.status as meu_status, p.paid_at, p.numero_ingresso, p.checkin_at,
+           t.nome as tipo_nome
     FROM ximboca_participantes p
     JOIN ximboca_eventos e ON e.id = p.evento_id
+    LEFT JOIN ximboca_ingresso_tipos t ON t.id = p.tipo_ingresso_id
     WHERE p.nome = ? COLLATE NOCASE
     ORDER BY e.data DESC
   `).bind(trigrama).all();
@@ -56,41 +59,48 @@ ximboca.get('/publico/meus-eventos', userAuthMiddleware, async (c) => {
 ximboca.post('/publico/eventos/:id/participar', userAuthMiddleware, visitorActiveCheck, async (c) => {
   const eventoId = c.req.param('id');
   const trigrama = c.get('userTrigrama');
-  const { categoria_consumo } = await c.req.json<{ categoria_consumo?: string }>();
+  const { categoria_consumo, tipo_ingresso_id } = await c.req.json<{ categoria_consumo?: string; tipo_ingresso_id?: string }>();
 
-  // Busca whatsapp do usuario
   const userId = c.get('userId');
   const user = await c.env.DB.prepare('SELECT whatsapp FROM usuarios WHERE id = ?').bind(userId).first<{ whatsapp: string }>();
   const whatsapp = user?.whatsapp || null;
 
-  // Verifica evento
   const evento = await c.env.DB.prepare(
     'SELECT id, status, valor_por_pessoa, valor_cerveja, valor_refri FROM ximboca_eventos WHERE id = ?'
   ).bind(eventoId).first<{ id: string; status: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null }>();
-
   if (!evento) return c.json({ error: 'Evento não encontrado' }, 404);
   if (evento.status !== 'aberto') return c.json({ error: 'Evento está fechado' }, 400);
 
-  // Verifica se ja participa
   const exist = await c.env.DB.prepare(
     'SELECT id FROM ximboca_participantes WHERE evento_id = ? AND nome = ? COLLATE NOCASE'
   ).bind(eventoId, trigrama).first();
   if (exist) return c.json({ error: 'Você já está inscrito neste evento' }, 409);
 
-  // Determina valor individual baseado na categoria
   const cat = (categoria_consumo || 'padrao').toLowerCase();
   let valorIndividual: number | null = null;
+  let tipoId: string | null = null;
 
-  if (cat === 'cerveja' && evento.valor_cerveja !== null) {
+  if (tipo_ingresso_id) {
+    const tipo = await c.env.DB.prepare(
+      'SELECT id, valor FROM ximboca_ingresso_tipos WHERE id = ? AND evento_id = ?'
+    ).bind(tipo_ingresso_id, eventoId).first<{ id: string; valor: number }>();
+    if (!tipo) return c.json({ error: 'Tipo de ingresso inválido' }, 400);
+    valorIndividual = tipo.valor;
+    tipoId = tipo.id;
+  } else if (cat === 'cerveja' && evento.valor_cerveja !== null) {
     valorIndividual = evento.valor_cerveja;
   } else if (cat === 'refri' && evento.valor_refri !== null) {
     valorIndividual = evento.valor_refri;
   }
-  // se categoria nao tem valor proprio, usa valor_por_pessoa (valor_individual = null)
+
+  const maxNum = await c.env.DB.prepare(
+    'SELECT COALESCE(MAX(numero_ingresso), 0) as n FROM ximboca_participantes WHERE evento_id = ?'
+  ).bind(eventoId).first<{ n: number }>();
+  const numeroIngresso = (maxNum?.n || 0) + 1;
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_participantes (evento_id, nome, whatsapp, valor_individual, categoria_consumo) VALUES (?, ?, ?, ?, ?) RETURNING *'
-  ).bind(eventoId, trigrama, whatsapp, valorIndividual, cat).all();
+    'INSERT INTO ximboca_participantes (evento_id, nome, whatsapp, valor_individual, categoria_consumo, tipo_ingresso_id, numero_ingresso) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(eventoId, trigrama, whatsapp, valorIndividual, cat, tipoId, numeroIngresso).all();
 
   return c.json(results[0], 201);
 });
