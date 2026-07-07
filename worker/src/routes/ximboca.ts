@@ -211,6 +211,7 @@ ximboca.put('/eventos/:id', async (c) => {
   if ('pix_tipo' in body) { fields.push('pix_tipo = ?'); values.push(body.pix_tipo || null); }
   if ('pix_nome' in body) { fields.push('pix_nome = ?'); values.push(body.pix_nome || null); }
   if ('pix_whatsapp' in body) { fields.push('pix_whatsapp = ?'); values.push(body.pix_whatsapp || null); }
+  if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url || null); }
 
   if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
   values.push(id);
@@ -410,6 +411,38 @@ ximboca.delete('/tipos/:tipoId', async (c) => {
   const result = await c.env.DB.prepare('DELETE FROM ximboca_ingresso_tipos WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Tipo não encontrado' }, 404);
   return c.json({ ok: true });
+});
+
+// Upload da capa do evento (R2)
+ximboca.post('/eventos/:id/imagem', async (c) => {
+  const id = c.req.param('id');
+  const formData = await c.req.formData();
+  const file = formData.get('file') as File | null;
+  if (!file) return c.json({ error: 'Nenhum arquivo enviado' }, 400);
+  if (file.size > 5 * 1024 * 1024) return c.json({ error: 'Arquivo deve ter no máximo 5MB' }, 400);
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+    return c.json({ error: 'Formato não suportado. Use: jpg, png, webp, gif' }, 400);
+  }
+  const key = `ximboca/${crypto.randomUUID()}.${ext}`;
+  await c.env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+  const url = `/api/images/${key}`;
+  await c.env.DB.prepare('UPDATE ximboca_eventos SET imagem_url = ? WHERE id = ?').bind(url, id).run();
+  return c.json({ url });
+});
+
+// Contadores de entrada
+ximboca.get('/eventos/:id/checkin-stats', async (c) => {
+  const id = c.req.param('id');
+  const row = await c.env.DB.prepare(`
+    SELECT
+      SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as total_pagos,
+      SUM(CASE WHEN status = 'pago' AND checkin_at IS NOT NULL THEN 1 ELSE 0 END) as entraram
+    FROM ximboca_participantes WHERE evento_id = ?
+  `).bind(id).first<{ total_pagos: number | null; entraram: number | null }>();
+  const total_pagos = row?.total_pagos ?? 0;
+  const entraram = row?.entraram ?? 0;
+  return c.json({ total_pagos, entraram, faltam: total_pagos - entraram });
 });
 
 export default ximboca;
