@@ -25,6 +25,7 @@ interface Despesa { id: string; descricao: string; valor: number; categoria: str
 interface EstoqueItem { id: string; nome: string; quantidade: number; unidade: string; }
 interface IngressoTipo { id: string; evento_id: string; nome: string; valor: number; ordem: number; }
 interface Tarefa { id: string; titulo: string; responsavel: string | null; feito: number; }
+interface Cautela { id: string; item: string; quantidade: number; unidade: string; origem: string | null; responsavel: string | null; qtd_devolvida: number; }
 interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; imagem_url: string | null; }
 
 export function XimbocaEvento() {
@@ -84,13 +85,22 @@ export function XimbocaEvento() {
   const [novaTarefa, setNovaTarefa] = useState('');
   const [novaTarefaResp, setNovaTarefaResp] = useState('');
 
+  // Cautela de material
+  const [cautelas, setCautelas] = useState<Cautela[]>([]);
+  const [cautItem, setCautItem] = useState('');
+  const [cautQtd, setCautQtd] = useState('');
+  const [cautUnidade, setCautUnidade] = useState('un');
+  const [cautOrigem, setCautOrigem] = useState('');
+  const [cautResp, setCautResp] = useState('');
+
   const carregar = () => {
-    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[]; tarefas: Tarefa[] }>(`/api/ximboca/eventos/${id}`).then(d => {
+    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[]; tarefas: Tarefa[]; cautelas: Cautela[] }>(`/api/ximboca/eventos/${id}`).then(d => {
       setEvento(d.evento);
       setParticipantes(d.participantes);
       setDespesas(d.despesas);
       setTipos(d.tipos || []);
       setTarefas(d.tarefas || []);
+      setCautelas(d.cautelas || []);
     });
     api.get<{ total_pagos: number; entraram: number; faltam: number }>(`/api/ximboca/eventos/${id}/checkin-stats`).then(setCheckinStats).catch(() => {});
   };
@@ -183,6 +193,32 @@ export function XimbocaEvento() {
   const removerTarefa = async (t: Tarefa) => {
     if (!(await confirm({ message: `Remover a tarefa "${t.titulo}"?`, confirmText: 'Remover', danger: true }))) return;
     await api.delete(`/api/ximboca/tarefas/${t.id}`);
+    carregar();
+  };
+
+  const adicionarCautela = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cautItem.trim()) return;
+    await api.post(`/api/ximboca/eventos/${id}/cautelas`, {
+      item: cautItem, quantidade: parseFloat(cautQtd) || 0, unidade: cautUnidade || 'un',
+      origem: cautOrigem || null, responsavel: cautResp || null,
+    });
+    setCautItem(''); setCautQtd(''); setCautUnidade('un'); setCautOrigem(''); setCautResp('');
+    carregar();
+  };
+  const salvarDevolucao = async (ct: Cautela, valor: string) => {
+    const v = parseFloat(valor);
+    if (isNaN(v) || v === ct.qtd_devolvida) return;
+    await api.put(`/api/ximboca/cautelas/${ct.id}`, { qtd_devolvida: Math.max(0, v) });
+    carregar();
+  };
+  const devolverTudo = async (ct: Cautela) => {
+    await api.put(`/api/ximboca/cautelas/${ct.id}`, { qtd_devolvida: ct.quantidade });
+    carregar();
+  };
+  const removerCautela = async (ct: Cautela) => {
+    if (!(await confirm({ message: `Remover a cautela "${ct.item}"?`, confirmText: 'Remover', danger: true }))) return;
+    await api.delete(`/api/ximboca/cautelas/${ct.id}`);
     carregar();
   };
 
@@ -375,6 +411,60 @@ export function XimbocaEvento() {
             <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)} className={`${inputClass} flex-1 min-w-[160px]`} placeholder="Ex: Comprar carvão" />
             <input value={novaTarefaResp} onChange={e => setNovaTarefaResp(e.target.value)} className={`${inputClass} w-36`} placeholder="Responsável" />
             <Button type="submit" size="sm">+ Tarefa</Button>
+          </form>
+        </div>
+      </div>
+
+      {/* Cautela de material */}
+      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
+        <div className="bg-azul px-5 py-3 rounded-t-xl">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Cautela de material</h2>
+        </div>
+        <div className="p-4">
+          <p className="text-xs text-texto-fraco mb-3">Material emprestado (ex: do rancho) — dá baixa na devolução. Não entra no estoque (não é seu).</p>
+          <div className="space-y-2 mb-3">
+            {cautelas.map(ct => {
+              const falta = (ct.quantidade || 0) - (ct.qtd_devolvida || 0);
+              const ok = falta <= 0;
+              return (
+                <div key={ct.id} className="bg-fundo rounded-lg p-3 border border-borda">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-texto">{ct.item} <span className="text-texto-fraco font-normal">· {ct.quantidade} {ct.unidade}</span></div>
+                      <div className="text-[11px] text-texto-fraco">
+                        {ct.origem && <>de {ct.origem}{ct.responsavel ? ' · ' : ''}</>}{ct.responsavel && <>resp: {ct.responsavel}</>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {ok
+                        ? <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-50 text-verde-escuro border border-green-200">DEVOLVIDO</span>
+                        : <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">FALTA {falta} {ct.unidade}</span>}
+                      <button onClick={() => removerCautela(ct)} aria-label="Remover" className="p-1.5 rounded-lg text-vermelho hover:bg-red-50"><Icon name="trash" size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 text-xs flex-wrap">
+                    <span className="text-texto-fraco">Devolvido:</span>
+                    <input type="number" step="0.01" min="0" defaultValue={ct.qtd_devolvida}
+                      key={`${ct.id}-${ct.qtd_devolvida}`}
+                      onBlur={(e) => salvarDevolucao(ct, e.target.value)}
+                      className="w-20 bg-white border border-borda rounded-lg px-2 py-1 text-texto" />
+                    <span className="text-texto-fraco">de {ct.quantidade} {ct.unidade}</span>
+                    {!ok && <Button size="xs" variant="chip-success" onClick={() => devolverTudo(ct)}>Devolver tudo</Button>}
+                  </div>
+                </div>
+              );
+            })}
+            {cautelas.length === 0 && <p className="text-sm text-texto-fraco py-2 text-center">Nenhum material sob cautela.</p>}
+          </div>
+          <form onSubmit={adicionarCautela} className="grid grid-cols-2 gap-2">
+            <input value={cautItem} onChange={e => setCautItem(e.target.value)} className={`${inputClass} col-span-2`} placeholder="Item (ex: Taças)" />
+            <input type="number" step="0.01" value={cautQtd} onChange={e => setCautQtd(e.target.value)} className={inputClass} placeholder="Qtd" />
+            <select value={cautUnidade} onChange={e => setCautUnidade(e.target.value)} className={inputClass}>
+              <option value="un">un</option><option value="cx">cx</option><option value="kg">kg</option><option value="L">L</option><option value="pct">pct</option>
+            </select>
+            <input value={cautOrigem} onChange={e => setCautOrigem(e.target.value)} className={inputClass} placeholder="De onde (ex: Rancho)" />
+            <input value={cautResp} onChange={e => setCautResp(e.target.value)} className={inputClass} placeholder="Responsável" />
+            <Button type="submit" size="sm" className="col-span-2">+ Adicionar à cautela</Button>
           </form>
         </div>
       </div>

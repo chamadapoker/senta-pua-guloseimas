@@ -287,7 +287,11 @@ ximboca.get('/eventos/:id', async (c) => {
     'SELECT * FROM ximboca_tarefas WHERE evento_id = ? ORDER BY feito ASC, ordem ASC, created_at ASC'
   ).bind(id).all();
 
-  return c.json({ evento, participantes, despesas, tipos, tarefas });
+  const { results: cautelas } = await c.env.DB.prepare(
+    'SELECT * FROM ximboca_cautelas WHERE evento_id = ? ORDER BY created_at ASC'
+  ).bind(id).all();
+
+  return c.json({ evento, participantes, despesas, tipos, tarefas, cautelas });
 });
 
 // Update event
@@ -542,6 +546,44 @@ ximboca.put('/tarefas/:tarefaId', async (c) => {
 ximboca.delete('/tarefas/:tarefaId', async (c) => {
   const result = await c.env.DB.prepare('DELETE FROM ximboca_tarefas WHERE id = ?').bind(c.req.param('tarefaId')).run();
   if (!result.meta.changes) return c.json({ error: 'Tarefa não encontrada' }, 404);
+  return c.json({ ok: true });
+});
+
+// ============ CAUTELA DE MATERIAL (admin) ============
+ximboca.post('/eventos/:id/cautelas', async (c) => {
+  const evento_id = c.req.param('id');
+  const { item, quantidade, unidade, origem, responsavel, observacao } = await c.req.json();
+  if (!item) return c.json({ error: 'Item obrigatório' }, 400);
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO ximboca_cautelas (evento_id, item, quantidade, unidade, origem, responsavel, observacao) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(evento_id, item.trim(), quantidade ?? 0, unidade || 'un', origem?.trim() || null, responsavel?.trim() || null, observacao?.trim() || null).all();
+  return c.json(results[0], 201);
+});
+
+ximboca.put('/cautelas/:cautelaId', async (c) => {
+  const id = c.req.param('cautelaId');
+  const body = await c.req.json();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if ('item' in body) { fields.push('item = ?'); values.push(body.item); }
+  if ('quantidade' in body) { fields.push('quantidade = ?'); values.push(body.quantidade ?? 0); }
+  if ('unidade' in body) { fields.push('unidade = ?'); values.push(body.unidade || 'un'); }
+  if ('origem' in body) { fields.push('origem = ?'); values.push(body.origem || null); }
+  if ('responsavel' in body) { fields.push('responsavel = ?'); values.push(body.responsavel || null); }
+  if ('qtd_devolvida' in body) { fields.push('qtd_devolvida = ?'); values.push(body.qtd_devolvida ?? 0); }
+  if ('observacao' in body) { fields.push('observacao = ?'); values.push(body.observacao || null); }
+  if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
+  values.push(id);
+  const { results } = await c.env.DB.prepare(
+    `UPDATE ximboca_cautelas SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+  ).bind(...values).all();
+  if (!results.length) return c.json({ error: 'Cautela não encontrada' }, 404);
+  return c.json(results[0]);
+});
+
+ximboca.delete('/cautelas/:cautelaId', async (c) => {
+  const result = await c.env.DB.prepare('DELETE FROM ximboca_cautelas WHERE id = ?').bind(c.req.param('cautelaId')).run();
+  if (!result.meta.changes) return c.json({ error: 'Cautela não encontrada' }, 404);
   return c.json({ ok: true });
 });
 
