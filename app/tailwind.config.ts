@@ -16,7 +16,8 @@ export default {
         'fundo-elevado': '#f5f7fa',
         texto: '#1a1a1a',
         'texto-fraco': '#6b7280',
-        borda: '#e2e5eb',
+        borda: '#cbd2de',
+        'borda-forte': '#aeb7c9',
       },
       fontFamily: {
         display: ['"Bebas Neue"', 'Impact', 'sans-serif'],
@@ -25,10 +26,12 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
       },
       keyframes: {
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
         slideUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        scaleIn: { '0%': { opacity: '0', transform: 'scale(0.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
       },
     },
   },

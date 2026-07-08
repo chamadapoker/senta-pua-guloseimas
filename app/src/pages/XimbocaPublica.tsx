@@ -216,7 +216,7 @@ export function XimbocaPublica() {
           <div className="space-y-3">
             {eventos.map(ev => (
               <div key={ev.id} className="bg-white rounded-xl border border-borda shadow-sm overflow-hidden">
-                {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-44" />}
+                {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-60 sm:max-h-44" />}
                 <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
@@ -323,7 +323,7 @@ export function XimbocaPublica() {
 
                   {ev.meu_status === 'pago' && (
                     <div className="mt-3 border border-green-200 rounded-xl overflow-hidden">
-                      {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-40" />}
+                      {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-56 sm:max-h-40" />}
                       <div className="p-4 text-center">
                         <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Seu ingresso</div>
                         <div className="font-display text-lg text-azul">#{String(ev.numero_ingresso ?? 0).padStart(3, '0')}</div>
