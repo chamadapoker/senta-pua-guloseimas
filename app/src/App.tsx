@@ -46,6 +46,7 @@ const Documentacao = lazy(() => import('./pages/admin/Documentacao').then(m => (
 const Aniversariantes = lazy(() => import('./pages/admin/Aniversariantes').then(m => ({ default: m.Aniversariantes })));
 const CheckinRecepcionista = lazy(() => import('./pages/CheckinRecepcionista').then(m => ({ default: m.CheckinRecepcionista })));
 const EventoPublicoShare = lazy(() => import('./pages/EventoPublicoShare').then(m => ({ default: m.EventoPublicoShare })));
+const Inventario = lazy(() => import('./pages/admin/Inventario').then(m => ({ default: m.Inventario })));
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -166,6 +167,7 @@ export function App() {
         <Route path="/admin/ximboca/eventos" element={<AdminGuard><XimbocaEventos /></AdminGuard>} />
         <Route path="/admin/ximboca/eventos/:id" element={<AdminGuard><XimbocaEvento /></AdminGuard>} />
         <Route path="/admin/ximboca/estoque" element={<AdminGuard><XimbocaEstoque /></AdminGuard>} />
+        <Route path="/admin/inventario" element={<AdminGuard><Inventario /></AdminGuard>} />
         <Route path="/admin/documentacao" element={<AdminGuard><Documentacao /></AdminGuard>} />
         <Route path="/admin/aniversariantes" element={<AdminGuard><Aniversariantes /></AdminGuard>} />
       </Routes>

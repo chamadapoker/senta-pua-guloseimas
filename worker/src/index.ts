@@ -16,6 +16,7 @@ import admins from './routes/admins';
 import comprovantes from './routes/comprovantes';
 import auditoria from './routes/auditoria';
 import notificacoes from './routes/notificacoes';
+import inventario from './routes/inventario';
 
 export type Env = {
   DB: D1Database;
@@ -56,6 +57,7 @@ app.route('/api/admins', admins);
 app.route('/api/comprovantes', comprovantes);
 app.route('/api/auditoria', auditoria);
 app.route('/api/notificacoes', notificacoes);
+app.route('/api/inventario', inventario);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 

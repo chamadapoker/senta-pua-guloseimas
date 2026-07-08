@@ -74,6 +74,7 @@ const ADMIN_NAV: NavItem[] = [
     { to: '/admin/aniversariantes', label: 'Aniversariantes' },
     { to: '/admin/admins', label: 'Administradores' },
   ]},
+  { to: '/admin/inventario', label: 'Inventário', icon: <Icon name="archive" /> },
   { to: '/admin/documentacao', label: 'Documentação', icon: <Icon name="note" /> },
   { to: '/admin/config', label: 'Configurações', icon: <Icon name="refresh" />, children: [
     { to: '/admin/config?aba=nomes', label: 'Nomes das Salas' },
