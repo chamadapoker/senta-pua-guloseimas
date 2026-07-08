@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
+import { checkRateLimit, recordAttempt, clientKey } from '../lib/rateLimit';
 import type { AppType } from '../index';
 
 const ximboca = new Hono<AppType>();
@@ -119,6 +120,73 @@ ximboca.delete('/publico/eventos/:id/participar', userAuthMiddleware, async (c) 
 
   await c.env.DB.prepare('DELETE FROM ximboca_participantes WHERE id = ?').bind(part.id).run();
   return c.json({ ok: true });
+});
+
+// ============ CHECK-IN (recepcionista logado) ============
+async function recepcionistaMiddleware(c: import('hono').Context<AppType>, next: import('hono').Next) {
+  return userAuthMiddleware(c, async () => {
+    const userId = c.get('userId');
+    const u = await c.env.DB.prepare('SELECT is_recepcionista FROM usuarios WHERE id = ?')
+      .bind(userId).first<{ is_recepcionista: number }>();
+    if (!u || u.is_recepcionista !== 1) return c.json({ error: 'Acesso restrito a recepcionistas' }, 403);
+    await next();
+  });
+}
+
+ximboca.get('/checkin/eventos', recepcionistaMiddleware, async (c) => {
+  const { results } = await c.env.DB.prepare(`
+    SELECT e.id, e.nome, e.data, e.imagem_url,
+      SUM(CASE WHEN p.status='pago' THEN 1 ELSE 0 END) as total_pagos,
+      SUM(CASE WHEN p.status='pago' AND p.checkin_at IS NOT NULL THEN 1 ELSE 0 END) as entraram
+    FROM ximboca_eventos e
+    LEFT JOIN ximboca_participantes p ON p.evento_id = e.id
+    WHERE e.status = 'aberto'
+    GROUP BY e.id ORDER BY e.data ASC
+  `).all();
+  return c.json(results);
+});
+
+ximboca.get('/checkin/:eventoId/lista', recepcionistaMiddleware, async (c) => {
+  const eventoId = c.req.param('eventoId');
+  const q = `%${(c.req.query('q') || '').trim()}%`;
+  const { results } = await c.env.DB.prepare(`
+    SELECT p.id, p.nome, p.numero_ingresso, p.checkin_at, t.nome as tipo_nome
+    FROM ximboca_participantes p
+    LEFT JOIN ximboca_ingresso_tipos t ON t.id = p.tipo_ingresso_id
+    WHERE p.evento_id = ? AND p.status = 'pago' AND p.nome LIKE ? COLLATE NOCASE
+    ORDER BY p.nome ASC LIMIT 50
+  `).bind(eventoId, q).all();
+  return c.json(results);
+});
+
+ximboca.post('/checkin/:eventoId/validar', recepcionistaMiddleware, async (c) => {
+  const eventoId = c.req.param('eventoId');
+  const trigrama = c.get('userTrigrama');
+
+  const rlKey = `${trigrama}:${clientKey(c)}`;
+  const rl = await checkRateLimit(c, 'ximboca_checkin_fail', rlKey, 30, 15);
+  if (!rl.ok) return c.json({ error: 'Muitas tentativas inválidas. Aguarde alguns minutos.' }, 429);
+
+  const { participante_id } = await c.req.json<{ participante_id: string }>();
+  const p = await c.env.DB.prepare(`
+    SELECT p.evento_id, p.nome, p.status, p.checkin_at, p.numero_ingresso, t.nome as tipo_nome
+    FROM ximboca_participantes p
+    LEFT JOIN ximboca_ingresso_tipos t ON t.id = p.tipo_ingresso_id
+    WHERE p.id = ?
+  `).bind(participante_id).first<{ evento_id: string; nome: string; status: string; checkin_at: string | null; numero_ingresso: number | null; tipo_nome: string | null }>();
+
+  if (!p || p.evento_id !== eventoId) {
+    await recordAttempt(c, 'ximboca_checkin_fail', rlKey);
+    return c.json({ estado: 'NAO_ENCONTRADO' });
+  }
+  if (p.status !== 'pago') return c.json({ estado: 'NAO_PAGO', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome });
+  if (p.checkin_at) return c.json({ estado: 'JA_ENTROU', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome, checkin_at: p.checkin_at });
+
+  await c.env.DB.prepare(
+    "UPDATE ximboca_participantes SET checkin_at = datetime('now'), checkin_por = ? WHERE id = ?"
+  ).bind(trigrama, participante_id).run();
+
+  return c.json({ estado: 'OK', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome });
 });
 
 // ============ ROTAS ADMIN (daqui em diante) ============
