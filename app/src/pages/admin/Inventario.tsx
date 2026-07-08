@@ -10,12 +10,17 @@ import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
 
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+function resolveImg(url: string | null): string | null {
+  return url ? (url.startsWith('/api') ? `${WORKER_URL}${url}` : url) : null;
+}
+
 interface Fornecedor { id: string; nome: string; contato: string | null; endereco: string | null; observacao: string | null; }
 interface Item {
   id: string; nome: string; finalidade: string | null; quantidade: number; unidade: string;
   valor_compra: number | null; fornecedor_id: string | null;
   fornecedor_nome: string | null; fornecedor_contato: string | null; fornecedor_endereco: string | null;
-  observacao: string | null;
+  observacao: string | null; foto_url: string | null;
 }
 
 const FINALIDADES = [
@@ -43,6 +48,24 @@ export function Inventario() {
   const [iValor, setIValor] = useState('');
   const [iFornecedor, setIFornecedor] = useState('');
   const [iObs, setIObs] = useState('');
+  const [iFoto, setIFoto] = useState<string | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+
+  const enviarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEnviandoFoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.upload<{ url: string }>('/api/inventario/upload', fd);
+      setIFoto(r.url);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao enviar foto', 'error');
+    } finally {
+      setEnviandoFoto(false);
+    }
+  };
 
   // Modal fornecedor
   const [modalForn, setModalForn] = useState(false);
@@ -68,6 +91,7 @@ export function Inventario() {
     setIValor(it?.valor_compra != null ? String(it.valor_compra) : '');
     setIFornecedor(it?.fornecedor_id || '');
     setIObs(it?.observacao || '');
+    setIFoto(it?.foto_url || null);
     setModalItem(true);
   };
   const salvarItem = async (e: React.FormEvent) => {
@@ -75,7 +99,7 @@ export function Inventario() {
     const body = {
       nome: iNome, finalidade: iFinalidade, quantidade: parseFloat(iQtd) || 0,
       unidade: iUnidade || 'un', valor_compra: iValor ? parseFloat(iValor) : null,
-      fornecedor_id: iFornecedor || null, observacao: iObs || null,
+      fornecedor_id: iFornecedor || null, observacao: iObs || null, foto_url: iFoto,
     };
     try {
       if (editItem) await api.put(`/api/inventario/${editItem.id}`, body);
@@ -132,7 +156,9 @@ export function Inventario() {
           {itens.map(it => (
             <div key={it.id} className="bg-white rounded-xl border border-borda shadow-sm p-4">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                <div className="flex items-start gap-3 min-w-0">
+                  {it.foto_url && <img src={resolveImg(it.foto_url)!} alt="" className="w-14 h-14 rounded-lg object-cover border border-borda flex-shrink-0" />}
+                  <div className="min-w-0">
                   <div className="font-medium text-texto">{it.nome}</div>
                   <div className="flex items-center gap-2 flex-wrap mt-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-azul/10 text-azul px-2 py-0.5 rounded">{finLabel(it.finalidade)}</span>
@@ -146,6 +172,7 @@ export function Inventario() {
                     </div>
                   )}
                   {it.observacao && <div className="text-[11px] text-texto-fraco mt-0.5 italic">{it.observacao}</div>}
+                  </div>
                 </div>
                 <Menu items={[
                   { label: 'Editar', icon: 'pencil', onClick: () => abrirItem(it) },
@@ -184,6 +211,17 @@ export function Inventario() {
           <div>
             <label className="block text-sm font-medium mb-1">Item</label>
             <input value={iNome} onChange={e => setINome(e.target.value)} className={inputClass} required placeholder="Ex: Quadro Sabre Alado" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Foto (opcional)</label>
+            <div className="flex items-center gap-3">
+              {iFoto && <img src={resolveImg(iFoto)!} alt="" className="w-16 h-16 rounded-lg object-cover border border-borda" />}
+              <label className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5 cursor-pointer">
+                <Icon name="upload" size={12} /> {enviandoFoto ? 'Enviando...' : iFoto ? 'Trocar foto' : 'Enviar foto'}
+                <input type="file" accept="image/*" onChange={enviarFoto} className="hidden" disabled={enviandoFoto} />
+              </label>
+              {iFoto && <button type="button" onClick={() => setIFoto(null)} className="text-xs text-vermelho hover:underline">Remover</button>}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
