@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
@@ -31,6 +31,7 @@ interface Evento {
 
 export function XimbocaEventos() {
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Evento | null>(null);
@@ -146,9 +147,9 @@ export function XimbocaEventos() {
                     <div className={`font-bold ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Link to={`/admin/ximboca/eventos/${ev.id}`} className="rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">Gerenciar</Link>
+                <div className="flex justify-end">
                   <Menu items={[
+                    { label: 'Gerenciar', icon: 'eye', onClick: () => navigate(`/admin/ximboca/eventos/${ev.id}`) },
                     { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(ev) },
                     { label: ev.status === 'aberto' ? 'Fechar' : 'Reabrir', icon: ev.status === 'aberto' ? 'x' : 'refresh', onClick: () => toggleStatus(ev) },
                     { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(ev) },

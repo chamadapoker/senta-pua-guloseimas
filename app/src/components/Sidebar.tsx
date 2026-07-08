@@ -95,10 +95,25 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
   const { token: adminToken, logout: adminLogout } = useAuth();
   const { user, logout: userLogout } = useUserAuth();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [hover, setHover] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
 
   const isAdmin = !!adminToken;
   const isUser = !!user;
   const [compPendentes, setCompPendentes] = useState(0);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // "mini" = modo estreito (só ícones), APENAS no desktop e quando recolhido e sem hover.
+  // No mobile nunca é mini (a gaveta abre sempre em largura cheia).
+  const mini = isDesktop && collapsed && !hover;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -130,7 +145,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
       return location.pathname === childPath;
     });
 
-  const sidebarWidth = collapsed ? 'w-16' : 'w-64';
+  const sidebarWidth = mini ? 'w-64 lg:w-16' : 'w-64';
 
   return (
     <>
@@ -138,12 +153,15 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
       )}
 
-      <aside className={`fixed top-0 left-0 h-full bg-white border-r border-borda z-50 flex flex-col transition-all duration-300
+      <aside
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        className={`fixed top-0 left-0 h-full bg-white border-r border-borda z-50 flex flex-col transition-all duration-300
         ${sidebarWidth}
         ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex items-center justify-between px-3 py-4 border-b border-borda">
-          {!collapsed ? (
+          {!mini ? (
             <Link to={isAdmin ? '/admin' : '/'} className="flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
               <span className="font-display text-azul text-lg tracking-wider">SENTA PUA</span>
@@ -171,7 +189,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                 <>
                   <button
                     onClick={() => {
-                      if (collapsed) {
+                      if (mini) {
                         onToggleCollapse();
                         if (!openMenus[item.to]) toggleMenu(item.to);
                       } else {
@@ -183,7 +201,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                     `}
                   >
                     <div className="w-5 flex justify-center">{item.icon}</div>
-                    {!collapsed && (
+                    {!mini && (
                       <>
                         <span className="flex-1 text-left">{item.label}</span>
                         <svg className={`w-4 h-4 transition-transform ${openMenus[item.to] || isInSection(item) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +210,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                       </>
                     )}
                   </button>
-                  {!collapsed && (openMenus[item.to] || isInSection(item)) && (
+                  {!mini && (openMenus[item.to] || isInSection(item)) && (
                     <div className="ml-8 space-y-0.5 mb-1">
                       {item.children.map(child => (
                         <Link
@@ -217,9 +235,9 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                   `}
                 >
                   <div className="w-5 flex justify-center">{item.icon}</div>
-                  {!collapsed && <span className="flex-1">{item.label}</span>}
+                  {!mini && <span className="flex-1">{item.label}</span>}
                   {item.to === '/admin/comprovantes' && compPendentes > 0 && (
-                    <span className={`${collapsed ? 'absolute -top-1 -right-1' : ''} text-[10px] font-bold bg-vermelho text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center`}>
+                    <span className={`${mini ? 'absolute -top-1 -right-1' : ''} text-[10px] font-bold bg-vermelho text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center`}>
                       {compPendentes}
                     </span>
                   )}
@@ -234,22 +252,22 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
             <button onClick={adminLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-vermelho hover:bg-red-50 transition-all">
               <Icon name="x" />
-              {!collapsed && <span>Sair (Admin)</span>}
+              {!mini && <span>Sair (Admin)</span>}
             </button>
           ) : isUser ? (
             <button onClick={userLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-vermelho hover:bg-red-50 transition-all">
               <Icon name="x" />
-              {!collapsed && <span>Sair</span>}
+              {!mini && <span>Sair</span>}
             </button>
           ) : (
             <Link to="/login"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-azul hover:bg-azul/10 transition-all">
               <Icon name="user" />
-              {!collapsed && <span>Entrar / Cadastrar</span>}
+              {!mini && <span>Entrar / Cadastrar</span>}
             </Link>
           )}
-          {!collapsed && (
+          {!mini && (
             <div className="px-2 pt-2 text-center text-[10px] text-texto-fraco/60">v{__APP_VERSION__}</div>
           )}
         </div>

@@ -9,7 +9,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, right, className = '' }: PageHeaderProps) {
   return (
-    <div className={`flex items-start justify-between gap-3 mb-5 ${className}`}>
+    <div className={`flex items-start justify-between gap-3 gap-y-2 flex-wrap mb-5 ${className}`}>
       <div>
         <h1 className="font-display text-2xl text-azul tracking-wider">{title}</h1>
         {subtitle && <p className="text-sm text-texto-fraco mt-1">{subtitle}</p>}

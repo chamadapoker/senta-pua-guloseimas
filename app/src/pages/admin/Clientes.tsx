@@ -84,9 +84,9 @@ export function Clientes() {
           <thead>
             <tr className="bg-azul">
               <th className="px-4 py-3 text-left text-xs text-white uppercase tracking-wider">Trigrama</th>
-              <th className="px-4 py-3 text-left text-xs text-white uppercase tracking-wider">SARAM</th>
-              <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Comprado</th>
-              <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Pago</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left text-xs text-white uppercase tracking-wider">SARAM</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Comprado</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Pago</th>
               <th className="px-4 py-3 text-right text-xs text-white uppercase tracking-wider">Saldo</th>
               <th className="px-4 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
             </tr>
@@ -111,9 +111,9 @@ export function Clientes() {
                     <span className="ml-2 text-[10px] text-azul font-medium bg-azul/10 px-1.5 py-0.5 rounded">VISITANTE{c.esquadrao_origem ? ` - ${c.esquadrao_origem}` : ''}</span>
                   ) : null}
                 </td>
-                <td className="px-4 py-3 text-left text-texto-fraco font-mono text-[11px]">{c.saram || '---'}</td>
-                <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
-                <td className="px-4 py-3 text-right text-texto-fraco">R$ {(c.total_pago ?? 0).toFixed(2)}</td>
+                <td className="hidden sm:table-cell px-4 py-3 text-left text-texto-fraco font-mono text-[11px]">{c.saram || '---'}</td>
+                <td className="hidden sm:table-cell px-4 py-3 text-right text-texto-fraco">R$ {(c.total_comprado ?? 0).toFixed(2)}</td>
+                <td className="hidden sm:table-cell px-4 py-3 text-right text-texto-fraco">R$ {(c.total_pago ?? 0).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right">
                   <Badge variant={(c.saldo_devedor ?? 0) > 0 ? 'danger' : 'success'}>
                     R$ {(c.saldo_devedor ?? 0).toFixed(2)}

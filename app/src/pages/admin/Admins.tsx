@@ -102,7 +102,8 @@ export function Admins() {
       )}
 
       <div className="bg-white rounded-xl border border-borda overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="bg-azul">
               <th className="px-3 py-2 text-left text-white font-medium">Nome</th>
@@ -144,6 +145,7 @@ export function Admins() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <Modal open={modalAberto} onClose={() => setModalAberto(false)} title={editando ? 'Editar Admin' : 'Novo Admin'}>

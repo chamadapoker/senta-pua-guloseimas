@@ -15,7 +15,8 @@ function resolveImg(url: string | null): string | null {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
+  // Sempre inicia expandida (ao logar/recarregar). O recolher vale só durante a sessão.
+  const [collapsed, setCollapsed] = useState(false);
   const [notificacoes, setNotificacoes] = useState<any[]>([]);
   const [showNotif, setShowNotif] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -47,10 +48,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const unreadCount = notificacoes.filter(n => !n.lida).length;
-
-  useEffect(() => {
-    localStorage.setItem('sidebar_collapsed', String(collapsed));
-  }, [collapsed]);
 
   const sidebarPl = collapsed ? 'lg:pl-16' : 'lg:pl-64';
 
