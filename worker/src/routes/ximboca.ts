@@ -12,7 +12,7 @@ const ximboca = new Hono<AppType>();
 ximboca.get('/publico/evento/:id', async (c) => {
   const id = c.req.param('id');
   const evento = await c.env.DB.prepare(
-    'SELECT id, nome, data, descricao, imagem_url, status, valor_por_pessoa, valor_cerveja, valor_refri FROM ximboca_eventos WHERE id = ?'
+    'SELECT id, nome, data, descricao, imagem_url, status, valor_por_pessoa, valor_cerveja, valor_refri, inscricao_ate FROM ximboca_eventos WHERE id = ?'
   ).bind(id).first();
   if (!evento) return c.json({ error: 'Evento não encontrado' }, 404);
   const { results: tipos } = await c.env.DB.prepare(
@@ -84,10 +84,14 @@ ximboca.post('/publico/eventos/:id/participar', userAuthMiddleware, visitorActiv
   const whatsapp = user?.whatsapp || null;
 
   const evento = await c.env.DB.prepare(
-    'SELECT id, status, valor_por_pessoa, valor_cerveja, valor_refri FROM ximboca_eventos WHERE id = ?'
-  ).bind(eventoId).first<{ id: string; status: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null }>();
+    'SELECT id, status, valor_por_pessoa, valor_cerveja, valor_refri, inscricao_ate FROM ximboca_eventos WHERE id = ?'
+  ).bind(eventoId).first<{ id: string; status: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; inscricao_ate: string | null }>();
   if (!evento) return c.json({ error: 'Evento não encontrado' }, 404);
   if (evento.status !== 'aberto') return c.json({ error: 'Evento está fechado' }, 400);
+  if (evento.inscricao_ate) {
+    const hojeBRT = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (hojeBRT > evento.inscricao_ate) return c.json({ error: 'As inscrições para este evento estão encerradas' }, 400);
+  }
 
   const exist = await c.env.DB.prepare(
     'SELECT id FROM ximboca_participantes WHERE evento_id = ? AND nome = ? COLLATE NOCASE'
@@ -246,15 +250,16 @@ ximboca.get('/eventos', async (c) => {
 
 // Create event
 ximboca.post('/eventos', async (c) => {
-  const { nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp } = await c.req.json();
+  const { nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp, inscricao_ate } = await c.req.json();
   if (!nome || !data) return c.json({ error: 'Nome e data obrigatórios' }, 400);
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    'INSERT INTO ximboca_eventos (nome, data, valor_por_pessoa, descricao, valor_cerveja, valor_refri, pix_chave, pix_tipo, pix_nome, pix_whatsapp, inscricao_ate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
   ).bind(
     nome, data, valor_por_pessoa ?? 0, descricao || '',
     valor_cerveja ?? null, valor_refri ?? null,
-    pix_chave || null, pix_tipo || null, pix_nome || null, pix_whatsapp || null
+    pix_chave || null, pix_tipo || null, pix_nome || null, pix_whatsapp || null,
+    inscricao_ate || null
   ).all();
 
   return c.json(results[0], 201);
@@ -294,6 +299,7 @@ ximboca.put('/eventos/:id', async (c) => {
   if ('descricao' in body) { fields.push('descricao = ?'); values.push(body.descricao); }
   if ('status' in body) { fields.push('status = ?'); values.push(body.status); }
   if ('valor_cerveja' in body) { fields.push('valor_cerveja = ?'); values.push(body.valor_cerveja ?? null); }
+  if ('inscricao_ate' in body) { fields.push('inscricao_ate = ?'); values.push(body.inscricao_ate || null); }
   if ('valor_refri' in body) { fields.push('valor_refri = ?'); values.push(body.valor_refri ?? null); }
   if ('pix_chave' in body) { fields.push('pix_chave = ?'); values.push(body.pix_chave || null); }
   if ('pix_tipo' in body) { fields.push('pix_tipo = ?'); values.push(body.pix_tipo || null); }

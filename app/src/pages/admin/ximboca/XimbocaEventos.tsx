@@ -19,6 +19,7 @@ interface Evento {
   valor_refri: number | null;
   descricao: string;
   status: string;
+  inscricao_ate: string | null;
   pix_chave: string | null;
   pix_tipo: string | null;
   pix_nome: string | null;
@@ -37,6 +38,7 @@ export function XimbocaEventos() {
   const [editando, setEditando] = useState<Evento | null>(null);
   const [nome, setNome] = useState('');
   const [data, setData] = useState('');
+  const [inscricaoAte, setInscricaoAte] = useState('');
   const [valorPessoa, setValorPessoa] = useState('');
   const [valorCerveja, setValorCerveja] = useState('');
   const [valorRefri, setValorRefri] = useState('');
@@ -51,7 +53,7 @@ export function XimbocaEventos() {
 
   const limparForm = () => {
     setEditando(null);
-    setNome(''); setData(''); setValorPessoa('');
+    setNome(''); setData(''); setInscricaoAte(''); setValorPessoa('');
     setValorCerveja(''); setValorRefri(''); setDescricao('');
     setPixChave(''); setPixTipo('aleatoria'); setPixNome(''); setPixWhatsapp('');
   };
@@ -60,6 +62,7 @@ export function XimbocaEventos() {
     setEditando(ev);
     setNome(ev.nome);
     setData(ev.data);
+    setInscricaoAte(ev.inscricao_ate || '');
     setValorPessoa(ev.valor_por_pessoa?.toString() || '');
     setValorCerveja(ev.valor_cerveja !== null ? ev.valor_cerveja.toString() : '');
     setValorRefri(ev.valor_refri !== null ? ev.valor_refri.toString() : '');
@@ -80,6 +83,7 @@ export function XimbocaEventos() {
     e.preventDefault();
     const body = {
       nome, data,
+      inscricao_ate: inscricaoAte || null,
       valor_por_pessoa: parseFloat(valorPessoa) || 0,
       valor_cerveja: valorCerveja ? parseFloat(valorCerveja) : null,
       valor_refri: valorRefri ? parseFloat(valorRefri) : null,
@@ -171,13 +175,18 @@ export function XimbocaEventos() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Data</label>
+              <label className="block text-sm font-medium mb-1">Data do evento</label>
               <input type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Valor por pessoa (R$)</label>
-              <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className={inputClass} placeholder="0.00" />
+              <label className="block text-sm font-medium mb-1">Inscrições até</label>
+              <input type="date" value={inscricaoAte} onChange={e => setInscricaoAte(e.target.value)} className={inputClass} />
+              <p className="text-[11px] text-texto-fraco mt-0.5">Vazio = sem limite</p>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Valor por pessoa (R$)</label>
+            <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className={inputClass} placeholder="0.00" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

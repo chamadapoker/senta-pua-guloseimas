@@ -172,7 +172,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
             </Link>
           )}
           <button
-            onClick={onToggleCollapse}
+            onClick={() => { onToggleCollapse(); setHover(false); }}
             className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-fundo text-texto-fraco"
             title={collapsed ? 'Expandir' : 'Recolher'}
           >

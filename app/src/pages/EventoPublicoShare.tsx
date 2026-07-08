@@ -13,6 +13,7 @@ interface EventoAberto {
   id: string; nome: string; data: string; descricao: string;
   imagem_url: string | null; status: string; valor_por_pessoa: number;
   valor_cerveja: number | null; valor_refri: number | null;
+  inscricao_ate: string | null;
   tipos: IngressoTipo[]; total_participantes: number;
 }
 
@@ -68,7 +69,9 @@ export function EventoPublicoShare() {
   if (!evento) return <div className="min-h-screen flex items-center justify-center text-texto-fraco bg-fundo">Carregando...</div>;
 
   const capa = resolveImg(evento.imagem_url);
-  const fechado = evento.status !== 'aberto';
+  const hojeBRT = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const prazoEncerrado = !!evento.inscricao_ate && hojeBRT > evento.inscricao_ate;
+  const encerrado = evento.status !== 'aberto' || prazoEncerrado;
 
   return (
     <div className="min-h-screen bg-fundo">
@@ -94,6 +97,11 @@ export function EventoPublicoShare() {
             <Icon name="clock" size={16} className="text-azul" />
             <span className="capitalize font-medium text-texto">{formatData(evento.data)}</span>
           </div>
+          {evento.inscricao_ate && !prazoEncerrado && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <Icon name="alarm" size={14} /> Inscrições até {formatData(evento.inscricao_ate)}
+            </div>
+          )}
 
           {evento.descricao && <p className="text-sm text-texto leading-relaxed">{evento.descricao}</p>}
 
@@ -113,7 +121,7 @@ export function EventoPublicoShare() {
           )}
 
           {/* CTA */}
-          {fechado ? (
+          {encerrado ? (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-sm text-amber-800">
               As inscrições deste evento estão encerradas.
             </div>
