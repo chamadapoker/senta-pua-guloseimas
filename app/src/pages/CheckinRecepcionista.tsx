@@ -18,6 +18,7 @@ export function CheckinRecepcionista() {
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [busca, setBusca] = useState('');
   const [lista, setLista] = useState<PagoItem[]>([]);
+  const [erroBusca, setErroBusca] = useState('');
   const travadoRef = useRef(false);
 
   const carregarEventos = async () => {
@@ -54,8 +55,13 @@ export function CheckinRecepcionista() {
   const buscar = async (q: string) => {
     setBusca(q);
     if (!eventoId) return;
-    const res = await api.get<PagoItem[]>(`/api/ximboca/checkin/${eventoId}/lista?q=${encodeURIComponent(q)}`);
-    setLista(res);
+    try {
+      const res = await api.get<PagoItem[]>(`/api/ximboca/checkin/${eventoId}/lista?q=${encodeURIComponent(q)}`);
+      setLista(res);
+      setErroBusca('');
+    } catch {
+      setErroBusca('Erro ao buscar. Tente de novo.');
+    }
   };
 
   // Lista de eventos (sem evento selecionado)
@@ -99,6 +105,7 @@ export function CheckinRecepcionista() {
         <div className="text-xs text-gray-400 mb-1">Não leu? Busque pelo nome:</div>
         <input value={busca} onChange={e => buscar(e.target.value)} placeholder="Nome do participante"
           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-2" />
+        {erroBusca && <p className="text-red-400 text-xs mb-2">{erroBusca}</p>}
         <div className="space-y-1">
           {lista.map(p => (
             <button key={p.id} onClick={() => validar(p.id)} disabled={!!p.checkin_at}
