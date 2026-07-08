@@ -5,7 +5,8 @@ type IconName =
   | 'note' | 'check' | 'x' | 'clock' | 'document' | 'archive' | 'paper-clip' | 'upload'
   | 'download' | 'printer' | 'user' | 'trash' | 'alarm' | 'warning' | 'arrow-left'
   | 'arrow-right' | 'chevron-up' | 'chevron-down' | 'chevron-right' | 'close' | 'pix'
-  | 'plus' | 'qr-code' | 'refresh' | 'info' | 'eye' | 'bell' | 'coffee' | 'fire' | 'cutlery' | 'vault' | 'users' | 'menu';
+  | 'plus' | 'qr-code' | 'refresh' | 'info' | 'eye' | 'bell' | 'coffee' | 'fire' | 'cutlery' | 'vault' | 'users' | 'menu'
+  | 'beer' | 'soda';
 
 interface Props extends Omit<SVGProps<SVGSVGElement>, 'name'> {
   name: IconName;
@@ -53,6 +54,8 @@ const PATHS: Record<IconName, string | ReactElement> = {
   'vault':         'M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   'users':         'M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-3.833-6.247 4.125 4.125 0 0 0-3.833 6.247ZM15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z',
   'menu':          'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5',
+  'beer':          'M7 9h7v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9Z M14 11h2.25a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H14 M7 9c0-1.5 1.6-2.6 3.5-2.6S14 7.5 14 9 M9.5 12.5v3.5 M11.5 12.5v3.5',
+  'soda':          'M6 8h12 M7.4 8 8.4 19.8a2 2 0 0 0 2 1.8h3.2a2 2 0 0 0 2-1.8L16.6 8 M14 3l-2.4 5 M9.2 12h5.6',
 };
 
 export function Icon({ name, size = 16, className = '', ...rest }: Props) {

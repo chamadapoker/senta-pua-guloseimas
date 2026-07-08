@@ -85,9 +85,9 @@ export function LojaPedidos() {
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
                   <td className="px-3 py-3 flex items-center gap-2">
                     {p.status !== 'pago' && (
-                      <button onClick={() => marcarPago(p.id)} className="text-verde text-xs hover:underline">Pagar</button>
+                      <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
                     )}
-                    <button onClick={() => excluir(p.id)} className="text-vermelho text-xs hover:underline">Excluir</button>
+                    <Button variant="chip-danger" size="xs" onClick={() => excluir(p.id)}>Excluir</Button>
                   </td>
                 </tr>
               ))}

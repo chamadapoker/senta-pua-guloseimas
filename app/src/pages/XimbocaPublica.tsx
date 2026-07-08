@@ -5,6 +5,7 @@ import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
 import { EnviarComprovante } from '../components/ui/EnviarComprovante';
+import { Icon } from '../components/ui/Icon';
 import { api } from '../services/api';
 import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
@@ -240,10 +241,10 @@ export function XimbocaPublica() {
                   <div className="text-texto-fraco mb-1">Valores:</div>
                   <div className="space-y-0.5">
                     {ev.valor_cerveja !== null && (
-                      <div className="flex justify-between"><span>🍺 Cerveja</span><span className="font-medium">R$ {ev.valor_cerveja.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span className="inline-flex items-center gap-1"><Icon name="beer" size={12} /> Cerveja</span><span className="font-medium">R$ {ev.valor_cerveja.toFixed(2)}</span></div>
                     )}
                     {ev.valor_refri !== null && (
-                      <div className="flex justify-between"><span>🥤 Refrigerante</span><span className="font-medium">R$ {ev.valor_refri.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span className="inline-flex items-center gap-1"><Icon name="soda" size={12} /> Refrigerante</span><span className="font-medium">R$ {ev.valor_refri.toFixed(2)}</span></div>
                     )}
                     {(ev.valor_cerveja === null && ev.valor_refri === null) || ev.valor_por_pessoa > 0 ? (
                       <div className="flex justify-between"><span>Padrão</span><span className="font-medium">R$ {ev.valor_por_pessoa.toFixed(2)}</span></div>
@@ -405,7 +406,7 @@ export function XimbocaPublica() {
                     categoriaEscolhida === 'cerveja' ? 'bg-azul text-white border-azul' : 'bg-white border-borda hover:border-azul/50'
                   }`}
                 >
-                  <span className="flex items-center gap-2">🍺 Cerveja</span>
+                  <span className="flex items-center gap-2"><Icon name="beer" size={14} /> Cerveja</span>
                   <span className="font-bold">R$ {participarModal.valor_cerveja.toFixed(2)}</span>
                 </button>
               )}
@@ -417,7 +418,7 @@ export function XimbocaPublica() {
                     categoriaEscolhida === 'refri' ? 'bg-azul text-white border-azul' : 'bg-white border-borda hover:border-azul/50'
                   }`}
                 >
-                  <span className="flex items-center gap-2">🥤 Refrigerante</span>
+                  <span className="flex items-center gap-2"><Icon name="soda" size={14} /> Refrigerante</span>
                   <span className="font-bold">R$ {participarModal.valor_refri.toFixed(2)}</span>
                 </button>
               )}

@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'success' | 'danger' | 'outline' | 'ghost'
-    | 'chip' | 'chip-primary' | 'chip-success' | 'chip-danger';
+    | 'chip' | 'chip-primary' | 'chip-success' | 'chip-warning' | 'chip-danger';
   size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
@@ -16,6 +16,8 @@ const variants = {
   chip: 'bg-fundo-elevado text-texto border border-borda hover:bg-borda font-medium',
   'chip-primary': 'bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 font-medium',
   'chip-success': 'bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100 font-medium',
+  // Âmbar: ações reversíveis (Desativar, Bloquear, Fechar) — distingue de exclusão permanente (vermelho).
+  'chip-warning': 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-medium',
   'chip-danger': 'bg-red-50 text-vermelho border border-red-200 hover:bg-red-100 font-medium',
 };
 

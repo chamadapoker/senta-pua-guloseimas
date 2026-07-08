@@ -141,8 +141,8 @@ export function CafeMensalidades() {
                   <td className="px-3 py-3">
                     {m.status === 'pendente' && (
                       <div className="flex gap-2">
-                        <button onClick={() => marcarPago(m.id)} className="text-verde text-xs hover:underline">Pagar</button>
-                        <button onClick={() => cobrar(m)} className="text-azul text-xs hover:underline">PDF</button>
+                        <Button variant="chip-success" size="xs" onClick={() => marcarPago(m.id)}>Pagar</Button>
+                        <Button variant="chip-primary" size="xs" onClick={() => cobrar(m)}>PDF</Button>
                       </div>
                     )}
                   </td>

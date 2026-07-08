@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import type { Cliente } from '../../types';
@@ -118,22 +119,20 @@ export function Clientes() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-1.5">
-                    <button
+                    <Button
+                      variant={c.ativo ? 'chip-warning' : 'chip-success'}
+                      size="xs"
                       onClick={(e) => toggleBloqueio(e, c)}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
-                        c.ativo
-                          ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                          : 'text-verde bg-green-50 border border-green-200 hover:bg-green-100'
-                      }`}
                     >
                       {c.ativo ? 'Bloquear' : 'Desbloquear'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="chip-danger"
+                      size="xs"
                       onClick={(e) => excluirMilitar(e, c)}
-                      className="text-xs font-medium px-2.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100"
                     >
                       Excluir
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>

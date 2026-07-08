@@ -124,12 +124,12 @@ export function Admins() {
                 <td className="px-3 py-2 text-right">
                   {isSuperAdmin && (
                     <div className="flex gap-1 justify-end flex-wrap">
-                      <button onClick={() => abrirEditar(a)} className="text-xs px-2 py-1 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200">Editar</button>
-                      <button onClick={() => toggleAtivo(a)} className="text-xs px-2 py-1 rounded-lg text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100">
+                      <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>Editar</Button>
+                      <Button variant={a.ativo ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleAtivo(a)}>
                         {a.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
+                      </Button>
                       {a.id !== currentAdmin?.id && (
-                        <button onClick={() => excluir(a)} className="text-xs px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">Excluir</button>
+                        <Button variant="chip-danger" size="xs" onClick={() => excluir(a)}>Excluir</Button>
                       )}
                     </div>
                   )}

@@ -188,20 +188,15 @@ export function CafeAssinantes() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1.5">
-                      <button onClick={() => abrirEditar(a)}
-                        className="text-xs font-medium px-2.5 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">
+                      <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>
                         Editar
-                      </button>
-                      <button onClick={() => toggleAtivo(a)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
-                          a.ativo ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100' : 'text-verde bg-green-50 border border-green-200 hover:bg-green-100'
-                        }`}>
+                      </Button>
+                      <Button variant={a.ativo ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleAtivo(a)}>
                         {a.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
-                      <button onClick={() => excluir(a)}
-                        className="text-xs font-medium px-2.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">
+                      </Button>
+                      <Button variant="chip-danger" size="xs" onClick={() => excluir(a)}>
                         Excluir
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -298,8 +293,7 @@ export function CafeAssinantes() {
                         ) : (
                           <>
                             <Badge variant="warning">Pendente</Badge>
-                            <button onClick={() => marcarPago(p.id)}
-                              className="text-xs text-verde font-medium hover:underline">Pagar</button>
+                            <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
                           </>
                         )}
                       </div>

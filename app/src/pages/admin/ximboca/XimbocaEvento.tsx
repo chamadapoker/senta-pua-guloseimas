@@ -227,8 +227,8 @@ export function XimbocaEvento() {
       </div>
       <p className="text-sm text-texto-fraco mb-3">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
       <div className="flex gap-2 flex-wrap mb-5">
-        <button onClick={abrirEdicao} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200 inline-flex items-center gap-1.5"><Icon name="pencil" size={12} /> Editar Evento</button>
-        <button onClick={() => setModalQR(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5"><Icon name="qr-code" size={12} /> QR Code</button>
+        <Button variant="chip-primary" size="xs" onClick={abrirEdicao} className="inline-flex items-center gap-1.5"><Icon name="pencil" size={12} /> Editar Evento</Button>
+        <Button variant="chip-primary" size="xs" onClick={() => setModalQR(true)} className="inline-flex items-center gap-1.5"><Icon name="qr-code" size={12} /> QR Code</Button>
       </div>
 
       {/* Financial summary */}
@@ -272,7 +272,7 @@ export function XimbocaEvento() {
               {tipos.map(t => (
                 <div key={t.id} className="flex items-center justify-between bg-fundo rounded-lg px-3 py-2 text-sm">
                   <span>{t.nome} — <span className="font-medium">R$ {t.valor.toFixed(2)}</span></span>
-                  <button onClick={() => removerTipo(t.id)} className="text-xs font-medium px-1.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                  <Button variant="chip-danger" size="xs" onClick={() => removerTipo(t.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
                 </div>
               ))}
               {tipos.length === 0 && <p className="text-xs text-texto-fraco">Sem tipos — o evento usa o valor por pessoa padrão.</p>}
@@ -315,14 +315,14 @@ export function XimbocaEvento() {
                   <>
                     <a href={`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`}
                       target="_blank" rel="noopener noreferrer"
-                      className={`text-xs font-medium px-2 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100 ${!p.whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
+                      className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100 ${!p.whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
                       Cobrar
                     </a>
-                    <button onClick={() => cobrarParticipante(p)} className="text-xs font-medium px-2 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">PDF</button>
-                    <button onClick={() => marcarPago(p.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">Pagar</button>
+                    <Button variant="chip-primary" size="xs" onClick={() => cobrarParticipante(p)}>PDF</Button>
+                    <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
                   </>
                 )}
-                <button onClick={() => removerParticipante(p.id)} className="text-xs font-medium px-1.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                <Button variant="chip-danger" size="xs" onClick={() => removerParticipante(p.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
               </div>
             </div>
           ))}
@@ -349,7 +349,7 @@ export function XimbocaEvento() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-vermelho text-sm">R$ {d.valor.toFixed(2)}</span>
-                <button onClick={() => removerDespesa(d.id)} className="text-xs font-medium px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                <Button variant="chip-danger" size="xs" onClick={() => removerDespesa(d.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
               </div>
             </div>
           ))}
@@ -434,11 +434,11 @@ export function XimbocaEvento() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">🍺 Cerveja</label>
+              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="beer" size={14} /> Cerveja</label>
               <input type="number" step="0.01" value={edCerveja} onChange={e => setEdCerveja(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">🥤 Refri</label>
+              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="soda" size={14} /> Refri</label>
               <input type="number" step="0.01" value={edRefri} onChange={e => setEdRefri(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
           </div>

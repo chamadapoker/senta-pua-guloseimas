@@ -147,13 +147,14 @@ export function Cobrancas() {
                   {d.dias_atraso}d
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
+                  <Button
+                    variant="chip-success"
+                    size="xs"
                     onClick={() => abrirWhatsapp(d)}
                     disabled={!d.whatsapp}
-                    className="text-xs px-2 py-1 rounded-lg text-verde bg-green-50 border border-green-200 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {d.whatsapp ? <span className="inline-flex items-center gap-1"><Icon name="device-phone" size={12} /> WhatsApp</span> : 'sem zap'}
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

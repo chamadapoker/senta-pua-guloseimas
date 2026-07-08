@@ -530,7 +530,7 @@ export function Usuarios() {
                   </Button>
                 )}
                 {u.cliente_id ? (
-                  <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto text-xs text-azul hover:underline self-center">
+                  <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto self-center rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">
                     Ver extrato financeiro →
                   </Link>
                 ) : (

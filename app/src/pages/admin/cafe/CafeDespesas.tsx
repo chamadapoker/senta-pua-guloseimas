@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
+import { Icon } from '../../../components/ui/Icon';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
@@ -134,7 +135,9 @@ export function CafeDespesas() {
                 <td className="px-3 py-2 text-xs capitalize">{d.tipo}</td>
                 <td className="px-3 py-2 text-right font-medium text-vermelho">R$ {d.valor.toFixed(2)}</td>
                 <td className="px-3 py-2 text-right">
-                  <button onClick={() => excluir(d)} className="text-xs px-2 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                  <Button variant="chip-danger" size="xs" onClick={() => excluir(d)} aria-label="Excluir">
+                    <Icon name="trash" size={14} />
+                  </Button>
                 </td>
               </tr>
             ))}

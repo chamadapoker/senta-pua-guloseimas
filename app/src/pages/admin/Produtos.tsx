@@ -166,8 +166,8 @@ export function Produtos() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => abrirEditar(p)} className="text-white/80 text-xs font-medium hover:underline">Editar</button>
-                  <button onClick={() => excluir(p)} className="text-red-300 text-xs font-medium hover:underline">Excluir</button>
+                  <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(p)}>Editar</Button>
+                  <Button variant="chip-danger" size="xs" onClick={() => excluir(p)}>Excluir</Button>
                 </div>
               </div>
             </div>

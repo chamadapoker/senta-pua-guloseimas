@@ -60,8 +60,8 @@ export function XimbocaEstoque() {
             </div>
             {i.origem_evento && <p className="text-xs text-texto-fraco mb-3">Sobra de: {i.origem_evento}</p>}
             <div className="flex gap-2">
-              <button onClick={() => abrirEditar(i)} className="text-azul text-xs font-medium hover:underline">Editar</button>
-              <button onClick={() => excluir(i)} className="text-vermelho text-xs font-medium hover:underline">Excluir</button>
+              <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(i)}>Editar</Button>
+              <Button variant="chip-danger" size="xs" onClick={() => excluir(i)}>Excluir</Button>
             </div>
           </div>
         ))}

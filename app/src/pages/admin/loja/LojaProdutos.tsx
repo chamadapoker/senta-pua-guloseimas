@@ -235,8 +235,8 @@ export function LojaProdutos() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-texto-fraco">Total: {estoqueTotal(p)} un.</span>
                 <div className="flex gap-2">
-                  <button onClick={() => abrirEditar(p)} className="text-azul text-xs font-medium hover:underline">Editar</button>
-                  <button onClick={() => excluir(p)} className="text-vermelho text-xs font-medium hover:underline">Excluir</button>
+                  <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(p)}>Editar</Button>
+                  <Button variant="chip-danger" size="xs" onClick={() => excluir(p)}>Excluir</Button>
                 </div>
               </div>
             </div>

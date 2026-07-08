@@ -144,12 +144,12 @@ export function XimbocaEventos() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <Link to={`/admin/ximboca/eventos/${ev.id}`} className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100">Gerenciar</Link>
-                  <button onClick={() => abrirEditar(ev)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-texto bg-fundo border border-borda hover:bg-gray-200">Editar</button>
-                  <button onClick={() => toggleStatus(ev)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100">
+                  <Link to={`/admin/ximboca/eventos/${ev.id}`} className="rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">Gerenciar</Link>
+                  <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(ev)}>Editar</Button>
+                  <Button variant={ev.status === 'aberto' ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleStatus(ev)}>
                     {ev.status === 'aberto' ? 'Fechar' : 'Reabrir'}
-                  </button>
-                  <button onClick={() => excluir(ev)} className="text-xs font-medium px-3 py-1.5 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">Excluir</button>
+                  </Button>
+                  <Button variant="chip-danger" size="xs" onClick={() => excluir(ev)}>Excluir</Button>
                 </div>
               </div>
             </div>
