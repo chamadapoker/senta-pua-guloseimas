@@ -328,22 +328,24 @@ export function XimbocaPublica() {
                     </div>
                   </div>
 
-                  {ev.meu_status === 'pago' && (
-                    <div className="mt-3 border border-green-200 rounded-xl overflow-hidden">
-                      {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-56 sm:max-h-40" />}
-                      <div className="p-4 text-center">
-                        <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Seu ingresso</div>
-                        <div className="font-display text-lg text-azul">#{String(ev.numero_ingresso ?? 0).padStart(3, '0')}</div>
-                        {ev.tipo_nome && <div className="text-xs text-texto-fraco mb-2">{ev.tipo_nome}</div>}
-                        <div className="inline-block bg-white p-3 rounded-xl border border-borda">
-                          <QRCodeCanvas value={ev.participante_id} size={180} level="M" includeMargin />
-                        </div>
-                        <p className="text-xs text-texto-fraco mt-2">
-                          {ev.checkin_at ? 'Entrada já registrada ✓' : 'Mostre este QR na entrada'}
-                        </p>
+                  <div className={`mt-3 border rounded-xl overflow-hidden ${ev.meu_status === 'pago' ? 'border-green-200' : 'border-amber-200'}`}>
+                    {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-56 sm:max-h-40" />}
+                    <div className="p-4 text-center">
+                      <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Seu ingresso</div>
+                      <div className="font-display text-lg text-azul">#{String(ev.numero_ingresso ?? 0).padStart(3, '0')}</div>
+                      {ev.tipo_nome && <div className="text-xs text-texto-fraco mb-2">{ev.tipo_nome}</div>}
+                      <div className="inline-block bg-white p-3 rounded-xl border border-borda">
+                        <QRCodeCanvas value={ev.participante_id} size={180} level="M" includeMargin />
                       </div>
+                      <p className={`text-xs mt-2 font-medium ${ev.meu_status === 'pago' ? 'text-verde-escuro' : 'text-amber-700'}`}>
+                        {ev.checkin_at
+                          ? 'Entrada já registrada ✓'
+                          : ev.meu_status === 'pago'
+                            ? 'Mostre este QR na entrada'
+                            : 'Mostre este QR na entrada. A entrada só libera após o pagamento ser aprovado.'}
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   {ev.meu_status !== 'pago' && (
                     <div className="mt-3 space-y-2">
