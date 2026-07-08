@@ -212,14 +212,22 @@ export function Configuracoes() {
         )}
 
         {aba === 'loja' && (
-          <Card title="Loja — Parcelamento">
-            <Label>Parcelas máximas no PIX</Label>
-            <select value={v('loja_max_parcelas', '1')} onChange={e => set('loja_max_parcelas', e.target.value)} className={inputClass}>
-              <option value="1">Somente 1x (sem parcelamento)</option>
-              <option value="2">Até 2x</option>
-              <option value="3">Até 3x</option>
-            </select>
-          </Card>
+          <>
+            <Card title="Loja — Parcelamento">
+              <Label>Parcelas máximas no PIX</Label>
+              <select value={v('loja_max_parcelas', '1')} onChange={e => set('loja_max_parcelas', e.target.value)} className={inputClass}>
+                <option value="1">Somente 1x (sem parcelamento)</option>
+                <option value="2">Até 2x</option>
+                <option value="3">Até 3x</option>
+              </select>
+            </Card>
+
+            <Card title="Loja — Envio">
+              <Label>Frete de envio (R$)</Label>
+              <input type="number" step="0.01" min="0" value={v('loja_frete', '0')} onChange={e => set('loja_frete', e.target.value)} className={inputClass} required />
+              <p className="text-xs text-texto-fraco">Somado ao total quando o cliente escolhe Envio. Deixe 0 se não faz envio.</p>
+            </Card>
+          </>
         )}
 
         <div className="sticky bottom-2 bg-white/95 backdrop-blur border border-borda rounded-xl p-3 flex items-center gap-3 shadow-sm">

@@ -69,6 +69,9 @@ export function LojaPublica() {
   const [copiadoPix, setCopiadoPix] = useState(false);
   const [maxParcelas, setMaxParcelas] = useState(1);
   const [pixConfig, setPixConfig] = useState({ chave: '', whatsapp: '' });
+  const [entregaTipo, setEntregaTipo] = useState<'retirada' | 'envio'>('retirada');
+  const [endereco, setEndereco] = useState('');
+  const [freteConfig, setFreteConfig] = useState(0);
 
   useEffect(() => {
     api.get<Produto[]>('/api/loja/produtos').then(setProdutos).finally(() => setLoading(false));
@@ -76,6 +79,7 @@ export function LojaPublica() {
       const max = parseInt(c.loja_max_parcelas) || 1;
       setMaxParcelas(Math.min(Math.max(max, 1), 3));
       setPixConfig({ chave: c.pix_guloseimas_chave || '', whatsapp: c.pix_guloseimas_whatsapp || '' });
+      setFreteConfig(parseFloat(c.loja_frete || '0') || 0);
     }).catch(() => {});
   }, []);
 
@@ -109,12 +113,14 @@ export function LojaPublica() {
   };
 
   const totalCarrinho = carrinho.reduce((acc, i) => acc + i.produto.preco * i.quantidade, 0);
+  const totalFinal = totalCarrinho + (entregaTipo === 'envio' ? freteConfig : 0);
 
   const enviarPedido = async () => {
     const metodo = 'pix' as const;
     if (!/^[A-ZÀ-ÚÖ]{3}$/.test(nomeGuerra.trim())) { setErro('Trigrama deve ter exatamente 3 letras'); return; }
     if (!whatsapp.trim()) { setErro('WhatsApp obrigatório'); return; }
     if (visitante && !esquadraoOrigem.trim()) { setErro('Informe seu esquadrão de origem'); return; }
+    if (entregaTipo === 'envio' && !endereco.trim()) { setErro('Informe o endereço completo para envio'); return; }
 
     setEnviando(true); setErro('');
     try {
@@ -127,12 +133,14 @@ export function LojaPublica() {
         })),
         metodo,
         parcelas: metodo === 'pix' ? parcelas : 1,
+        entrega_tipo: entregaTipo,
       };
       if (whatsapp.trim()) body.whatsapp = whatsapp.trim();
       if (visitante) {
         body.visitante = true;
         body.esquadrao_origem = esquadraoOrigem.trim().toUpperCase();
       }
+      if (entregaTipo === 'envio') body.endereco = endereco.trim();
 
       const data = await api.post<{ pedido_id: string; total: number }>('/api/loja/pedidos', body);
       setPedidoCriado({ pedido_id: data.pedido_id, total: data.total, parcelas: metodo === 'pix' ? parcelas : 1 });
@@ -233,8 +241,39 @@ export function LojaPublica() {
         </div>
 
         <div className="bg-azul rounded-2xl p-5 mb-6 text-center shadow-sm">
-          <div className="text-xs text-white/70 uppercase tracking-widest">Total</div>
+          <div className="text-xs text-white/70 uppercase tracking-widest">{entregaTipo === 'envio' ? 'Subtotal' : 'Total'}</div>
           <div className="font-display text-2xl text-white tracking-wider mt-1">R$ {totalCarrinho.toFixed(2)}</div>
+        </div>
+
+        {/* Entrega */}
+        <div className="bg-white rounded-xl border border-borda p-4 mb-6">
+          <label className="block text-sm font-medium mb-2">Entrega</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setEntregaTipo('retirada')}
+              className={`py-3 rounded-xl text-sm font-medium border transition-all ${
+                entregaTipo === 'retirada' ? 'bg-azul text-white border-azul' : 'bg-white text-texto border-borda hover:border-azul'
+              }`}>
+              Retirada no local
+            </button>
+            <button type="button" onClick={() => setEntregaTipo('envio')}
+              className={`py-3 rounded-xl text-sm font-medium border transition-all ${
+                entregaTipo === 'envio' ? 'bg-azul text-white border-azul' : 'bg-white text-texto border-borda hover:border-azul'
+              }`}>
+              Envio{freteConfig > 0 ? ` (+R$ ${freteConfig.toFixed(2)})` : ''}
+            </button>
+          </div>
+          {entregaTipo === 'envio' && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-texto-fraco mb-1.5">Endereço completo</label>
+              <textarea
+                value={endereco}
+                onChange={(e) => setEndereco(e.target.value)}
+                placeholder="Rua, número, bairro, cidade - UF, CEP"
+                rows={3}
+                className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul resize-none"
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 mb-6">
@@ -279,12 +318,19 @@ export function LojaPublica() {
           {/* PIX options */}
           <div className="bg-white rounded-xl border border-borda p-4 shadow-sm">
             <p className="text-sm font-medium mb-3">Pagar via PIX</p>
+            <div className="text-sm text-texto-fraco space-y-1 mb-3">
+              <div className="flex justify-between"><span>Itens</span><span>R$ {totalCarrinho.toFixed(2)}</span></div>
+              {entregaTipo === 'envio' && (
+                <div className="flex justify-between"><span>Frete</span><span>R$ {freteConfig.toFixed(2)}</span></div>
+              )}
+              <div className="flex justify-between font-bold text-texto pt-1 border-t border-borda"><span>Total</span><span>R$ {totalFinal.toFixed(2)}</span></div>
+            </div>
             {maxParcelas > 1 && (
               <div className="flex gap-2 mb-3">
                 {Array.from({ length: maxParcelas }, (_, i) => i + 1).map(n => (
                   <button key={n} onClick={() => setParcelas(n)}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${parcelas === n ? 'bg-azul text-white' : 'bg-fundo text-texto-fraco border border-borda'}`}>
-                    {n}x R$ {(totalCarrinho / n).toFixed(2)}
+                    {n}x R$ {(totalFinal / n).toFixed(2)}
                   </button>
                 ))}
               </div>

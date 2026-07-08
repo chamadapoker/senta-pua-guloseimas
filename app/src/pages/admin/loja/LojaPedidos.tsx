@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Icon } from '../../../components/ui/Icon';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
 
 interface LojaPedido {
   id: string;
@@ -15,12 +17,19 @@ interface LojaPedido {
   paid_at: string | null;
   nome_guerra?: string;
   itens_resumo?: string;
+  entrega_tipo?: 'retirada' | 'envio';
+  endereco?: string | null;
+  frete?: number;
+  envio_status?: 'a_enviar' | 'enviado' | null;
+  rastreamento?: string | null;
 }
 
 export function LojaPedidos() {
   const [pedidos, setPedidos] = useState<LojaPedido[]>([]);
   const [filtroStatus, setFiltroStatus] = useState('');
+  const [rastreamentos, setRastreamentos] = useState<Record<string, string>>({});
   const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   const carregar = () => {
     const params = filtroStatus ? `?status=${filtroStatus}` : '';
@@ -38,6 +47,18 @@ export function LojaPedidos() {
     if (!(await confirmar({ title: 'Excluir pedido', message: 'Excluir este pedido?', confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/loja/admin/pedidos/${id}`);
     carregar();
+  };
+
+  const marcarEnviado = async (id: string) => {
+    try {
+      const rastreamento = rastreamentos[id]?.trim() || undefined;
+      await api.put(`/api/loja/admin/pedidos/${id}/enviar`, { rastreamento });
+      showToast('Pedido marcado como enviado', 'success');
+      setRastreamentos(prev => { const n = { ...prev }; delete n[id]; return n; });
+      carregar();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Erro ao marcar como enviado', 'error');
+    }
   };
 
   const statusBadge = (status: string) => {
@@ -70,6 +91,7 @@ export function LojaPedidos() {
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Data</th>
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
                 <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider hidden sm:table-cell">Itens</th>
+                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Entrega</th>
                 <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Total</th>
                 <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
                 <th className="px-3 py-3"></th>
@@ -83,13 +105,51 @@ export function LojaPedidos() {
                   </td>
                   <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
                   <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">{p.itens_resumo}</td>
+                  <td className="px-3 py-3 text-xs">
+                    {p.entrega_tipo === 'envio' ? (
+                      <div className="flex flex-col gap-1 min-w-[140px]">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-azul border border-blue-200 w-fit">
+                          <Icon name="archive" size={12} /> Envio
+                        </span>
+                        {p.endereco && (
+                          <span className="text-texto-fraco max-w-[180px] truncate" title={p.endereco}>{p.endereco}</span>
+                        )}
+                        <span className="text-texto-fraco">Frete: R$ {(p.frete || 0).toFixed(2)}</span>
+                        {p.envio_status === 'enviado' ? (
+                          <span className="text-[10px] font-medium text-verde-escuro">
+                            Enviado{p.rastreamento ? ` · ${p.rastreamento}` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-amber-700">A enviar</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-texto-fraco">Retirada</span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
                   <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
-                  <td className="px-3 py-3 flex items-center gap-2">
-                    {p.status !== 'pago' && (
-                      <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
-                    )}
-                    <Button variant="chip-danger" size="xs" onClick={() => excluir(p.id)}>Excluir</Button>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-col items-start gap-1.5">
+                      <div className="flex items-center gap-2">
+                        {p.status !== 'pago' && (
+                          <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
+                        )}
+                        <Button variant="chip-danger" size="xs" onClick={() => excluir(p.id)}>Excluir</Button>
+                      </div>
+                      {p.entrega_tipo === 'envio' && p.envio_status !== 'enviado' && (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={rastreamentos[p.id] || ''}
+                            onChange={e => setRastreamentos(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            placeholder="Rastreio (opcional)"
+                            className="w-28 bg-white border border-borda rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                          />
+                          <Button variant="chip-primary" size="xs" onClick={() => marcarEnviado(p.id)}>Marcar enviado</Button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

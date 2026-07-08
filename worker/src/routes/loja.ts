@@ -46,7 +46,7 @@ loja.get('/produtos', async (c) => {
 
 // PUBLIC: create order (same trigrama flow as guloseimas)
 loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
-  const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem } = await c.req.json<{
+  const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem, entrega_tipo, endereco } = await c.req.json<{
     nome_guerra: string;
     itens: { produto_id: string; variacao_id?: string; quantidade: number }[];
     metodo: 'pix' | 'fiado' | 'dinheiro';
@@ -54,6 +54,8 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
     parcelas?: number;
     visitante?: boolean;
     esquadrao_origem?: string;
+    entrega_tipo?: 'retirada' | 'envio';
+    endereco?: string;
   }>();
 
   if (!nome_guerra || !itens?.length || !metodo) {
@@ -120,7 +122,17 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
     });
   }
 
-  total = Math.round(total * 100) / 100;
+  // Entrega: retirada (padrao) ou envio (com endereco + taxa de frete configurada pelo admin)
+  const tipoEntrega = entrega_tipo === 'envio' ? 'envio' : 'retirada';
+  let frete = 0;
+  let envioStatus: string | null = null;
+  if (tipoEntrega === 'envio') {
+    if (!endereco || !endereco.trim()) return c.json({ error: 'Informe o endereço para envio' }, 400);
+    const cfg = await c.env.DB.prepare("SELECT valor FROM configuracoes WHERE chave = 'loja_frete'").first<{ valor: string }>();
+    frete = Math.max(0, parseFloat(cfg?.valor || '0') || 0);
+    envioStatus = 'a_enviar';
+  }
+  total = Math.round((total + frete) * 100) / 100;
   const status = metodo === 'fiado' ? 'fiado' : 'pendente';
 
   // Decrementa estoque das variações de forma atômica (evita oversell sob concorrência).
@@ -147,8 +159,8 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   }
 
   const { results: pedidoResult } = await c.env.DB.prepare(
-    'INSERT INTO loja_pedidos (cliente_id, total, status, metodo_pagamento) VALUES (?, ?, ?, ?) RETURNING id'
-  ).bind(cliente.id, total, status, metodo).all<{ id: string }>();
+    'INSERT INTO loja_pedidos (cliente_id, total, status, metodo_pagamento, entrega_tipo, endereco, frete, envio_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
+  ).bind(cliente.id, total, status, metodo, tipoEntrega, tipoEntrega === 'envio' ? endereco!.trim() : null, frete, envioStatus).all<{ id: string }>();
 
   const pedidoId = pedidoResult[0].id;
 
@@ -412,6 +424,27 @@ loja.put('/admin/pedidos/:id/pagar', authMiddleware, async (c) => {
     "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago' RETURNING *"
   ).bind(id).all();
   if (!results.length) return c.json({ error: 'Pedido não encontrado ou já pago' }, 404);
+  return c.json(results[0]);
+});
+
+// ADMIN: marcar pedido de envio como enviado (+ rastreio) e avisar o cliente
+loja.put('/admin/pedidos/:id/enviar', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const { rastreamento } = await c.req.json<{ rastreamento?: string }>();
+  const { results } = await c.env.DB.prepare(
+    "UPDATE loja_pedidos SET envio_status = 'enviado', rastreamento = ? WHERE id = ? AND entrega_tipo = 'envio' RETURNING *"
+  ).bind(rastreamento?.trim() || null, id).all();
+  if (!results.length) return c.json({ error: 'Pedido de envio não encontrado' }, 404);
+  try {
+    const ped = results[0] as { cliente_id: string; rastreamento: string | null };
+    const cl = await c.env.DB.prepare('SELECT nome_guerra FROM clientes WHERE id = ?').bind(ped.cliente_id).first<{ nome_guerra: string }>();
+    if (cl) {
+      const msg = ped.rastreamento
+        ? `Seu pedido da loja foi enviado! Rastreamento: ${ped.rastreamento}`
+        : 'Seu pedido da loja foi enviado!';
+      await c.env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'PEDIDO ENVIADO', ?)").bind(cl.nome_guerra, msg).run();
+    }
+  } catch { /* notificação é best-effort */ }
   return c.json(results[0]);
 });
 

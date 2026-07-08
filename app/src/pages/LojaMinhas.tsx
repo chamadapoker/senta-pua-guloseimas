@@ -32,6 +32,11 @@ interface Pedido {
   created_at: string;
   itens: Item[];
   parcelas_lista: Parcela[];
+  entrega_tipo?: 'retirada' | 'envio';
+  endereco?: string | null;
+  frete?: number;
+  envio_status?: 'a_enviar' | 'enviado' | null;
+  rastreamento?: string | null;
 }
 
 export function LojaMinhas() {
@@ -93,6 +98,24 @@ export function LojaMinhas() {
                 <span className="text-xs text-texto-fraco">Total</span>
                 <span className="font-display text-lg text-azul tracking-wider">R$ {p.total.toFixed(2)}</span>
               </div>
+
+              {/* Entrega */}
+              {p.entrega_tipo === 'envio' ? (
+                <div className="mt-2 pt-2 border-t border-borda/50 text-xs space-y-0.5">
+                  {p.endereco && (
+                    <div className="text-texto-fraco">Envio para: <span className="text-texto">{p.endereco}</span></div>
+                  )}
+                  <div className="text-texto-fraco">Frete: <span className="text-texto font-medium">R$ {(p.frete || 0).toFixed(2)}</span></div>
+                  <div className={p.envio_status === 'enviado' ? 'text-verde-escuro font-medium' : 'text-amber-700 font-medium'}>
+                    {p.envio_status === 'enviado' ? 'Enviado ✓' : 'A enviar'}
+                    {p.envio_status === 'enviado' && p.rastreamento && (
+                      <span className="text-texto-fraco font-normal"> · Rastreio: {p.rastreamento}</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 pt-2 border-t border-borda/50 text-xs text-texto-fraco">Retirada no local</div>
+              )}
 
               {/* Parcelas */}
               {p.parcelas_lista.length > 1 && (
