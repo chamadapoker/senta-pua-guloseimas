@@ -44,6 +44,7 @@ const XimbocaEvento = lazy(() => import('./pages/admin/ximboca/XimbocaEvento').t
 const XimbocaEstoque = lazy(() => import('./pages/admin/ximboca/XimbocaEstoque').then(m => ({ default: m.XimbocaEstoque })));
 const Documentacao = lazy(() => import('./pages/admin/Documentacao').then(m => ({ default: m.Documentacao })));
 const Aniversariantes = lazy(() => import('./pages/admin/Aniversariantes').then(m => ({ default: m.Aniversariantes })));
+const CheckinRecepcionista = lazy(() => import('./pages/CheckinRecepcionista').then(m => ({ default: m.CheckinRecepcionista })));
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -100,6 +101,13 @@ function VisitorGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RecepcionistaGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useUserAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_recepcionista) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export function App() {
   return (
     <ToastProvider>
@@ -118,6 +126,8 @@ export function App() {
         <Route path="/loja/minhas" element={<VisitorGuard><LojaMinhas /></VisitorGuard>} />
         <Route path="/cafe" element={<CafePublico />} />
         <Route path="/ximboca" element={<VisitorGuard><XimbocaPublica /></VisitorGuard>} />
+        <Route path="/checkin" element={<RecepcionistaGuard><CheckinRecepcionista /></RecepcionistaGuard>} />
+        <Route path="/checkin/:eventoId" element={<RecepcionistaGuard><CheckinRecepcionista /></RecepcionistaGuard>} />
         {/* User auth */}
         <Route path="/login" element={<UserLogin />} />
         <Route path="/cadastro" element={<CadastroEscolha />} />

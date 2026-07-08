@@ -16,6 +16,7 @@ function pickToken(path: string, method?: string): string | null {
   if (path === '/api/comprovantes' && method === 'POST') return userToken || adminToken;
   if (path === '/api/comprovantes/me') return userToken;
   if (path.startsWith('/api/notificacoes/me')) return userToken;
+  if (path.startsWith('/api/ximboca/checkin')) return userToken;
 
   return adminToken || userToken;
 }
