@@ -128,7 +128,10 @@ async function recepcionistaMiddleware(c: import('hono').Context<AppType>, next:
     const userId = c.get('userId');
     const u = await c.env.DB.prepare('SELECT is_recepcionista FROM usuarios WHERE id = ?')
       .bind(userId).first<{ is_recepcionista: number }>();
-    if (!u || u.is_recepcionista !== 1) return c.json({ error: 'Acesso restrito a recepcionistas' }, 403);
+    if (!u || u.is_recepcionista !== 1) {
+      c.res = c.json({ error: 'Acesso restrito a recepcionistas' }, 403);
+      return;
+    }
     await next();
   });
 }
