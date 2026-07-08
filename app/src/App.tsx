@@ -45,6 +45,7 @@ const XimbocaEstoque = lazy(() => import('./pages/admin/ximboca/XimbocaEstoque')
 const Documentacao = lazy(() => import('./pages/admin/Documentacao').then(m => ({ default: m.Documentacao })));
 const Aniversariantes = lazy(() => import('./pages/admin/Aniversariantes').then(m => ({ default: m.Aniversariantes })));
 const CheckinRecepcionista = lazy(() => import('./pages/CheckinRecepcionista').then(m => ({ default: m.CheckinRecepcionista })));
+const EventoPublicoShare = lazy(() => import('./pages/EventoPublicoShare').then(m => ({ default: m.EventoPublicoShare })));
 import { CafePublico } from './pages/CafePublico';
 import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
@@ -126,6 +127,7 @@ export function App() {
         <Route path="/loja/minhas" element={<VisitorGuard><LojaMinhas /></VisitorGuard>} />
         <Route path="/cafe" element={<CafePublico />} />
         <Route path="/ximboca" element={<VisitorGuard><XimbocaPublica /></VisitorGuard>} />
+        <Route path="/e/:id" element={<EventoPublicoShare />} />
         <Route path="/checkin" element={<RecepcionistaGuard><CheckinRecepcionista /></RecepcionistaGuard>} />
         <Route path="/checkin/:eventoId" element={<RecepcionistaGuard><CheckinRecepcionista /></RecepcionistaGuard>} />
         {/* User auth */}

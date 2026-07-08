@@ -7,6 +7,23 @@ import type { AppType } from '../index';
 
 const ximboca = new Hono<AppType>();
 
+// ============ ROTA ABERTA (sem login) — pagina compartilhavel do evento ============
+// Expoe apenas dados nao-sensiveis (nome, data, capa, valores/tipos, contagem). Sem participantes.
+ximboca.get('/publico/evento/:id', async (c) => {
+  const id = c.req.param('id');
+  const evento = await c.env.DB.prepare(
+    'SELECT id, nome, data, descricao, imagem_url, status, valor_por_pessoa, valor_cerveja, valor_refri FROM ximboca_eventos WHERE id = ?'
+  ).bind(id).first();
+  if (!evento) return c.json({ error: 'Evento não encontrado' }, 404);
+  const { results: tipos } = await c.env.DB.prepare(
+    'SELECT id, nome, valor, ordem FROM ximboca_ingresso_tipos WHERE evento_id = ? ORDER BY ordem ASC, nome ASC'
+  ).bind(id).all();
+  const total = await c.env.DB.prepare(
+    'SELECT COUNT(*) as n FROM ximboca_participantes WHERE evento_id = ?'
+  ).bind(id).first<{ n: number }>();
+  return c.json({ ...evento, tipos, total_participantes: total?.n ?? 0 });
+});
+
 // ============ ROTAS PUBLICAS (usuario logado) ============
 
 // Lista eventos abertos para participar (com valores por categoria)

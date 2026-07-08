@@ -213,7 +213,13 @@ export function XimbocaEvento() {
     link.click();
   };
 
-  const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/ximboca` : '';
+  const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/e/${id}` : '';
+  const [linkCopiado, setLinkCopiado] = useState(false);
+  const copiarLinkEvento = async () => {
+    await navigator.clipboard.writeText(qrUrl);
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2500);
+  };
 
   if (!evento) return <AppLayout><Loading /></AppLayout>;
 
@@ -262,6 +268,21 @@ export function XimbocaEvento() {
           <h2 className="text-sm font-medium text-white uppercase tracking-wider">Ingressos & Portaria</h2>
         </div>
         <div className="p-4 space-y-5">
+          <div>
+            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Compartilhar evento</div>
+            <div className="bg-fundo rounded-lg p-2 text-xs break-all mb-2 border border-borda">{qrUrl}</div>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="xs" variant="chip" onClick={copiarLinkEvento}>{linkCopiado ? 'Copiado!' : 'Copiar link'}</Button>
+              <a href={`https://wa.me/?text=${encodeURIComponent(`${evento.nome} — ${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')}. Bora? ${qrUrl}`)}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100">WhatsApp</a>
+              <a href={`https://t.me/share/url?url=${encodeURIComponent(qrUrl)}&text=${encodeURIComponent(evento.nome)}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Telegram</a>
+              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrUrl)}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Facebook</a>
+            </div>
+            <p className="text-[11px] text-texto-fraco mt-1.5">Página pública do evento (sem login) — mande no grupo pra divulgar. O QR Code também aponta pra ela.</p>
+          </div>
+
           <div>
             <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Capa do evento</div>
             {evento.imagem_url && <img src={resolveImg(evento.imagem_url)!} alt="capa" className="w-full max-w-xs rounded-lg border border-borda mb-2" />}
