@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Icon } from '../../../components/ui/Icon';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
+import { Menu } from '../../../components/ui/Menu';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
 import { inputClass } from '../../../components/ui/Field';
@@ -314,19 +315,20 @@ export function XimbocaEvento() {
               </div>
               <div className="flex items-center gap-1 flex-wrap justify-end">
                 {p.status === 'pago' ? (
-                  <Badge variant="success">Pago</Badge>
+                  <>
+                    <Badge variant="success">Pago</Badge>
+                    <Button variant="chip-danger" size="xs" onClick={() => removerParticipante(p.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
+                  </>
                 ) : (
                   <>
-                    <a href={`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100 ${!p.whatsapp ? 'opacity-50 pointer-events-none' : ''}`}>
-                      Cobrar
-                    </a>
-                    <Button variant="chip-primary" size="xs" onClick={() => cobrarParticipante(p)}>PDF</Button>
                     <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
+                    <Menu items={[
+                      { label: 'Cobrar (WhatsApp)', icon: 'device-phone', disabled: !p.whatsapp, onClick: () => window.open(`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`, '_blank') },
+                      { label: 'Gerar PDF', icon: 'document', onClick: () => cobrarParticipante(p) },
+                      { label: 'Excluir', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
+                    ]} />
                   </>
                 )}
-                <Button variant="chip-danger" size="xs" onClick={() => removerParticipante(p.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
               </div>
             </div>
           ))}

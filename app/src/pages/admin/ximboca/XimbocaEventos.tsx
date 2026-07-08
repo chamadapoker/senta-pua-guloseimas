@@ -6,6 +6,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
+import { Menu } from '../../../components/ui/Menu';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
 
@@ -147,11 +148,11 @@ export function XimbocaEventos() {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <Link to={`/admin/ximboca/eventos/${ev.id}`} className="rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">Gerenciar</Link>
-                  <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(ev)}>Editar</Button>
-                  <Button variant={ev.status === 'aberto' ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleStatus(ev)}>
-                    {ev.status === 'aberto' ? 'Fechar' : 'Reabrir'}
-                  </Button>
-                  <Button variant="chip-danger" size="xs" onClick={() => excluir(ev)}>Excluir</Button>
+                  <Menu items={[
+                    { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(ev) },
+                    { label: ev.status === 'aberto' ? 'Fechar' : 'Reabrir', icon: ev.status === 'aberto' ? 'x' : 'refresh', onClick: () => toggleStatus(ev) },
+                    { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(ev) },
+                  ]} />
                 </div>
               </div>
             </div>

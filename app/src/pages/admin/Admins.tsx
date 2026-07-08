@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { inputClass } from '../../components/ui/Field';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { Menu } from '../../components/ui/Menu';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -129,12 +130,10 @@ export function Admins() {
                   {isSuperAdmin && (
                     <div className="flex gap-1 justify-end flex-wrap">
                       <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>Editar</Button>
-                      <Button variant={a.ativo ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleAtivo(a)}>
-                        {a.ativo ? 'Desativar' : 'Ativar'}
-                      </Button>
-                      {a.id !== currentAdmin?.id && (
-                        <Button variant="chip-danger" size="xs" onClick={() => excluir(a)}>Excluir</Button>
-                      )}
+                      <Menu items={[
+                        { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
+                        a.id !== currentAdmin?.id && { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
+                      ]} />
                     </div>
                   )}
                 </td>

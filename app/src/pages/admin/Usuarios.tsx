@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
+import { Menu } from '../../components/ui/Menu';
 import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
 import { useAuth } from '../../hooks/useAuth';
@@ -514,22 +515,11 @@ export function Usuarios() {
                 <Button variant="primary" size="sm" onClick={() => abrirEditar(u)} disabled={acaoLoading === u.id}>
                   Gerenciar conta
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => abrirResetSenha(u)} disabled={acaoLoading === u.id}>
-                  Resetar senha
-                </Button>
-                <Button
-                  variant={u.ativo === 1 ? 'danger' : 'primary'}
-                  size="sm"
-                  onClick={() => toggleAtivo(u)}
-                  disabled={acaoLoading === u.id}
-                >
-                  {u.ativo === 1 ? 'Desativar' : 'Reativar'}
-                </Button>
-                {isSuperAdmin && (
-                  <Button variant="danger" size="sm" onClick={() => excluirUsuario(u)} disabled={acaoLoading === u.id}>
-                    Excluir
-                  </Button>
-                )}
+                <Menu items={[
+                  { label: 'Resetar senha', icon: 'refresh', disabled: acaoLoading === u.id, onClick: () => abrirResetSenha(u) },
+                  { label: u.ativo === 1 ? 'Desativar' : 'Reativar', icon: u.ativo === 1 ? 'x' : 'check', disabled: acaoLoading === u.id, onClick: () => toggleAtivo(u) },
+                  isSuperAdmin && { label: 'Excluir', icon: 'trash', danger: true, disabled: acaoLoading === u.id, onClick: () => excluirUsuario(u) },
+                ]} />
                 {u.cliente_id ? (
                   <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto self-center rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">
                     Ver extrato financeiro →

@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
+import { Menu } from '../../../components/ui/Menu';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useToast } from '../../../hooks/useToast';
@@ -195,12 +196,10 @@ export function CafeAssinantes() {
                       <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>
                         Editar
                       </Button>
-                      <Button variant={a.ativo ? 'chip-warning' : 'chip-success'} size="xs" onClick={() => toggleAtivo(a)}>
-                        {a.ativo ? 'Desativar' : 'Ativar'}
-                      </Button>
-                      <Button variant="chip-danger" size="xs" onClick={() => excluir(a)}>
-                        Excluir
-                      </Button>
+                      <Menu items={[
+                        { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
+                        { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
+                      ]} />
                     </div>
                   </td>
                 </tr>
