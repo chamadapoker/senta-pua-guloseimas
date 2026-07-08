@@ -15,7 +15,8 @@ import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
 interface EstoqueItem { id: string; nome: string; quantidade: number; unidade: string; }
-interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; }
+interface IngressoTipo { id: string; evento_id: string; nome: string; valor: number; ordem: number; }
+interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; imagem_url: string | null; }
 
 export function XimbocaEvento() {
   const { id } = useParams<{ id: string }>();
@@ -61,12 +62,20 @@ export function XimbocaEvento() {
   const [despQtd, setDespQtd] = useState('');
   const [despUnidade, setDespUnidade] = useState('');
 
+  // Tipos de ingresso, capa e check-in
+  const [tipos, setTipos] = useState<IngressoTipo[]>([]);
+  const [novoTipoNome, setNovoTipoNome] = useState('');
+  const [novoTipoValor, setNovoTipoValor] = useState('');
+  const [checkinStats, setCheckinStats] = useState<{ total_pagos: number; entraram: number; faltam: number } | null>(null);
+
   const carregar = () => {
-    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[] }>(`/api/ximboca/eventos/${id}`).then(d => {
+    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[] }>(`/api/ximboca/eventos/${id}`).then(d => {
       setEvento(d.evento);
       setParticipantes(d.participantes);
       setDespesas(d.despesas);
+      setTipos(d.tipos || []);
     });
+    api.get<{ total_pagos: number; entraram: number; faltam: number }>(`/api/ximboca/eventos/${id}/checkin-stats`).then(setCheckinStats).catch(() => {});
   };
 
   useEffect(() => { carregar(); }, [id]);
@@ -126,6 +135,29 @@ export function XimbocaEvento() {
   const removerDespesa = async (did: string) => {
     if (!confirm('Remover despesa?')) return;
     await api.delete(`/api/ximboca/despesas/${did}`);
+    carregar();
+  };
+
+  const adicionarTipo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novoTipoNome || !novoTipoValor) return;
+    await api.post(`/api/ximboca/eventos/${id}/tipos`, { nome: novoTipoNome, valor: parseFloat(novoTipoValor), ordem: tipos.length });
+    setNovoTipoNome(''); setNovoTipoValor('');
+    carregar();
+  };
+
+  const removerTipo = async (tipoId: string) => {
+    if (!confirm('Remover este tipo de ingresso?')) return;
+    try { await api.delete(`/api/ximboca/tipos/${tipoId}`); carregar(); }
+    catch (err) { alert(err instanceof Error ? err.message : 'Erro ao remover'); }
+  };
+
+  const enviarCapa = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    await api.upload(`/api/ximboca/eventos/${id}/imagem`, fd);
     carregar();
   };
 
@@ -211,6 +243,49 @@ export function XimbocaEvento() {
         <div className="bg-white rounded-xl p-3 border border-borda text-center">
           <div className="text-xs text-texto-fraco">Saldo</div>
           <div className={`font-display text-lg ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Ingressos e Portaria */}
+      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
+        <div className="bg-azul px-5 py-3 rounded-t-xl">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Ingressos & Portaria</h2>
+        </div>
+        <div className="p-4 space-y-5">
+          <div>
+            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Capa do evento</div>
+            {evento.imagem_url && <img src={evento.imagem_url} alt="capa" className="w-full max-w-xs rounded-lg border border-borda mb-2" />}
+            <label className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5 cursor-pointer">
+              <Icon name="upload" size={12} /> {evento.imagem_url ? 'Trocar capa' : 'Enviar capa'}
+              <input type="file" accept="image/*" onChange={enviarCapa} className="hidden" />
+            </label>
+          </div>
+
+          <div>
+            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Tipos de ingresso</div>
+            <div className="space-y-1 mb-2">
+              {tipos.map(t => (
+                <div key={t.id} className="flex items-center justify-between bg-fundo rounded-lg px-3 py-2 text-sm">
+                  <span>{t.nome} — <span className="font-medium">R$ {t.valor.toFixed(2)}</span></span>
+                  <button onClick={() => removerTipo(t.id)} className="text-xs font-medium px-1.5 py-1 rounded-lg text-vermelho bg-red-50 border border-red-200 hover:bg-red-100">X</button>
+                </div>
+              ))}
+              {tipos.length === 0 && <p className="text-xs text-texto-fraco">Sem tipos — o evento usa o valor por pessoa padrão.</p>}
+            </div>
+            <form onSubmit={adicionarTipo} className="flex gap-2">
+              <input value={novoTipoNome} onChange={e => setNovoTipoNome(e.target.value)} className={inputClass} placeholder="Ex: Militar" />
+              <input type="number" step="0.01" value={novoTipoValor} onChange={e => setNovoTipoValor(e.target.value)} className={inputClass} placeholder="Valor" />
+              <Button type="submit" size="sm">+ Tipo</Button>
+            </form>
+          </div>
+
+          <div>
+            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-1">Check-in na portaria</div>
+            {checkinStats
+              ? <p className="text-sm">Entraram: <span className="font-display text-azul">{checkinStats.entraram}/{checkinStats.total_pagos}</span></p>
+              : <p className="text-xs text-texto-fraco">Sem pagamentos ainda.</p>}
+            <p className="text-[11px] text-texto-fraco mt-1">Quem faz o check-in são os militares marcados como <b>recepcionista</b> em Admin → Usuários. Eles acessam pelo menu <b>Check-in</b>.</p>
+          </div>
         </div>
       </div>
 
