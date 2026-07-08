@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react';
 import { AppLayout } from '../components/AppLayout';
 import { BackButton } from '../components/ui/BackButton';
 import { Button } from '../components/ui/Button';
@@ -8,6 +9,8 @@ import { api } from '../services/api';
 import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
+
+interface IngressoTipo { id: string; nome: string; valor: number; ordem: number; }
 
 interface EventoPublico {
   id: string;
@@ -22,6 +25,7 @@ interface EventoPublico {
   meu_participante_id: string | null;
   minha_categoria: string | null;
   meu_status: string | null;
+  tipos: IngressoTipo[];
 }
 
 interface MeuEvento {
@@ -39,6 +43,10 @@ interface MeuEvento {
   pix_tipo: string | null;
   pix_nome: string | null;
   pix_whatsapp: string | null;
+  numero_ingresso: number | null;
+  tipo_nome: string | null;
+  checkin_at: string | null;
+  imagem_url: string | null;
 }
 
 function formatData(iso: string): string {
@@ -60,6 +68,7 @@ export function XimbocaPublica() {
   const [loading, setLoading] = useState(true);
   const [participarModal, setParticiparModal] = useState<EventoPublico | null>(null);
   const [categoriaEscolhida, setCategoriaEscolhida] = useState<'padrao' | 'cerveja' | 'refri'>('padrao');
+  const [tipoEscolhido, setTipoEscolhido] = useState<string | null>(null);
   const [acaoLoading, setAcaoLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
@@ -116,16 +125,18 @@ export function XimbocaPublica() {
   const abrirParticipar = (ev: EventoPublico) => {
     setParticiparModal(ev);
     setCategoriaEscolhida('padrao');
+    setTipoEscolhido(null);
     setErro(''); setMsg('');
   };
 
   const confirmarParticipar = async () => {
     if (!participarModal) return;
-    setAcaoLoading(true);
-    setErro(''); setMsg('');
+    if (participarModal.tipos?.length && !tipoEscolhido) { setErro('Escolha o tipo de ingresso'); return; }
+    setAcaoLoading(true); setErro(''); setMsg('');
     try {
       await api.post(`/api/ximboca/publico/eventos/${participarModal.id}/participar`, {
         categoria_consumo: categoriaEscolhida,
+        tipo_ingresso_id: tipoEscolhido,
       });
       setMsg('Inscrição confirmada! Você já está participando.');
       setParticiparModal(null);
@@ -301,6 +312,23 @@ export function XimbocaPublica() {
                     </div>
                   </div>
 
+                  {ev.meu_status === 'pago' && (
+                    <div className="mt-3 border border-green-200 rounded-xl overflow-hidden">
+                      {ev.imagem_url && <img src={ev.imagem_url} alt="" className="w-full object-cover max-h-40" />}
+                      <div className="p-4 text-center">
+                        <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Seu ingresso</div>
+                        <div className="font-display text-lg text-azul">#{String(ev.numero_ingresso ?? 0).padStart(3, '0')}</div>
+                        {ev.tipo_nome && <div className="text-xs text-texto-fraco mb-2">{ev.tipo_nome}</div>}
+                        <div className="inline-block bg-white p-3 rounded-xl border border-borda">
+                          <QRCodeCanvas value={ev.participante_id} size={180} level="M" includeMargin />
+                        </div>
+                        <p className="text-xs text-texto-fraco mt-2">
+                          {ev.checkin_at ? 'Entrada já registrada ✓' : 'Mostre este QR na entrada'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {ev.meu_status !== 'pago' && (
                     <div className="mt-3 space-y-2">
                       {ev.pix_chave ? (
@@ -340,6 +368,22 @@ export function XimbocaPublica() {
           <div className="bg-white rounded-2xl p-5 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-xl text-azul tracking-wider mb-1">{participarModal.nome}</h3>
             <p className="text-xs text-texto-fraco mb-4">{formatData(participarModal.data)}</p>
+
+            {participarModal.tipos?.length > 0 && (
+              <>
+                <div className="text-sm font-medium mb-2">Tipo de ingresso:</div>
+                <div className="space-y-2 mb-4">
+                  {participarModal.tipos.map(t => (
+                    <button key={t.id} type="button" onClick={() => setTipoEscolhido(t.id)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        tipoEscolhido === t.id ? 'bg-azul text-white border-azul' : 'bg-white border-borda hover:border-azul/50'}`}>
+                      <span>{t.nome}</span>
+                      <span className="font-bold">R$ {t.valor.toFixed(2)}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="text-sm font-medium mb-2">Sua categoria:</div>
             <div className="space-y-2 mb-4">
