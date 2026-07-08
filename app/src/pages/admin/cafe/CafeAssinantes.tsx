@@ -192,11 +192,9 @@ export function CafeAssinantes() {
                       : <Badge variant={a.total_devido > 0 ? 'danger' : 'success'}>R$ {a.total_devido.toFixed(2)}</Badge>}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>
-                        Editar
-                      </Button>
+                    <div className="flex justify-end">
                       <Menu items={[
+                        { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(a) },
                         { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
                         { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
                       ]} />

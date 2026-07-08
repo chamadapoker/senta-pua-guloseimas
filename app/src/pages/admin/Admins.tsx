@@ -129,9 +129,9 @@ export function Admins() {
                 </td>
                 <td className="px-3 py-2 text-right">
                   {isSuperAdmin && (
-                    <div className="flex gap-1 justify-end flex-wrap">
-                      <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(a)}>Editar</Button>
+                    <div className="flex justify-end">
                       <Menu items={[
+                        { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(a) },
                         { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
                         a.id !== currentAdmin?.id && { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
                       ]} />

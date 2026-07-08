@@ -320,14 +320,12 @@ export function XimbocaEvento() {
                     <Button variant="chip-danger" size="xs" onClick={() => removerParticipante(p.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
                   </>
                 ) : (
-                  <>
-                    <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
-                    <Menu items={[
-                      { label: 'Cobrar (WhatsApp)', icon: 'device-phone', disabled: !p.whatsapp, onClick: () => window.open(`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`, '_blank') },
-                      { label: 'Gerar PDF', icon: 'document', onClick: () => cobrarParticipante(p) },
-                      { label: 'Excluir', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
-                    ]} />
-                  </>
+                  <Menu items={[
+                    { label: 'Marcar como pago', icon: 'cash', onClick: () => marcarPago(p.id) },
+                    { label: 'Cobrar (WhatsApp)', icon: 'device-phone', disabled: !p.whatsapp, onClick: () => window.open(`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`, '_blank') },
+                    { label: 'Gerar PDF', icon: 'document', onClick: () => cobrarParticipante(p) },
+                    { label: 'Excluir', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
+                  ]} />
                 )}
               </div>
             </div>

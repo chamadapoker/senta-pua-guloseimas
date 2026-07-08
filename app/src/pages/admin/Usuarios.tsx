@@ -511,15 +511,15 @@ export function Usuarios() {
               </div>
 
               {/* Linha 3: acoes */}
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="primary" size="sm" onClick={() => abrirEditar(u)} disabled={acaoLoading === u.id}>
-                  Gerenciar conta
-                </Button>
-                <Menu items={[
-                  { label: 'Resetar senha', icon: 'refresh', disabled: acaoLoading === u.id, onClick: () => abrirResetSenha(u) },
-                  { label: u.ativo === 1 ? 'Desativar' : 'Reativar', icon: u.ativo === 1 ? 'x' : 'check', disabled: acaoLoading === u.id, onClick: () => toggleAtivo(u) },
-                  isSuperAdmin && { label: 'Excluir', icon: 'trash', danger: true, disabled: acaoLoading === u.id, onClick: () => excluirUsuario(u) },
-                ]} />
+              <div className="flex gap-2 flex-wrap items-center">
+                <div className="ml-auto flex items-center gap-2">
+                  <Menu items={[
+                    { label: 'Gerenciar conta', icon: 'pencil', disabled: acaoLoading === u.id, onClick: () => abrirEditar(u) },
+                    { label: 'Resetar senha', icon: 'refresh', disabled: acaoLoading === u.id, onClick: () => abrirResetSenha(u) },
+                    { label: u.ativo === 1 ? 'Desativar' : 'Reativar', icon: u.ativo === 1 ? 'x' : 'check', disabled: acaoLoading === u.id, onClick: () => toggleAtivo(u) },
+                    isSuperAdmin && { label: 'Excluir', icon: 'trash', danger: true, disabled: acaoLoading === u.id, onClick: () => excluirUsuario(u) },
+                  ]} />
+                </div>
                 {u.cliente_id ? (
                   <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto self-center rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">
                     Ver extrato financeiro →
