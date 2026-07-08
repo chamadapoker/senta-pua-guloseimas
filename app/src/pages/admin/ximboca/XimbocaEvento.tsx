@@ -24,6 +24,7 @@ interface Participante { id: string; nome: string; whatsapp: string | null; stat
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
 interface EstoqueItem { id: string; nome: string; quantidade: number; unidade: string; }
 interface IngressoTipo { id: string; evento_id: string; nome: string; valor: number; ordem: number; }
+interface Tarefa { id: string; titulo: string; responsavel: string | null; feito: number; }
 interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; imagem_url: string | null; }
 
 export function XimbocaEvento() {
@@ -78,12 +79,18 @@ export function XimbocaEvento() {
   const [novoTipoValor, setNovoTipoValor] = useState('');
   const [checkinStats, setCheckinStats] = useState<{ total_pagos: number; entraram: number; faltam: number } | null>(null);
 
+  // Checklist
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [novaTarefa, setNovaTarefa] = useState('');
+  const [novaTarefaResp, setNovaTarefaResp] = useState('');
+
   const carregar = () => {
-    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[] }>(`/api/ximboca/eventos/${id}`).then(d => {
+    api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[]; tarefas: Tarefa[] }>(`/api/ximboca/eventos/${id}`).then(d => {
       setEvento(d.evento);
       setParticipantes(d.participantes);
       setDespesas(d.despesas);
       setTipos(d.tipos || []);
+      setTarefas(d.tarefas || []);
     });
     api.get<{ total_pagos: number; entraram: number; faltam: number }>(`/api/ximboca/eventos/${id}/checkin-stats`).then(setCheckinStats).catch(() => {});
   };
@@ -160,6 +167,23 @@ export function XimbocaEvento() {
     if (!(await confirm({ message: 'Remover este tipo de ingresso?', confirmText: 'Remover', danger: true }))) return;
     try { await api.delete(`/api/ximboca/tipos/${tipoId}`); carregar(); }
     catch (err) { showToast(err instanceof Error ? err.message : 'Erro ao remover', 'error'); }
+  };
+
+  const adicionarTarefa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novaTarefa.trim()) return;
+    await api.post(`/api/ximboca/eventos/${id}/tarefas`, { titulo: novaTarefa, responsavel: novaTarefaResp || null });
+    setNovaTarefa(''); setNovaTarefaResp('');
+    carregar();
+  };
+  const toggleTarefa = async (t: Tarefa) => {
+    await api.put(`/api/ximboca/tarefas/${t.id}`, { feito: t.feito ? 0 : 1 });
+    carregar();
+  };
+  const removerTarefa = async (t: Tarefa) => {
+    if (!(await confirm({ message: `Remover a tarefa "${t.titulo}"?`, confirmText: 'Remover', danger: true }))) return;
+    await api.delete(`/api/ximboca/tarefas/${t.id}`);
+    carregar();
   };
 
   const enviarCapa = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,6 +341,41 @@ export function XimbocaEvento() {
               : <p className="text-xs text-texto-fraco">Sem pagamentos ainda.</p>}
             <p className="text-[11px] text-texto-fraco mt-1">Quem faz o check-in são os militares marcados como <b>recepcionista</b> em Admin → Usuários. Eles acessam pelo menu <b>Check-in</b>.</p>
           </div>
+        </div>
+      </div>
+
+      {/* Checklist / Tarefas */}
+      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
+        <div className="bg-azul px-5 py-3 rounded-t-xl flex items-center justify-between">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Checklist da organização</h2>
+          {tarefas.length > 0 && (
+            <span className="text-xs text-white/90 font-medium">{tarefas.filter(t => t.feito).length}/{tarefas.length} feitas</span>
+          )}
+        </div>
+        <div className="p-4">
+          <div className="divide-y divide-borda/60 mb-3">
+            {tarefas.map(t => (
+              <div key={t.id} className="flex items-center gap-3 py-2.5">
+                <button onClick={() => toggleTarefa(t)}
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${t.feito ? 'bg-verde border-verde text-white' : 'border-borda-forte hover:border-azul'}`}
+                  aria-label={t.feito ? 'Desmarcar' : 'Marcar como feito'}>
+                  {t.feito ? <Icon name="check" size={13} /> : null}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm ${t.feito ? 'line-through text-texto-fraco' : 'text-texto'}`}>{t.titulo}</div>
+                  {t.responsavel && <div className="text-[11px] text-texto-fraco">Responsável: {t.responsavel}</div>}
+                </div>
+                <button onClick={() => removerTarefa(t)} aria-label="Remover"
+                  className="p-1.5 rounded-lg text-vermelho hover:bg-red-50 transition-colors flex-shrink-0"><Icon name="trash" size={14} /></button>
+              </div>
+            ))}
+            {tarefas.length === 0 && <p className="text-sm text-texto-fraco py-3 text-center">Nenhuma tarefa ainda. Monte a checklist do evento.</p>}
+          </div>
+          <form onSubmit={adicionarTarefa} className="flex gap-2 flex-wrap">
+            <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)} className={`${inputClass} flex-1 min-w-[160px]`} placeholder="Ex: Comprar carvão" />
+            <input value={novaTarefaResp} onChange={e => setNovaTarefaResp(e.target.value)} className={`${inputClass} w-36`} placeholder="Responsável" />
+            <Button type="submit" size="sm">+ Tarefa</Button>
+          </form>
         </div>
       </div>
 

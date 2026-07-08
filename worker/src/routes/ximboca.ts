@@ -283,7 +283,11 @@ ximboca.get('/eventos/:id', async (c) => {
     'SELECT * FROM ximboca_ingresso_tipos WHERE evento_id = ? ORDER BY ordem ASC, nome ASC'
   ).bind(id).all();
 
-  return c.json({ evento, participantes, despesas, tipos });
+  const { results: tarefas } = await c.env.DB.prepare(
+    'SELECT * FROM ximboca_tarefas WHERE evento_id = ? ORDER BY feito ASC, ordem ASC, created_at ASC'
+  ).bind(id).all();
+
+  return c.json({ evento, participantes, despesas, tipos, tarefas });
 });
 
 // Update event
@@ -504,6 +508,40 @@ ximboca.delete('/tipos/:tipoId', async (c) => {
   if (emUso) return c.json({ error: 'Tipo já usado por um participante — não pode ser removido' }, 400);
   const result = await c.env.DB.prepare('DELETE FROM ximboca_ingresso_tipos WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Tipo não encontrado' }, 404);
+  return c.json({ ok: true });
+});
+
+// ============ CHECKLIST / TAREFAS (admin) ============
+ximboca.post('/eventos/:id/tarefas', async (c) => {
+  const evento_id = c.req.param('id');
+  const { titulo, responsavel } = await c.req.json<{ titulo: string; responsavel?: string }>();
+  if (!titulo) return c.json({ error: 'Título obrigatório' }, 400);
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO ximboca_tarefas (evento_id, titulo, responsavel) VALUES (?, ?, ?) RETURNING *'
+  ).bind(evento_id, titulo.trim(), responsavel?.trim() || null).all();
+  return c.json(results[0], 201);
+});
+
+ximboca.put('/tarefas/:tarefaId', async (c) => {
+  const id = c.req.param('tarefaId');
+  const body = await c.req.json();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if ('titulo' in body) { fields.push('titulo = ?'); values.push(body.titulo); }
+  if ('responsavel' in body) { fields.push('responsavel = ?'); values.push(body.responsavel || null); }
+  if ('feito' in body) { fields.push('feito = ?'); values.push(body.feito ? 1 : 0); }
+  if (!fields.length) return c.json({ error: 'Nada para atualizar' }, 400);
+  values.push(id);
+  const { results } = await c.env.DB.prepare(
+    `UPDATE ximboca_tarefas SET ${fields.join(', ')} WHERE id = ? RETURNING *`
+  ).bind(...values).all();
+  if (!results.length) return c.json({ error: 'Tarefa não encontrada' }, 404);
+  return c.json(results[0]);
+});
+
+ximboca.delete('/tarefas/:tarefaId', async (c) => {
+  const result = await c.env.DB.prepare('DELETE FROM ximboca_tarefas WHERE id = ?').bind(c.req.param('tarefaId')).run();
+  if (!result.meta.changes) return c.json({ error: 'Tarefa não encontrada' }, 404);
   return c.json({ ok: true });
 });
 
