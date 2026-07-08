@@ -5,7 +5,7 @@ import { api } from '../services/api';
 
 interface EventoCheckin { id: string; nome: string; data: string; imagem_url: string | null; total_pagos: number; entraram: number; }
 interface Resultado { estado: 'OK' | 'JA_ENTROU' | 'NAO_PAGO' | 'NAO_ENCONTRADO'; nome?: string; tipo_nome?: string | null; numero_ingresso?: number | null; checkin_at?: string; }
-interface PagoItem { id: string; nome: string; numero_ingresso: number | null; tipo_nome: string | null; checkin_at: string | null; }
+interface PagoItem { id: string; nome: string; numero_ingresso: number | null; tipo_nome: string | null; checkin_at: string | null; status: string; }
 
 const CORES: Record<string, string> = { OK: 'bg-green-600', JA_ENTROU: 'bg-amber-500', NAO_PAGO: 'bg-red-600', NAO_ENCONTRADO: 'bg-red-600' };
 const TITULOS: Record<string, string> = { OK: 'ENTROU', JA_ENTROU: 'JÁ ENTROU', NAO_PAGO: 'PAGAMENTO PENDENTE', NAO_ENCONTRADO: 'INGRESSO INVÁLIDO' };
@@ -19,7 +19,10 @@ export function CheckinRecepcionista() {
   const [busca, setBusca] = useState('');
   const [lista, setLista] = useState<PagoItem[]>([]);
   const [erroBusca, setErroBusca] = useState('');
+  const [ultimoId, setUltimoId] = useState<string | null>(null);
   const travadoRef = useRef(false);
+
+  const limpar = () => { travadoRef.current = false; setResultado(null); setUltimoId(null); };
 
   const carregarEventos = async () => {
     const data = await api.get<EventoCheckin[]>('/api/ximboca/checkin/eventos');
@@ -32,15 +35,30 @@ export function CheckinRecepcionista() {
   const validar = async (participanteId: string) => {
     if (travadoRef.current || !eventoId) return;
     travadoRef.current = true;
+    setUltimoId(participanteId);
+    let d: Resultado;
     try {
-      const d = await api.post<Resultado>(`/api/ximboca/checkin/${eventoId}/validar`, { participante_id: participanteId });
+      d = await api.post<Resultado>(`/api/ximboca/checkin/${eventoId}/validar`, { participante_id: participanteId });
+    } catch {
+      d = { estado: 'NAO_ENCONTRADO' };
+    }
+    setResultado(d);
+    if (d.estado === 'OK') carregarEventos();
+    // Pendente fica na tela com botões (recepcionista decide). Os outros somem sozinhos.
+    if (d.estado !== 'NAO_PAGO') setTimeout(limpar, 2500);
+  };
+
+  const pagarEEntrar = async () => {
+    if (!ultimoId || !eventoId) return;
+    try {
+      const d = await api.post<Resultado>(`/api/ximboca/checkin/${eventoId}/pagar-entrar`, { participante_id: ultimoId });
       setResultado(d);
-      if (d.estado === 'OK') carregarEventos();
+      carregarEventos();
+      if (busca) buscar(busca);
     } catch {
       setResultado({ estado: 'NAO_ENCONTRADO' });
-    } finally {
-      setTimeout(() => { travadoRef.current = false; setResultado(null); }, 2500);
     }
+    setTimeout(limpar, 2500);
   };
 
   useEffect(() => {
@@ -98,6 +116,15 @@ export function CheckinRecepcionista() {
           {resultado.tipo_nome && <div className="text-lg opacity-90">{resultado.tipo_nome}</div>}
           {resultado.numero_ingresso != null && <div className="text-lg opacity-90">#{String(resultado.numero_ingresso).padStart(3, '0')}</div>}
           {resultado.checkin_at && <div className="text-sm opacity-80 mt-2">às {new Date(resultado.checkin_at + 'Z').toLocaleTimeString('pt-BR')}</div>}
+          {resultado.estado === 'NAO_PAGO' && (
+            <div className="mt-8 flex flex-col gap-3 w-full max-w-xs px-6">
+              <button onClick={pagarEEntrar}
+                className="bg-white text-red-700 font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] transition-transform">
+                Recebi o pagamento — liberar entrada
+              </button>
+              <button onClick={limpar} className="text-white/90 underline text-sm py-1">Fechar</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -111,7 +138,9 @@ export function CheckinRecepcionista() {
             <button key={p.id} onClick={() => validar(p.id)} disabled={!!p.checkin_at}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm ${p.checkin_at ? 'bg-gray-800 text-gray-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
               <span>{p.nome} {p.tipo_nome ? `· ${p.tipo_nome}` : ''}</span>
-              <span>{p.checkin_at ? 'entrou ✓' : `#${String(p.numero_ingresso ?? 0).padStart(3, '0')}`}</span>
+              <span className={p.checkin_at ? 'text-green-400' : p.status === 'pago' ? '' : 'text-amber-400'}>
+                {p.checkin_at ? 'entrou ✓' : p.status === 'pago' ? `#${String(p.numero_ingresso ?? 0).padStart(3, '0')}` : 'pendente'}
+              </span>
             </button>
           ))}
         </div>

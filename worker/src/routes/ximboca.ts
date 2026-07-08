@@ -174,11 +174,11 @@ ximboca.get('/checkin/:eventoId/lista', recepcionistaMiddleware, async (c) => {
   const eventoId = c.req.param('eventoId');
   const q = `%${(c.req.query('q') || '').trim()}%`;
   const { results } = await c.env.DB.prepare(`
-    SELECT p.id, p.nome, p.numero_ingresso, p.checkin_at, t.nome as tipo_nome
+    SELECT p.id, p.nome, p.numero_ingresso, p.checkin_at, p.status, t.nome as tipo_nome
     FROM ximboca_participantes p
     LEFT JOIN ximboca_ingresso_tipos t ON t.id = p.tipo_ingresso_id
-    WHERE p.evento_id = ? AND p.status = 'pago' AND p.nome LIKE ? COLLATE NOCASE
-    ORDER BY p.nome ASC LIMIT 50
+    WHERE p.evento_id = ? AND p.nome LIKE ? COLLATE NOCASE
+    ORDER BY (p.checkin_at IS NOT NULL) ASC, p.status DESC, p.nome ASC LIMIT 50
   `).bind(eventoId, q).all();
   return c.json(results);
 });
@@ -210,6 +210,25 @@ ximboca.post('/checkin/:eventoId/validar', recepcionistaMiddleware, async (c) =>
     "UPDATE ximboca_participantes SET checkin_at = datetime('now'), checkin_por = ? WHERE id = ?"
   ).bind(trigrama, participante_id).run();
 
+  return c.json({ estado: 'OK', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome });
+});
+
+// Recepcionista confirma pagamento na portaria (dinheiro) e libera a entrada de uma vez.
+ximboca.post('/checkin/:eventoId/pagar-entrar', recepcionistaMiddleware, async (c) => {
+  const eventoId = c.req.param('eventoId');
+  const trigrama = c.get('userTrigrama');
+  const { participante_id } = await c.req.json<{ participante_id: string }>();
+  const p = await c.env.DB.prepare(`
+    SELECT p.evento_id, p.nome, p.status, p.checkin_at, p.numero_ingresso, t.nome as tipo_nome
+    FROM ximboca_participantes p
+    LEFT JOIN ximboca_ingresso_tipos t ON t.id = p.tipo_ingresso_id
+    WHERE p.id = ?
+  `).bind(participante_id).first<{ evento_id: string; nome: string; status: string; checkin_at: string | null; numero_ingresso: number | null; tipo_nome: string | null }>();
+  if (!p || p.evento_id !== eventoId) return c.json({ estado: 'NAO_ENCONTRADO' });
+  if (p.checkin_at) return c.json({ estado: 'JA_ENTROU', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome, checkin_at: p.checkin_at });
+  await c.env.DB.prepare(
+    "UPDATE ximboca_participantes SET status = 'pago', paid_at = COALESCE(paid_at, datetime('now')), checkin_at = datetime('now'), checkin_por = ? WHERE id = ?"
+  ).bind(trigrama, participante_id).run();
   return c.json({ estado: 'OK', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome });
 });
 
