@@ -8,6 +8,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 
 interface Admin {
   id: string;
@@ -21,6 +23,8 @@ interface Admin {
 
 export function Admins() {
   const { admin: currentAdmin } = useAuth();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Admin | null>(null);
@@ -76,12 +80,12 @@ export function Admins() {
   };
 
   const excluir = async (a: Admin) => {
-    if (!confirm(`Remover "${a.nome}"? Ação irreversível.`)) return;
+    if (!(await confirm({ message: `Remover "${a.nome}"? Ação irreversível.`, confirmText: 'Excluir', danger: true }))) return;
     try {
       await api.delete(`/api/admins/${a.id}`);
       carregar();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Erro');
+      showToast(e instanceof Error ? e.message : 'Erro', 'error');
     }
   };
 

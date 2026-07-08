@@ -6,6 +6,7 @@ import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import type { Usuario, Categoria } from '../../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -27,6 +28,7 @@ type EditForm = { trigrama: string; email: string; saram: string; whatsapp: stri
 
 export function Usuarios() {
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
@@ -233,9 +235,8 @@ export function Usuarios() {
   };
 
   const excluirUsuario = async (u: Usuario) => {
-    const aviso = `EXCLUIR usuário ${u.trigrama}?\n\nEsta ação é IRREVERSÍVEL e remove:\n- Conta do usuário\n- Cliente vinculado\n- Pedidos da cantina e itens\n- Pedidos da loja, parcelas e itens\n- Assinaturas e pagamentos do café\n- Foto de perfil\n\nDigite OK para confirmar.`;
-    const resp = window.prompt(aviso);
-    if (resp?.trim().toUpperCase() !== 'OK') return;
+    const aviso = `EXCLUIR usuário ${u.trigrama}?\n\nEsta ação é IRREVERSÍVEL e remove:\n- Conta do usuário\n- Cliente vinculado\n- Pedidos da cantina e itens\n- Pedidos da loja, parcelas e itens\n- Assinaturas e pagamentos do café\n- Foto de perfil`;
+    if (!(await confirm({ title: 'Excluir conta', message: aviso, confirmText: 'Excluir definitivamente', danger: true }))) return;
 
     setErro(''); setMsg('');
     setAcaoLoading(u.id);
@@ -252,7 +253,7 @@ export function Usuarios() {
 
   const toggleAtivo = async (u: Usuario) => {
     const acao = u.ativo === 1 ? 'desativar' : 'ativar';
-    if (!window.confirm(`Confirma ${acao} conta de ${u.trigrama}?`)) return;
+    if (!(await confirm({ message: `Confirma ${acao} conta de ${u.trigrama}?`, confirmText: u.ativo === 1 ? 'Desativar' : 'Ativar' }))) return;
     setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {

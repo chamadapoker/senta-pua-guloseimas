@@ -7,6 +7,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface Despesa {
   id: string;
@@ -30,6 +31,7 @@ interface Saldo {
 }
 
 export function CafeDespesas() {
+  const confirm = useConfirm();
   const [tipo, setTipo] = useState<'' | 'oficial' | 'graduado'>('');
   const [lista, setLista] = useState<Despesa[]>([]);
   const [saldo, setSaldo] = useState<Saldo | null>(null);
@@ -66,7 +68,7 @@ export function CafeDespesas() {
   };
 
   const excluir = async (d: Despesa) => {
-    if (!confirm(`Remover "${d.descricao}" (R$ ${d.valor.toFixed(2)})?`)) return;
+    if (!(await confirm({ title: 'Excluir', message: `Remover "${d.descricao}" (R$ ${d.valor.toFixed(2)})?`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/cafe/admin/despesas/${d.id}`);
     carregar();
   };

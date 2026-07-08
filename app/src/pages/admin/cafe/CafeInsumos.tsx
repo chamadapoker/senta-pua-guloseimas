@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface Insumo {
   id: string;
@@ -15,6 +16,7 @@ interface Insumo {
 }
 
 export function CafeInsumos() {
+  const confirm = useConfirm();
   const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
     (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
   );
@@ -55,7 +57,7 @@ export function CafeInsumos() {
   };
 
   const excluir = async (i: Insumo) => {
-    if (!confirm(`Excluir "${i.nome}"?`)) return;
+    if (!(await confirm({ title: 'Excluir', message: `Excluir "${i.nome}"?`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/cafe/admin/insumos/${i.id}`);
     carregar();
   };

@@ -4,6 +4,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import type { Pedido } from '../../types';
 
 interface Resp {
@@ -24,6 +25,7 @@ export function Pedidos() {
   const [offset, setOffset] = useState(0);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   // Aceita overrides para evitar ler estado obsoleto logo após setState (ex: limpar filtros).
   const carregar = (o?: { q?: string; de?: string; ate?: string; offset?: number }) => {
@@ -61,7 +63,7 @@ export function Pedidos() {
     setSelecionados(new Set());
     carregar();
     const falhas = res.filter(r => r.status === 'rejected').length;
-    if (falhas > 0) alert(`${falhas} de ${ids.length} pedido(s) não puderam ser marcados como pagos. Tente novamente.`);
+    if (falhas > 0) showToast(`${falhas} de ${ids.length} pedido(s) não puderam ser marcados como pagos. Tente novamente.`, 'error');
   };
 
   const excluirPedido = async (pedidoId: string) => {
@@ -70,7 +72,7 @@ export function Pedidos() {
       await api.delete(`/api/pedidos/${pedidoId}`);
       carregar();
     } catch (e) {
-      alert('Erro ao excluir: ' + (e instanceof Error ? e.message : 'tente novamente'));
+      showToast('Erro ao excluir: ' + (e instanceof Error ? e.message : 'tente novamente'), 'error');
     }
   };
 

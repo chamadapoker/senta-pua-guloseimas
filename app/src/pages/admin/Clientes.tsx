@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import type { Cliente } from '../../types';
 
 export function Clientes() {
@@ -12,6 +13,7 @@ export function Clientes() {
   const [filtro, setFiltro] = useState<'todos' | 'divida' | 'dia' | 'bloqueados'>('todos');
   const navigate = useNavigate();
   const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   const carregar = () => api.get<Cliente[]>('/api/clientes').then(setClientes);
   useEffect(() => { carregar(); }, []);
@@ -30,7 +32,7 @@ export function Clientes() {
       await api.put(`/api/clientes/${c.id}/bloquear`, { ativo: novoStatus });
       carregar();
     } catch {
-      alert('Erro ao atualizar. Tente novamente.');
+      showToast('Erro ao atualizar. Tente novamente.', 'error');
     }
   };
 
@@ -46,7 +48,7 @@ export function Clientes() {
       await api.delete(`/api/clientes/${c.id}`);
       carregar();
     } catch {
-      alert('Erro ao excluir. Tente novamente.');
+      showToast('Erro ao excluir. Tente novamente.', 'error');
     }
   };
 

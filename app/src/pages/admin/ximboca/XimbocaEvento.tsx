@@ -11,6 +11,8 @@ import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
 import { inputClass } from '../../../components/ui/Field';
 import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -25,6 +27,8 @@ interface Evento { id: string; nome: string; data: string; valor_por_pessoa: num
 
 export function XimbocaEvento() {
   const { id } = useParams<{ id: string }>();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [evento, setEvento] = useState<Evento | null>(null);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
@@ -105,7 +109,7 @@ export function XimbocaEvento() {
   };
 
   const removerParticipante = async (pid: string) => {
-    if (!confirm('Remover participante?')) return;
+    if (!(await confirm({ message: 'Remover participante?', confirmText: 'Remover', danger: true }))) return;
     await api.delete(`/api/ximboca/participantes/${pid}`);
     carregar();
   };
@@ -133,12 +137,12 @@ export function XimbocaEvento() {
       setModalEstoque(false);
       carregar();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao consumir estoque');
+      showToast(err instanceof Error ? err.message : 'Erro ao consumir estoque', 'error');
     }
   };
 
   const removerDespesa = async (did: string) => {
-    if (!confirm('Remover despesa?')) return;
+    if (!(await confirm({ message: 'Remover despesa?', confirmText: 'Remover', danger: true }))) return;
     await api.delete(`/api/ximboca/despesas/${did}`);
     carregar();
   };
@@ -152,9 +156,9 @@ export function XimbocaEvento() {
   };
 
   const removerTipo = async (tipoId: string) => {
-    if (!confirm('Remover este tipo de ingresso?')) return;
+    if (!(await confirm({ message: 'Remover este tipo de ingresso?', confirmText: 'Remover', danger: true }))) return;
     try { await api.delete(`/api/ximboca/tipos/${tipoId}`); carregar(); }
-    catch (err) { alert(err instanceof Error ? err.message : 'Erro ao remover'); }
+    catch (err) { showToast(err instanceof Error ? err.message : 'Erro ao remover', 'error'); }
   };
 
   const enviarCapa = async (e: React.ChangeEvent<HTMLInputElement>) => {

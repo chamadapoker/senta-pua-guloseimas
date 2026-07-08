@@ -6,6 +6,8 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
 
 interface Assinante {
   id: string;
@@ -28,6 +30,8 @@ interface Pagamento {
 }
 
 export function CafeAssinantes() {
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [sala, setSala] = useState<'oficial' | 'graduado'>(() =>
     (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
   );
@@ -96,7 +100,7 @@ export function CafeAssinantes() {
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editando && !/^[A-ZÀ-ÚÖ]{3}$/.test(nomeGuerra.trim())) {
-      alert('Trigrama deve ter exatamente 3 letras');
+      showToast('Trigrama deve ter exatamente 3 letras', 'error');
       return;
     }
     try {
@@ -117,13 +121,13 @@ export function CafeAssinantes() {
       fecharModal();
       carregar();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Erro');
+      showToast(e instanceof Error ? e.message : 'Erro', 'error');
     }
   };
 
   const toggleAtivo = async (a: Assinante) => {
     if (a.ativo) {
-      if (!confirm(`Desativar ${a.nome_guerra}?`)) return;
+      if (!(await confirm({ title: 'Desativar', message: `Desativar ${a.nome_guerra}?`, confirmText: 'Desativar', danger: false }))) return;
       await api.put(`/api/cafe/admin/assinantes/${a.id}/desativar`, {});
     } else {
       await api.put(`/api/cafe/admin/assinantes/${a.id}`, { ativo: 1 });
@@ -132,7 +136,7 @@ export function CafeAssinantes() {
   };
 
   const excluir = async (a: Assinante) => {
-    if (!confirm(`Excluir ${a.nome_guerra} permanentemente? Todos os pagamentos desse assinante serão apagados.`)) return;
+    if (!(await confirm({ title: 'Excluir', message: `Excluir ${a.nome_guerra} permanentemente? Todos os pagamentos desse assinante serão apagados.`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/cafe/admin/assinantes/${a.id}`);
     carregar();
   };

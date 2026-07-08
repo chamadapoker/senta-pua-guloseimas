@@ -8,6 +8,8 @@ import { Loading } from '../components/ui/Loading';
 import { MeuCafe } from '../components/perfil/MeuCafe';
 import { api } from '../services/api';
 import { gerarExtratoUnificadoPDF } from '../services/pdf';
+import { useConfirm } from '../hooks/useConfirm';
+import { useToast } from '../hooks/useToast';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -17,6 +19,8 @@ function resolveImg(url: string | null): string | null {
 
 export function Perfil() {
   const { user, token, checkAuth, updateProfile, updateFoto, removeFoto, logout, excluirConta } = useUserAuth();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [whatsapp, setWhatsapp] = useState('');
   const [saram, setSaram] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
@@ -89,6 +93,7 @@ export function Perfil() {
   };
 
   const handleRemoveFoto = async () => {
+    if (!(await confirm({ title: 'Remover foto', message: 'Remover sua foto de perfil?', confirmText: 'Remover', danger: true }))) return;
     setErro(''); setMsg('');
     try {
       await removeFoto();
@@ -200,7 +205,7 @@ export function Perfil() {
                 ximboca: d.ximboca.filter(p => p.status !== 'pago').map(p => ({ evento: p.evento_nome, data: fmt(p.evento_data + 'T12:00:00'), valor: p.valor_individual ?? p.valor_por_pessoa })),
               }, total, cafeGraduado);
             } catch (e) {
-              alert('Erro ao gerar extrato: ' + (e instanceof Error ? e.message : 'desconhecido'));
+              showToast('Erro ao gerar extrato: ' + (e instanceof Error ? e.message : 'desconhecido'), 'error');
             }
           }}
           className="w-full mt-4 bg-white border border-borda rounded-xl py-3 text-sm font-medium text-azul hover:bg-azul/5"

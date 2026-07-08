@@ -8,6 +8,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 import { getConfig } from '../../../services/config';
 import { gerarCobrancaCafePDF } from '../../../services/pdf';
+import { useToast } from '../../../hooks/useToast';
 
 interface Mensalidade {
   id: string;
@@ -21,6 +22,7 @@ interface Mensalidade {
 }
 
 export function CafeMensalidades() {
+  const { showToast } = useToast();
   const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
     (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
   );
@@ -58,11 +60,11 @@ export function CafeMensalidades() {
     setGerando(true);
     try {
       const res = await api.post<{ criados: number; total: number }>('/api/cafe/admin/gerar-mensalidades', { referencia, tipo });
-      alert(`${res.criados} mensalidades geradas de ${res.total} assinantes`);
+      showToast(`${res.criados} mensalidades geradas de ${res.total} assinantes`, 'success');
       setModalGerar(false);
       carregar();
     } catch (e) {
-      alert('Erro: ' + (e instanceof Error ? e.message : 'tente novamente'));
+      showToast('Erro: ' + (e instanceof Error ? e.message : 'tente novamente'), 'error');
     } finally { setGerando(false); }
   };
 

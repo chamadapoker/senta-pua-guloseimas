@@ -10,6 +10,8 @@ import { api } from '../services/api';
 import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { useConfirm } from '../hooks/useConfirm';
+import { SuccessBurst } from '../components/ui/SuccessBurst';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -69,6 +71,7 @@ function categoriaLabel(cat: string): string {
 export function XimbocaPublica() {
   const { user } = useUserAuth();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [aba, setAba] = useState<'abertas' | 'meus'>('abertas');
   const [eventos, setEventos] = useState<EventoPublico[]>([]);
   const [meusEventos, setMeusEventos] = useState<MeuEvento[]>([]);
@@ -80,6 +83,7 @@ export function XimbocaPublica() {
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [festaKey, setFestaKey] = useState(0);
 
   const copiarPixEvento = async (ev: MeuEvento) => {
     if (!ev.pix_chave || !ev.pix_nome) {
@@ -146,6 +150,7 @@ export function XimbocaPublica() {
         tipo_ingresso_id: tipoEscolhido,
       });
       setMsg('Inscrição confirmada! Você já está participando.');
+      setFestaKey(k => k + 1);
       setParticiparModal(null);
       await carregar();
     } catch (e) {
@@ -156,7 +161,7 @@ export function XimbocaPublica() {
   };
 
   const cancelarParticipacao = async (eventoId: string) => {
-    if (!window.confirm('Tem certeza que deseja cancelar sua participação?')) return;
+    if (!(await confirm({ message: 'Tem certeza que deseja cancelar sua participação?', confirmText: 'Cancelar participação' }))) return;
     setErro(''); setMsg('');
     setAcaoLoading(true);
     try {
@@ -180,6 +185,7 @@ export function XimbocaPublica() {
 
   return (
     <AppLayout>
+      {festaKey > 0 && <SuccessBurst key={festaKey} />}
       <BackButton to="/" className="mb-3" />
       <h1 className="font-display text-2xl text-azul tracking-wider mb-5">XIMBOCA</h1>
 

@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import { Loading } from '../../components/ui/Loading';
 import { PageHeader } from '../../components/ui/PageHeader';
 
@@ -51,6 +53,8 @@ export function Comprovantes() {
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<Comprovante | null>(null);
   const [motivo, setMotivo] = useState('');
+  const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   const carregar = () => {
     setLoading(true);
@@ -68,14 +72,14 @@ export function Comprovantes() {
   const resolverImg = (url: string) => url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
 
   const aprovar = async (c: Comprovante) => {
-    if (!confirm(`Aprovar comprovante de ${c.trigrama}? Isso marca o pagamento como PAGO.`)) return;
+    if (!(await confirmar({ title: 'Aprovar comprovante', message: `Aprovar comprovante de ${c.trigrama}? Isso marca o pagamento como PAGO.`, confirmText: 'Aprovar', danger: false }))) return;
     await api.put(`/api/comprovantes/${c.id}/aprovar`, {});
     setPreview(null);
     carregar();
   };
 
   const rejeitar = async (c: Comprovante) => {
-    if (!motivo.trim()) { alert('Informe o motivo da rejeição'); return; }
+    if (!motivo.trim()) { showToast('Informe o motivo da rejeição', 'error'); return; }
     await api.put(`/api/comprovantes/${c.id}/rejeitar`, { motivo });
     setPreview(null);
     setMotivo('');

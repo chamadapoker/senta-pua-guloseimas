@@ -4,6 +4,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 
 interface Devedor {
   nome_guerra: string;
@@ -30,6 +31,7 @@ export function Cobrancas() {
   const [modelo, setModelo] = useState(
     `Oi {NOME}, tudo bem?\n\nTem um valor pendente na caixinha:\n*Total: R$ {TOTAL}*\n{DETALHE}\n\nQuando der, passa um PIX ou fala comigo. Obrigado!`
   );
+  const confirmar = useConfirm();
 
   const carregar = () => {
     api.get<{ devedores: Devedor[]; resumo: Resumo }>(`/api/admin/devedores-consolidados?dias=${dias}`)
@@ -60,10 +62,10 @@ export function Cobrancas() {
     window.open(`https://wa.me/55${d.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  const abrirTodos = () => {
+  const abrirTodos = async () => {
     const comWhats = devedores.filter(d => d.whatsapp);
     if (!comWhats.length) return;
-    if (!confirm(`Abrir ${comWhats.length} abas do WhatsApp? O navegador pode bloquear pop-ups.`)) return;
+    if (!(await confirmar({ title: 'Cobrar todos', message: `Abrir ${comWhats.length} abas do WhatsApp? O navegador pode bloquear pop-ups.`, confirmText: 'Abrir', danger: false }))) return;
     comWhats.forEach((d, i) => setTimeout(() => abrirWhatsapp(d), i * 400));
   };
 

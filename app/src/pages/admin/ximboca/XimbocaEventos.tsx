@@ -7,6 +7,7 @@ import { inputClass } from '../../../components/ui/Field';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface Evento {
   id: string;
@@ -28,6 +29,7 @@ interface Evento {
 }
 
 export function XimbocaEventos() {
+  const confirm = useConfirm();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Evento | null>(null);
@@ -96,7 +98,7 @@ export function XimbocaEventos() {
   };
 
   const excluir = async (ev: Evento) => {
-    if (!confirm(`Excluir "${ev.nome}"? Todos os participantes e despesas serao apagados.`)) return;
+    if (!(await confirm({ message: `Excluir "${ev.nome}"? Todos os participantes e despesas serao apagados.`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/ximboca/eventos/${ev.id}`);
     carregar();
   };

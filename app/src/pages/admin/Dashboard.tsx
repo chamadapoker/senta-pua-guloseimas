@@ -5,6 +5,8 @@ import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Button } from '../../components/ui/Button';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import type { DashboardStats } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -12,6 +14,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [erro, setErro] = useState(false);
+  const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   useEffect(() => { api.get<DashboardStats>('/api/admin/stats').then(setStats).catch(() => setErro(true)); }, []);
 
@@ -103,10 +107,10 @@ export function Dashboard() {
             <Button
               variant="chip-success"
               size="xs"
-              onClick={() => {
+              onClick={async () => {
                 const devedoresComZap = stats.devedores.filter(d => d.whatsapp);
-                if (!devedoresComZap.length) { alert('Nenhum devedor com WhatsApp cadastrado'); return; }
-                if (!confirm(`Abrir WhatsApp para ${devedoresComZap.length} devedor(es)?`)) return;
+                if (!devedoresComZap.length) { showToast('Nenhum devedor com WhatsApp cadastrado', 'warning'); return; }
+                if (!(await confirmar({ title: 'Cobrar todos', message: `Abrir WhatsApp para ${devedoresComZap.length} devedor(es)?`, confirmText: 'Abrir', danger: false }))) return;
                 devedoresComZap.forEach((d, i) => {
                   setTimeout(() => window.open(montarLinkCobranca(d.nome_guerra, d.total_devido, d.whatsapp!), '_blank'), i * 1500);
                 });

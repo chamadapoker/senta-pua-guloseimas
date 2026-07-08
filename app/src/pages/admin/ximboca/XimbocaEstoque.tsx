@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface ItemEstoque {
   id: string;
@@ -15,6 +16,7 @@ interface ItemEstoque {
 }
 
 export function XimbocaEstoque() {
+  const confirm = useConfirm();
   const [itens, setItens] = useState<ItemEstoque[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<ItemEstoque | null>(null);
@@ -39,7 +41,7 @@ export function XimbocaEstoque() {
   };
 
   const excluir = async (i: ItemEstoque) => {
-    if (!confirm(`Excluir "${i.nome}"?`)) return;
+    if (!(await confirm({ message: `Excluir "${i.nome}"?`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/ximboca/estoque/${i.id}`);
     carregar();
   };

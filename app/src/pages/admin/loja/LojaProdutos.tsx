@@ -6,6 +6,8 @@ import { inputClass } from '../../../components/ui/Field';
 import { Toggle } from '../../../components/ui/Toggle';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -82,6 +84,8 @@ export function LojaProdutos() {
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [novaTamanho, setNovaTamanho] = useState('');
   const [novaCor, setNovaCor] = useState('');
+  const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   const carregar = () => api.get<LojaProduto[]>('/api/loja/admin/produtos').then(setProdutos);
   useEffect(() => { carregar(); }, []);
@@ -112,7 +116,7 @@ export function LojaProdutos() {
       const url = await uploadImagem(file);
       setImagens(prev => [...prev, { url, preview }]);
     } catch {
-      alert('Erro ao enviar imagem. Tente novamente.');
+      showToast('Erro ao enviar imagem. Tente novamente.', 'error');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -163,7 +167,7 @@ export function LojaProdutos() {
       setModalAberto(false);
       carregar();
     } catch (err) {
-      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'));
+      showToast('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'), 'error');
     }
   };
 
@@ -173,7 +177,7 @@ export function LojaProdutos() {
   };
 
   const excluir = async (p: LojaProduto) => {
-    if (!confirm(`Excluir "${p.nome}"?`)) return;
+    if (!(await confirmar({ title: 'Excluir produto', message: `Excluir "${p.nome}"?`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/loja/admin/produtos/${p.id}`);
     carregar();
   };

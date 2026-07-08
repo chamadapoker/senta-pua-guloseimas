@@ -3,6 +3,7 @@ import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { api } from '../../../services/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 interface LojaPedido {
   id: string;
@@ -19,6 +20,7 @@ interface LojaPedido {
 export function LojaPedidos() {
   const [pedidos, setPedidos] = useState<LojaPedido[]>([]);
   const [filtroStatus, setFiltroStatus] = useState('');
+  const confirmar = useConfirm();
 
   const carregar = () => {
     const params = filtroStatus ? `?status=${filtroStatus}` : '';
@@ -33,7 +35,7 @@ export function LojaPedidos() {
   };
 
   const excluir = async (id: string) => {
-    if (!window.confirm('Excluir este pedido?')) return;
+    if (!(await confirmar({ title: 'Excluir pedido', message: 'Excluir este pedido?', confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/loja/admin/pedidos/${id}`);
     carregar();
   };

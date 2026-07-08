@@ -5,6 +5,7 @@ import { Toggle } from '../../components/ui/Toggle';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { inputClass } from '../../components/ui/Field';
 import type { Produto } from '../../types';
@@ -48,6 +49,7 @@ export function Produtos() {
   const [salvando, setSalvando] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const confirmar = useConfirm();
+  const { showToast } = useToast();
 
   const carregar = () => api.get<Produto[]>('/api/produtos/todos').then(setProdutos);
   useEffect(() => { carregar(); }, []);
@@ -78,7 +80,7 @@ export function Produtos() {
       const url = await uploadImagem(file);
       setImagemUrl(url);
     } catch {
-      alert('Erro ao enviar imagem. Tente novamente.');
+      showToast('Erro ao enviar imagem. Tente novamente.', 'error');
       setPreviewImg(resolveImg(imagemUrl) || '');
     } finally {
       setUploading(false);
@@ -110,7 +112,7 @@ export function Produtos() {
       setModalAberto(false);
       carregar();
     } catch (err) {
-      alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'));
+      showToast('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'), 'error');
     } finally {
       setSalvando(false);
     }
@@ -127,7 +129,7 @@ export function Produtos() {
       await api.delete(`/api/produtos/${p.id}`);
       carregar();
     } catch {
-      alert('Erro ao excluir. Tente novamente.');
+      showToast('Erro ao excluir. Tente novamente.', 'error');
     }
   };
 

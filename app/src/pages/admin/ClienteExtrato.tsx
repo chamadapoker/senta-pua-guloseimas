@@ -5,6 +5,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
+import { useConfirm } from '../../hooks/useConfirm';
 import { Loading } from '../../components/ui/Loading';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoUnificadoPDF } from '../../services/pdf';
@@ -27,6 +28,7 @@ export function ClienteExtrato() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<ExtratoCompleto | null>(null);
   const [aba, setAba] = useState<'guloseimas' | 'loja' | 'cafe' | 'ximboca'>('guloseimas');
+  const confirmar = useConfirm();
 
   const carregar = async () => {
     if (!id) return;
@@ -143,7 +145,12 @@ export function ClienteExtrato() {
           size="sm"
           onClick={async () => {
             const acao = cliente.ativo ? 'bloquear' : 'desbloquear';
-            if (!window.confirm(`Tem certeza que deseja ${acao} ${cliente.nome_guerra}?`)) return;
+            if (!(await confirmar({
+              title: 'Confirmar',
+              message: `Tem certeza que deseja ${acao} ${cliente.nome_guerra}?`,
+              confirmText: acao.charAt(0).toUpperCase() + acao.slice(1),
+              danger: !!cliente.ativo,
+            }))) return;
             await api.put(`/api/clientes/${cliente.id}/bloquear`, { ativo: cliente.ativo ? 0 : 1 });
             carregar();
           }}

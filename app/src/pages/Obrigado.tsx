@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
+import { SuccessBurst } from '../components/ui/SuccessBurst';
 
 const FRASES_PIX = [
   'Pagamento na hora, moral lá em cima!',
@@ -32,8 +33,9 @@ export function Obrigado() {
 
   return (
     <AppLayout>
+      {metodo !== 'fiado' && <SuccessBurst />}
       <div className="text-center py-12 animate-fade-in">
-        <div className="w-20 h-20 mx-auto rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-5">
+        <div className="w-20 h-20 mx-auto rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-5 animate-scale-in">
           <svg className="w-10 h-10 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>

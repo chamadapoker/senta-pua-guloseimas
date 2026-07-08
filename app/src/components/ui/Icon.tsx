@@ -1,12 +1,12 @@
 import type { SVGProps, ReactElement } from 'react';
 
-type IconName =
+export type IconName =
   | 'tag' | 'credit-card' | 'cash' | 'cart' | 'megaphone' | 'pencil' | 'device-phone'
   | 'note' | 'check' | 'x' | 'clock' | 'document' | 'archive' | 'paper-clip' | 'upload'
   | 'download' | 'printer' | 'user' | 'trash' | 'alarm' | 'warning' | 'arrow-left'
   | 'arrow-right' | 'chevron-up' | 'chevron-down' | 'chevron-right' | 'close' | 'pix'
   | 'plus' | 'qr-code' | 'refresh' | 'info' | 'eye' | 'bell' | 'coffee' | 'fire' | 'cutlery' | 'vault' | 'users' | 'menu'
-  | 'beer' | 'soda';
+  | 'beer' | 'soda' | 'dots-vertical';
 
 interface Props extends Omit<SVGProps<SVGSVGElement>, 'name'> {
   name: IconName;
@@ -56,6 +56,7 @@ const PATHS: Record<IconName, string | ReactElement> = {
   'menu':          'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5',
   'beer':          'M7 9h7v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9Z M14 11h2.25a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H14 M7 9c0-1.5 1.6-2.6 3.5-2.6S14 7.5 14 9 M9.5 12.5v3.5 M11.5 12.5v3.5',
   'soda':          'M6 8h12 M7.4 8 8.4 19.8a2 2 0 0 0 2 1.8h3.2a2 2 0 0 0 2-1.8L16.6 8 M14 3l-2.4 5 M9.2 12h5.6',
+  'dots-vertical': 'M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z',
 };
 
 export function Icon({ name, size = 16, className = '', ...rest }: Props) {
