@@ -10,6 +10,11 @@ import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
 import { useUserAuth } from '../hooks/useUserAuth';
 
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+function resolveImg(url: string | null): string | null {
+  return url ? (url.startsWith('/api') ? `${WORKER_URL}${url}` : url) : null;
+}
+
 interface IngressoTipo { id: string; nome: string; valor: number; ordem: number; }
 
 interface EventoPublico {
@@ -25,6 +30,7 @@ interface EventoPublico {
   meu_participante_id: string | null;
   minha_categoria: string | null;
   meu_status: string | null;
+  imagem_url: string | null;
   tipos: IngressoTipo[];
 }
 
@@ -209,7 +215,9 @@ export function XimbocaPublica() {
         ) : (
           <div className="space-y-3">
             {eventos.map(ev => (
-              <div key={ev.id} className="bg-white rounded-xl border border-borda p-4 shadow-sm">
+              <div key={ev.id} className="bg-white rounded-xl border border-borda shadow-sm overflow-hidden">
+                {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-44" />}
+                <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-display text-lg text-azul tracking-wider">{ev.nome}</div>
@@ -269,6 +277,7 @@ export function XimbocaPublica() {
                     Participar
                   </Button>
                 )}
+                </div>
               </div>
             ))}
           </div>
@@ -314,7 +323,7 @@ export function XimbocaPublica() {
 
                   {ev.meu_status === 'pago' && (
                     <div className="mt-3 border border-green-200 rounded-xl overflow-hidden">
-                      {ev.imagem_url && <img src={ev.imagem_url} alt="" className="w-full object-cover max-h-40" />}
+                      {ev.imagem_url && <img src={resolveImg(ev.imagem_url)!} alt="" className="w-full object-cover max-h-40" />}
                       <div className="p-4 text-center">
                         <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Seu ingresso</div>
                         <div className="font-display text-lg text-azul">#{String(ev.numero_ingresso ?? 0).padStart(3, '0')}</div>
@@ -385,6 +394,7 @@ export function XimbocaPublica() {
               </>
             )}
 
+            {!participarModal.tipos?.length && (<>
             <div className="text-sm font-medium mb-2">Sua categoria:</div>
             <div className="space-y-2 mb-4">
               {participarModal.valor_cerveja !== null && (
@@ -424,13 +434,16 @@ export function XimbocaPublica() {
                 </button>
               )}
             </div>
+            </>)}
 
             {erro && <p className="text-vermelho text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{erro}</p>}
 
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1" onClick={() => setParticiparModal(null)}>Cancelar</Button>
               <Button className="flex-1" onClick={confirmarParticipar} disabled={acaoLoading}>
-                {acaoLoading ? 'Confirmando...' : `Confirmar (R$ ${valorCategoria(participarModal, categoriaEscolhida).toFixed(2)})`}
+                {acaoLoading ? 'Confirmando...' : (participarModal.tipos?.length
+                  ? `Confirmar${tipoEscolhido ? ` (R$ ${(participarModal.tipos.find(t => t.id === tipoEscolhido)?.valor ?? 0).toFixed(2)})` : ''}`
+                  : `Confirmar (R$ ${valorCategoria(participarModal, categoriaEscolhida).toFixed(2)})`)}
               </Button>
             </div>
           </div>

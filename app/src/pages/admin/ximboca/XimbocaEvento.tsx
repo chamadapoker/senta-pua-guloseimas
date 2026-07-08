@@ -12,6 +12,11 @@ import { Loading } from '../../../components/ui/Loading';
 import { inputClass } from '../../../components/ui/Field';
 import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+function resolveImg(url: string | null): string | null {
+  return url ? (url.startsWith('/api') ? `${WORKER_URL}${url}` : url) : null;
+}
+
 interface Participante { id: string; nome: string; whatsapp: string | null; status: string; paid_at: string | null; valor_individual: number | null; categoria_consumo: string; }
 interface Despesa { id: string; descricao: string; valor: number; categoria: string; quantidade: number | null; unidade: string | null; created_at: string; }
 interface EstoqueItem { id: string; nome: string; quantidade: number; unidade: string; }
@@ -254,7 +259,7 @@ export function XimbocaEvento() {
         <div className="p-4 space-y-5">
           <div>
             <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Capa do evento</div>
-            {evento.imagem_url && <img src={evento.imagem_url} alt="capa" className="w-full max-w-xs rounded-lg border border-borda mb-2" />}
+            {evento.imagem_url && <img src={resolveImg(evento.imagem_url)!} alt="capa" className="w-full max-w-xs rounded-lg border border-borda mb-2" />}
             <label className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5 cursor-pointer">
               <Icon name="upload" size={12} /> {evento.imagem_url ? 'Trocar capa' : 'Enviar capa'}
               <input type="file" accept="image/*" onChange={enviarCapa} className="hidden" />
