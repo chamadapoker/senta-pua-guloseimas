@@ -47,3 +47,28 @@ crons = ["0 3 * * *"]
 #
 # [env.exemplo.triggers]
 # crons = ["0 3 * * *"]
+
+# ---------------------------------------------------------------------------------------------
+# ESQUADRÃO PANTERA (5º/8º GAV). Mesmo código; worker, banco e imagens próprios.
+# Banco e imagens criados em 2026-10-18.
+# Publicação: wrangler deploy --env pantera
+#
+[env.pantera]
+name = "senta-pua-pantera-worker"
+
+[[env.pantera.d1_databases]]
+binding       = "DB"
+database_name = "senta-pua-pantera-db"
+database_id   = "2992539c-706a-4cda-8e87-ca9e9ab10024"
+
+[[env.pantera.r2_buckets]]
+binding     = "IMAGES"
+bucket_name = "senta-pua-pantera-images"
+
+[env.pantera.vars]
+AMBIENTE     = "production"
+ESQUADRAO    = "pantera"
+FRONTEND_URL = "https://app-pantera.pages.dev"
+
+[env.pantera.triggers]
+crons = ["0 3 * * *"]

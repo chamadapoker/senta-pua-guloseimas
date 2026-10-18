@@ -57,6 +57,16 @@ app.use('*', secureHeaders({
   xXssProtection: '0',
 }));
 
+// Falha fechada (OWASP A02): sem o segredo de assinatura dos tokens o servidor não funciona.
+// Protege um esquadrão novo publicado antes de os segredos serem configurados.
+app.use('/api/*', async (c, next) => {
+  if (!c.env.JWT_SECRET || !c.env.JWT_SECRET.trim()) {
+    console.error('JWT_SECRET não configurado: recusando requisições');
+    return c.json({ error: 'Servidor ainda não configurado' }, 503);
+  }
+  await next();
+});
+
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
     origin: origensPermitidas(c.env.FRONTEND_URL, esquadraoDoEnv(c.env).url_app),

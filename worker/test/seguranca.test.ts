@@ -426,3 +426,30 @@ describe('12 — recepcionista/homenagem: 404 para usuário inexistente; audit d
     expect(JSON.parse(l[0].dados_depois)).toEqual({ is_recepcionista: 1 });
   });
 });
+
+describe('falha fechada sem JWT_SECRET (esquadrão novo publicado antes dos segredos)', () => {
+  async function semSegredo(path: string, init: RequestInit = {}) {
+    const req = new Request(`https://senta-pua.test${path}`, init);
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(req, { ...env, JWT_SECRET: '' } as typeof env, ctx);
+    await waitOnExecutionContext(ctx);
+    return { status: res.status, body: await res.json().catch(() => null) as { error?: string } | null };
+  }
+
+  it('sem o segredo, login de admin e rotas públicas respondem 503 e nada é processado', async () => {
+    const login = await semSegredo('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: env.ADMIN_EMAIL, senha: env.ADMIN_SENHA }),
+    });
+    expect(login.status).toBe(503);
+    expect(login.body?.error).toBe('Servidor ainda não configurado');
+    expect((await semSegredo('/api/config')).status).toBe(503);
+    // o bootstrap do super admin não chegou a rodar
+    const n = await env.DB.prepare('SELECT COUNT(*) as n FROM admins').first<{ n: number }>();
+    expect(n?.n).toBe(0);
+  });
+
+  it('com o segredo configurado, tudo segue normal', async () => {
+    expect((await api('/api/config', { method: 'GET' })).status).toBe(200);
+  });
+});

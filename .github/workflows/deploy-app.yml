@@ -66,3 +66,30 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: f42d3e9f5dc41befb6f50847257f5a09
+
+  # Esquadrão Pantera: build com a identidade dele e o servidor dele
+  deploy-pantera:
+    name: Publicar (Pantera)
+    needs: verificar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build do app (Pantera)
+        run: pnpm --filter senta-pua-app build
+        env:
+          VITE_ESQUADRAO: pantera
+          VITE_WORKER_URL: https://senta-pua-pantera-worker.chamadapoker.workers.dev
+      - name: Deploy to Cloudflare Pages (Pantera)
+        run: npx --yes wrangler@4.80.0 pages deploy app/dist --project-name=app-pantera --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: f42d3e9f5dc41befb6f50847257f5a09
