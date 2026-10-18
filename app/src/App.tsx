@@ -73,9 +73,14 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   const [autenticado, setAutenticado] = useState(false);
 
   useEffect(() => {
-    if (!token) { setVerificando(false); return; }
-    checkAuth().then((ok) => { setAutenticado(ok); setVerificando(false); });
+    // Token sumiu (logout, 401 ou outra aba): derruba a sessão e volta pro login.
+    if (!token) { setAutenticado(false); setVerificando(false); return; }
+    let ativo = true;
+    checkAuth().then((ok) => { if (ativo) { setAutenticado(ok); setVerificando(false); } });
+    return () => { ativo = false; };
   }, [token, checkAuth]);
+
+  if (!token) return <Navigate to="/admin/login" replace />;
 
   if (verificando) return <div className="text-center py-20 text-gray-400">Verificando...</div>;
 
@@ -87,11 +92,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function UserAuthLoader() {
-  const { token, user, checkAuth } = useUserAuth();
+  // No boot, revalida o token sempre que existir (mesmo com user em cache):
+  // token expirado/revogado derruba a sessão. O user do cache continua na tela
+  // enquanto valida, então não pisca. Erro de rede mantém a sessão.
   useEffect(() => {
-    if (token && !user) checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]);
+    if (useUserAuth.getState().token) useUserAuth.getState().checkAuth();
+  }, []);
   return null;
 }
 

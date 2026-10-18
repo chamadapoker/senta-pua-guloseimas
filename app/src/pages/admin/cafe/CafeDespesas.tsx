@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
@@ -7,7 +7,26 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { dataLocal } from '../../../services/periodo';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
+import { StatCard } from '../../../components/admin/StatCard';
+import { Card } from '../../../components/ui/Card';
+import { Loading } from '../../../components/ui/Loading';
+import { EmptyState } from '../../../components/ui/EmptyState';
+
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const CATEGORIAS: Record<string, string> = {
+  cafe: 'Café (pó)',
+  acucar: 'Açúcar',
+  leite: 'Leite',
+  filtro: 'Filtro',
+  copos: 'Copos e descartáveis',
+  limpeza: 'Limpeza',
+  equipamento: 'Equipamento',
+  geral: 'Geral',
+};
 
 interface Despesa {
   id: string;
@@ -32,169 +51,210 @@ interface Saldo {
 
 export function CafeDespesas() {
   const confirm = useConfirm();
+  const { showToast } = useToast();
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
   const [tipo, setTipo] = useState<'' | 'oficial' | 'graduado'>('');
   const [lista, setLista] = useState<Despesa[]>([]);
   const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [modal, setModal] = useState(false);
+  const fecharModal = useCallback(() => setModal(false), []);
   const [novoTipo, setNovoTipo] = useState<'oficial' | 'graduado'>('graduado');
   const [descricao, setDescricao] = useState('');
   const [categoria, setCategoria] = useState('geral');
   const [valor, setValor] = useState('');
-  const [data, setData] = useState(new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState(() => dataLocal(new Date()));
   const [notaFiscal, setNotaFiscal] = useState('');
   const [observacao, setObservacao] = useState('');
 
   const carregar = () => {
     const q = tipo ? `?tipo=${tipo}` : '';
+    setCarregando(true);
+    setErro('');
     Promise.all([
       api.get<Despesa[]>(`/api/cafe/admin/despesas${q}`),
       api.get<Saldo>(`/api/cafe/admin/saldo${q}`),
-    ]).then(([d, s]) => { setLista(d); setSaldo(s); });
+    ]).then(([d, s]) => { setLista(d); setSaldo(s); })
+      .catch((e: any) => setErro(e?.message || 'Erro ao carregar despesas'))
+      .finally(() => setCarregando(false));
   };
 
   useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [tipo]);
 
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/api/cafe/admin/despesas', {
-      tipo: novoTipo, descricao, categoria,
-      valor: parseFloat(valor), data,
-      nota_fiscal: notaFiscal || null,
-      observacao,
-    });
-    setModal(false);
-    setDescricao(''); setValor(''); setNotaFiscal(''); setObservacao('');
-    carregar();
+    if (salvando) return;
+    setSalvando(true);
+    try {
+      await api.post('/api/cafe/admin/despesas', {
+        tipo: novoTipo, descricao, categoria,
+        valor: parseFloat(valor), data,
+        nota_fiscal: notaFiscal || null,
+        observacao,
+      });
+      setModal(false);
+      setDescricao(''); setValor(''); setNotaFiscal(''); setObservacao('');
+      showToast('Despesa registrada', 'success');
+      carregar();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao salvar despesa', 'error');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const excluir = async (d: Despesa) => {
-    if (!(await confirm({ title: 'Excluir', message: `Remover "${d.descricao}" (R$ ${d.valor.toFixed(2)})?`, confirmText: 'Excluir', danger: true }))) return;
+    if (!(await confirm({ title: 'Excluir', message: `Remover "${d.descricao}" (${brl(d.valor)})?`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/cafe/admin/despesas/${d.id}`);
     carregar();
   };
 
+  const dataBR = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+
   return (
     <AppLayout>
       <BackButton to="/admin/cafe" className="mb-3" />
-      <PageHeader title="DESPESAS DO CAFÉ" right={<Button size="sm" onClick={() => setModal(true)}>+ Nova Despesa</Button>} />
+      <PageHeader
+        title="Despesas do café"
+        subtitle="Compras da caixinha e o saldo de cada sala."
+        right={<Button size="sm" onClick={() => setModal(true)}><Icon name="plus" size={16} /> Nova despesa</Button>}
+      />
 
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-borda shadow-sm mb-4">
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por sala">
         {(['', 'oficial', 'graduado'] as const).map(t => (
-          <button
-            key={t || 'all'}
-            onClick={() => setTipo(t)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-              tipo === t ? 'bg-azul text-white shadow-sm' : 'text-texto-fraco'
-            }`}
-          >
-            {t || 'Todos'}
-          </button>
+          <Button key={t || 'all'} size="sm" variant={tipo === t ? 'primary' : 'chip'} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
+            {t === '' ? 'Todas as salas' : t === 'oficial' ? 'Oficiais' : 'Graduados'}
+          </Button>
         ))}
       </div>
 
       {saldo && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          <div className="bg-white rounded-xl p-3 border border-borda text-center">
-            <div className="text-[10px] text-texto-fraco uppercase tracking-wider">Entrou</div>
-            <div className="font-display text-lg text-verde-escuro">R$ {saldo.total_entrada.toFixed(2)}</div>
-          </div>
-          <div className="bg-white rounded-xl p-3 border border-borda text-center">
-            <div className="text-[10px] text-texto-fraco uppercase tracking-wider">Saiu</div>
-            <div className="font-display text-lg text-vermelho">R$ {saldo.total_saida.toFixed(2)}</div>
-          </div>
-          <div className={`rounded-xl p-3 border text-center ${saldo.saldo_atual >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-            <div className="text-[10px] uppercase tracking-wider text-texto-fraco">Saldo Atual</div>
-            <div className={`font-display text-lg ${saldo.saldo_atual >= 0 ? 'text-verde-escuro' : 'text-vermelho'}`}>R$ {saldo.saldo_atual.toFixed(2)}</div>
-          </div>
-          <div className="bg-white rounded-xl p-3 border border-borda text-center">
-            <div className="text-[10px] text-texto-fraco uppercase tracking-wider">Previsto (+pend)</div>
-            <div className="font-display text-lg text-azul">R$ {saldo.saldo_previsto.toFixed(2)}</div>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <StatCard label="Entrou" value={brl(saldo.total_entrada)} color="text-verde-escuro" icon={<Icon name="download" size={18} />} />
+          <StatCard label="Saiu" value={brl(saldo.total_saida)} color="text-escarlate" icon={<Icon name="upload" size={18} />} />
+          <StatCard label="Saldo atual" value={brl(saldo.saldo_atual)} color={saldo.saldo_atual >= 0 ? 'text-verde-escuro' : 'text-escarlate'} icon={<Icon name="vault" size={18} />} />
+          <StatCard label="Saldo previsto" value={brl(saldo.saldo_previsto)} color="text-azul" icon={<Icon name="chart" size={18} />} hint="Somando as mensalidades pendentes" />
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-borda overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]">
-          <thead>
-            <tr className="bg-azul">
-              <th className="px-3 py-2 text-left text-white font-medium">Data</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Descrição</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Categoria</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Tipo</th>
-              <th className="px-3 py-2 text-right text-white font-medium">Valor</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
+      {erro ? (
+        <Card className="text-center py-10">
+          <p className="text-escarlate text-sm mb-4">{erro}</p>
+          <Button size="sm" onClick={carregar}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+        </Card>
+      ) : carregando && lista.length === 0 ? (
+        <Loading label="Carregando despesas..." />
+      ) : lista.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="note" size={24} />}
+            message="Nenhuma despesa registrada"
+            hint="Registre as compras da caixinha para acompanhar o saldo."
+            action={<Button size="sm" onClick={() => setModal(true)}><Icon name="plus" size={16} /> Nova despesa</Button>}
+          />
+        </Card>
+      ) : (
+        <>
+          {/* Celular: cartões */}
+          <div className="md:hidden space-y-2">
             {lista.map(d => (
-              <tr key={d.id}>
-                <td className="px-3 py-2 text-xs text-texto-fraco">{new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="px-3 py-2">
-                  {d.descricao}
-                  {d.nota_fiscal && <span className="ml-1 text-[10px] text-texto-fraco">NF {d.nota_fiscal}</span>}
-                </td>
-                <td className="px-3 py-2 text-xs text-texto-fraco">{d.categoria}</td>
-                <td className="px-3 py-2 text-xs capitalize">{d.tipo}</td>
-                <td className="px-3 py-2 text-right font-medium text-vermelho">R$ {d.valor.toFixed(2)}</td>
-                <td className="px-3 py-2 text-right">
-                  <Button variant="chip-danger" size="xs" onClick={() => excluir(d)} aria-label="Excluir">
-                    <Icon name="trash" size={14} />
+              <Card key={d.id} className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-texto break-words">{d.descricao}</div>
+                  <div className="text-xs text-texto-fraco mt-0.5">
+                    {dataBR(d.data)} · {CATEGORIAS[d.categoria] || d.categoria} · <span className="capitalize">{d.tipo}</span>
+                    {d.nota_fiscal && <> · NF {d.nota_fiscal}</>}
+                  </div>
+                  {d.observacao && <div className="text-xs text-texto-fraco mt-1 break-words">{d.observacao}</div>}
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className="font-display text-xl text-escarlate tracking-wide leading-none">{brl(d.valor)}</span>
+                  <Button variant="chip-danger" size="sm" onClick={() => excluir(d)} aria-label={`Excluir ${d.descricao}`}>
+                    <Icon name="trash" size={15} />
                   </Button>
-                </td>
-              </tr>
+                </div>
+              </Card>
             ))}
-            {lista.length === 0 && <tr><td colSpan={6} className="text-center py-6 text-texto-fraco">Nenhuma despesa</td></tr>}
-          </tbody>
-        </table>
-      </div>
+          </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Nova Despesa">
-        <form onSubmit={salvar} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl border border-borda shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-noite">
+                  <th className="px-4 py-3 text-left text-xs text-white font-medium">Data</th>
+                  <th className="px-4 py-3 text-left text-xs text-white font-medium">Descrição</th>
+                  <th className="px-4 py-3 text-left text-xs text-white font-medium">Categoria</th>
+                  <th className="px-4 py-3 text-left text-xs text-white font-medium">Sala</th>
+                  <th className="px-4 py-3 text-right text-xs text-white font-medium">Valor</th>
+                  <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map(d => (
+                  <tr key={d.id} className="border-b border-borda/50 last:border-0 hover:bg-fundo">
+                    <td className="px-4 py-2.5 text-xs text-texto-fraco whitespace-nowrap">{dataBR(d.data)}</td>
+                    <td className="px-4 py-2.5">
+                      {d.descricao}
+                      {d.nota_fiscal && <span className="ml-1.5 text-xs text-texto-fraco">NF {d.nota_fiscal}</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-texto-fraco">{CATEGORIAS[d.categoria] || d.categoria}</td>
+                    <td className="px-4 py-2.5 text-xs capitalize">{d.tipo}</td>
+                    <td className="px-4 py-2.5 text-right font-medium text-escarlate whitespace-nowrap">{brl(d.valor)}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Button variant="chip-danger" size="sm" onClick={() => excluir(d)} aria-label={`Excluir ${d.descricao}`}>
+                        <Icon name="trash" size={15} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <Modal open={modal} onClose={fecharModal} title="Nova despesa">
+        <form onSubmit={salvar} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Sala</label>
-              <select value={novoTipo} onChange={e => setNovoTipo(e.target.value as 'oficial' | 'graduado')} className={inputClass}>
+              <label htmlFor="cd-sala" className="block text-sm font-medium mb-1.5">Sala</label>
+              <select id="cd-sala" value={novoTipo} onChange={e => setNovoTipo(e.target.value as 'oficial' | 'graduado')} className={inputClass}>
                 <option value="graduado">Graduados</option>
                 <option value="oficial">Oficiais</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Categoria</label>
-              <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
-                <option value="cafe">Café (pó)</option>
-                <option value="acucar">Açúcar</option>
-                <option value="leite">Leite</option>
-                <option value="filtro">Filtro</option>
-                <option value="copos">Copos/Descartáveis</option>
-                <option value="limpeza">Limpeza</option>
-                <option value="equipamento">Equipamento</option>
-                <option value="geral">Geral</option>
+              <label htmlFor="cd-cat" className="block text-sm font-medium mb-1.5">Categoria</label>
+              <select id="cd-cat" value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
+                {Object.entries(CATEGORIAS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Descrição</label>
-            <input value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} required placeholder="Ex: 1kg de café Melitta" />
+            <label htmlFor="cd-desc" className="block text-sm font-medium mb-1.5">Descrição</label>
+            <input id="cd-desc" value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} required placeholder="Ex.: 1 kg de café Melitta" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Valor (R$)</label>
-              <input type="number" step="0.01" min="0" value={valor} onChange={e => setValor(e.target.value)} className={inputClass} required />
+              <label htmlFor="cd-valor" className="block text-sm font-medium mb-1.5">Valor (R$)</label>
+              <input id="cd-valor" type="number" step="0.01" min="0" inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} className={inputClass} required />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Data</label>
-              <input type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
+              <label htmlFor="cd-data" className="block text-sm font-medium mb-1.5">Data</label>
+              <input id="cd-data" type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Nota Fiscal (opcional)</label>
-            <input value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} className={inputClass} placeholder="Número da NF" />
+            <label htmlFor="cd-nf" className="block text-sm font-medium mb-1.5">Nota fiscal (opcional)</label>
+            <input id="cd-nf" value={notaFiscal} onChange={e => setNotaFiscal(e.target.value)} className={inputClass} placeholder="Número da NF" />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Observação</label>
-            <input value={observacao} onChange={e => setObservacao(e.target.value)} className={inputClass} />
+            <label htmlFor="cd-obs" className="block text-sm font-medium mb-1.5">Observação (opcional)</label>
+            <input id="cd-obs" value={observacao} onChange={e => setObservacao(e.target.value)} className={inputClass} />
           </div>
-          <Button type="submit" className="w-full">Salvar</Button>
+          <Button type="submit" className="w-full" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar despesa'}</Button>
         </form>
       </Modal>
     </AppLayout>

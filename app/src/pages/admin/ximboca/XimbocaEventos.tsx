@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
@@ -7,6 +7,10 @@ import { inputClass } from '../../../components/ui/Field';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { Menu } from '../../../components/ui/Menu';
+import { Card } from '../../../components/ui/Card';
+import { Loading } from '../../../components/ui/Loading';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Icon } from '../../../components/ui/Icon';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
 
@@ -30,6 +34,9 @@ interface Evento {
   total_despesas: number;
 }
 
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataEvento = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
 export function XimbocaEventos() {
   const confirm = useConfirm();
   const navigate = useNavigate();
@@ -48,7 +55,16 @@ export function XimbocaEventos() {
   const [pixNome, setPixNome] = useState('');
   const [pixWhatsapp, setPixWhatsapp] = useState('');
 
-  const carregar = () => api.get<Evento[]>('/api/ximboca/eventos').then(setEventos);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
+  const carregar = () => {
+    setErro('');
+    return api.get<Evento[]>('/api/ximboca/eventos')
+      .then(setEventos)
+      .catch((e: any) => setErro(e?.message || 'Não foi possível carregar os eventos.'))
+      .finally(() => setCarregando(false));
+  };
   useEffect(() => { carregar(); }, []);
 
   const limparForm = () => {
@@ -57,6 +73,8 @@ export function XimbocaEventos() {
     setValorCerveja(''); setValorRefri(''); setDescricao('');
     setPixChave(''); setPixTipo('aleatoria'); setPixNome(''); setPixWhatsapp('');
   };
+  // Estável: o Modal refaz o foco quando onClose muda
+  const fecharModal = useCallback(() => { setModalAberto(false); limparForm(); }, []);
 
   const abrirEditar = (ev: Evento) => {
     setEditando(ev);
@@ -104,7 +122,7 @@ export function XimbocaEventos() {
   };
 
   const excluir = async (ev: Evento) => {
-    if (!(await confirm({ message: `Excluir "${ev.nome}"? Todos os participantes e despesas serao apagados.`, confirmText: 'Excluir', danger: true }))) return;
+    if (!(await confirm({ message: `Excluir "${ev.nome}"? Todos os participantes e despesas serão apagados.`, confirmText: 'Excluir', danger: true }))) return;
     await api.delete(`/api/ximboca/eventos/${ev.id}`);
     carregar();
   };
@@ -116,64 +134,86 @@ export function XimbocaEventos() {
 
   return (
     <AppLayout>
-      <PageHeader title="EVENTOS" right={<Button size="sm" onClick={abrirCriar}>+ Novo Evento</Button>} />
+      <PageHeader
+        title="Eventos da Ximboca"
+        subtitle="Crie eventos, acompanhe inscrições e o saldo de cada um."
+        right={<Button size="sm" onClick={abrirCriar}><Icon name="plus" size={16} />Novo evento</Button>}
+      />
 
-      <div className="space-y-3">
-        {eventos.map(ev => {
-          const arrecadado = ev.total_arrecadado;
-          const saldo = arrecadado - ev.total_despesas;
-          return (
-            <div key={ev.id} className="bg-white rounded-xl border border-borda shadow-sm overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-texto">{ev.nome}</h3>
-                    <Badge variant={ev.status === 'aberto' ? 'success' : 'warning'}>{ev.status === 'aberto' ? 'Aberto' : 'Fechado'}</Badge>
+      {carregando ? <Loading /> : erro ? (
+        <Card size="lg" className="text-center">
+          <p className="text-escarlate text-sm mb-4">{erro}</p>
+          <Button variant="ghost" size="sm" onClick={() => { setCarregando(true); carregar(); }}><Icon name="refresh" size={16} />Tentar de novo</Button>
+        </Card>
+      ) : eventos.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="cutlery" size={24} />}
+            message="Nenhum evento criado"
+            hint="Crie um evento para abrir as inscrições e controlar pagamentos e despesas."
+            action={<Button size="sm" onClick={abrirCriar}><Icon name="plus" size={16} />Novo evento</Button>}
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {eventos.map(ev => {
+            const saldo = ev.total_arrecadado - ev.total_despesas;
+            return (
+              <Card key={ev.id} className="flex flex-col">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-noite break-words">{ev.nome}</h3>
+                      <Badge variant={ev.status === 'aberto' ? 'success' : 'neutral'}>{ev.status === 'aberto' ? 'Aberto' : 'Fechado'}</Badge>
+                    </div>
+                    <p className="text-xs text-texto-fraco mt-0.5">
+                      {dataEvento(ev.data)}
+                      {ev.inscricao_ate && <> · inscrições até {dataEvento(ev.inscricao_ate)}</>}
+                    </p>
                   </div>
-                  <span className="text-xs text-texto-fraco">{new Date(ev.data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                </div>
-                {ev.descricao && <p className="text-xs text-texto-fraco mb-2">{ev.descricao}</p>}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
-                  <div className="bg-fundo rounded-lg p-2 text-center">
-                    <div className="text-texto-fraco">Participantes</div>
-                    <div className="font-bold text-azul">{ev.total_pagos}/{ev.total_participantes}</div>
-                  </div>
-                  <div className="bg-fundo rounded-lg p-2 text-center">
-                    <div className="text-texto-fraco">R$/pessoa</div>
-                    <div className="font-bold">R$ {ev.valor_por_pessoa.toFixed(2)}</div>
-                  </div>
-                  <div className="bg-fundo rounded-lg p-2 text-center">
-                    <div className="text-texto-fraco">Gasto</div>
-                    <div className="font-bold text-vermelho">R$ {ev.total_despesas.toFixed(2)}</div>
-                  </div>
-                  <div className="bg-fundo rounded-lg p-2 text-center">
-                    <div className="text-texto-fraco">Saldo</div>
-                    <div className={`font-bold ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Menu items={[
-                    { label: 'Gerenciar', icon: 'eye', onClick: () => navigate(`/admin/ximboca/eventos/${ev.id}`) },
+                  <Menu label={`Ações de ${ev.nome}`} items={[
                     { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(ev) },
-                    { label: ev.status === 'aberto' ? 'Fechar' : 'Reabrir', icon: ev.status === 'aberto' ? 'x' : 'refresh', onClick: () => toggleStatus(ev) },
+                    { label: ev.status === 'aberto' ? 'Fechar evento' : 'Reabrir', icon: ev.status === 'aberto' ? 'x' : 'refresh', onClick: () => toggleStatus(ev) },
                     { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(ev) },
                   ]} />
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                {ev.descricao && <p className="text-sm text-texto-fraco mb-3">{ev.descricao}</p>}
+                <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                  <div className="bg-fundo rounded-xl px-3 py-2 min-w-0">
+                    <dt className="text-xs text-texto-fraco">Pagos</dt>
+                    <dd className="font-display text-xl leading-tight text-azul truncate">{ev.total_pagos}/{ev.total_participantes}</dd>
+                  </div>
+                  <div className="bg-fundo rounded-xl px-3 py-2 min-w-0">
+                    <dt className="text-xs text-texto-fraco">Por pessoa</dt>
+                    <dd className="font-display text-xl leading-tight text-dourado truncate">{brl(ev.valor_por_pessoa)}</dd>
+                  </div>
+                  <div className="bg-fundo rounded-xl px-3 py-2 min-w-0">
+                    <dt className="text-xs text-texto-fraco">Gasto</dt>
+                    <dd className="font-display text-xl leading-tight text-escarlate truncate">{brl(ev.total_despesas)}</dd>
+                  </div>
+                  <div className="bg-fundo rounded-xl px-3 py-2 min-w-0">
+                    <dt className="text-xs text-texto-fraco">Saldo</dt>
+                    <dd className={`font-display text-xl leading-tight truncate ${saldo >= 0 ? 'text-verde-escuro' : 'text-escarlate'}`}>{brl(saldo)}</dd>
+                  </div>
+                </dl>
+                <div className="mt-auto">
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => navigate(`/admin/ximboca/eventos/${ev.id}`)}>
+                    Gerenciar evento<Icon name="chevron-right" size={16} />
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-      {eventos.length === 0 && <div className="text-center py-12 text-gray-400">Nenhum evento criado</div>}
-
-      <Modal open={modalAberto} onClose={() => { setModalAberto(false); limparForm(); }} title={editando ? 'Editar Evento' : 'Novo Evento'}>
+      <Modal open={modalAberto} onClose={fecharModal} title={editando ? 'Editar evento' : 'Novo evento'} size="lg">
         <form onSubmit={salvar} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome do evento</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required placeholder="Ex: Churrasco de Aniversario" />
+            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required placeholder="Ex.: Churrasco de aniversário" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Data do evento</label>
               <input type="date" value={data} onChange={e => setData(e.target.value)} className={inputClass} required />
@@ -181,25 +221,25 @@ export function XimbocaEventos() {
             <div>
               <label className="block text-sm font-medium mb-1">Inscrições até</label>
               <input type="date" value={inscricaoAte} onChange={e => setInscricaoAte(e.target.value)} className={inputClass} />
-              <p className="text-[11px] text-texto-fraco mt-0.5">Vazio = sem limite</p>
+              <p className="text-xs text-texto-fraco mt-1">Deixe vazio para não ter prazo.</p>
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Valor por pessoa (R$)</label>
-            <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className={inputClass} placeholder="0.00" />
+            <input type="number" step="0.01" value={valorPessoa} onChange={e => setValorPessoa(e.target.value)} className={inputClass} placeholder="0,00" inputMode="decimal" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">🍺 Cerveja (opcional)</label>
-              <input type="number" step="0.01" value={valorCerveja} onChange={e => setValorCerveja(e.target.value)} className={inputClass} placeholder="Deixe vazio pra não oferecer" />
+              <label className="block text-sm font-medium mb-1">Valor com cerveja (opcional)</label>
+              <input type="number" step="0.01" value={valorCerveja} onChange={e => setValorCerveja(e.target.value)} className={inputClass} placeholder="Vazio = não oferecer" inputMode="decimal" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">🥤 Refri (opcional)</label>
-              <input type="number" step="0.01" value={valorRefri} onChange={e => setValorRefri(e.target.value)} className={inputClass} placeholder="Deixe vazio pra não oferecer" />
+              <label className="block text-sm font-medium mb-1">Valor com refri (opcional)</label>
+              <input type="number" step="0.01" value={valorRefri} onChange={e => setValorRefri(e.target.value)} className={inputClass} placeholder="Vazio = não oferecer" inputMode="decimal" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Descricao</label>
+            <label className="block text-sm font-medium mb-1">Descrição</label>
             <input value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} placeholder="Opcional" />
           </div>
           <p className="text-xs text-texto-fraco">
@@ -207,8 +247,8 @@ export function XimbocaEventos() {
           </p>
 
           <div className="border-t border-borda pt-3 space-y-3">
-            <p className="text-xs font-medium text-texto uppercase tracking-wider">PIX do Responsável (opcional)</p>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="text-sm font-semibold text-noite">PIX do responsável <span className="font-normal text-texto-fraco">(opcional)</span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo da chave</label>
                 <select value={pixTipo} onChange={e => setPixTipo(e.target.value)} className={inputClass}>
@@ -225,15 +265,16 @@ export function XimbocaEventos() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
-              <input value={pixNome} onChange={e => setPixNome(e.target.value)} className={inputClass} placeholder="Ex: JOAO SILVA" />
+              <input value={pixNome} onChange={e => setPixNome(e.target.value)} className={inputClass} placeholder="Ex.: JOAO SILVA" />
+              <p className="text-xs text-texto-fraco mt-1">Sem acento, até 25 letras.</p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
-              <input type="tel" value={pixWhatsapp} onChange={e => setPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
+              <input type="tel" value={pixWhatsapp} onChange={e => setPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex.: 62999998888" />
             </div>
           </div>
 
-          <Button type="submit" className="w-full">{editando ? 'Salvar Alterações' : 'Criar Evento'}</Button>
+          <Button type="submit" className="w-full">{editando ? 'Salvar alterações' : 'Criar evento'}</Button>
         </form>
       </Modal>
     </AppLayout>

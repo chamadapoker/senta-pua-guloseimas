@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
 import { checkRateLimit, recordAttempt, clientKey } from '../lib/rateLimit';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const ximboca = new Hono<AppType>();
@@ -229,6 +230,8 @@ ximboca.post('/checkin/:eventoId/pagar-entrar', recepcionistaMiddleware, async (
   await c.env.DB.prepare(
     "UPDATE ximboca_participantes SET status = 'pago', paid_at = COALESCE(paid_at, datetime('now')), checkin_at = datetime('now'), checkin_por = ? WHERE id = ?"
   ).bind(trigrama, participante_id).run();
+  await audit(c, 'ximboca_pagar_entrar', 'ximboca_participantes', participante_id,
+    { status: p.status }, { evento_id: eventoId, nome: p.nome, status: 'pago', recepcionista: trigrama });
   return c.json({ estado: 'OK', nome: p.nome, numero_ingresso: p.numero_ingresso, tipo_nome: p.tipo_nome });
 });
 
@@ -397,7 +400,8 @@ ximboca.put('/participantes/:id/pagar', async (c) => {
     "UPDATE ximboca_participantes SET status = 'pago', paid_at = datetime('now') WHERE id = ? RETURNING *"
   ).bind(id).all();
   if (!results.length) return c.json({ error: 'Participante não encontrado' }, 404);
-  const pago = results[0];
+  const pago = results[0] as { evento_id: string; nome: string; valor_individual: number | null };
+  await audit(c, 'pagar_participante_ximboca', 'ximboca_participantes', id, null, { evento_id: pago.evento_id, nome: pago.nome, valor_individual: pago.valor_individual });
 
   // NOTIFICAÇÃO AUTOMÁTICA
   try {

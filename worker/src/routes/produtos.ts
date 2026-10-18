@@ -22,8 +22,9 @@ produtos.get('/', async (c) => {
     ? c.env.DB.prepare(sql).bind(...params)
     : c.env.DB.prepare(sql);
 
-  const { results } = await stmt.all<Produto>();
-  return c.json(results);
+  const { results } = await stmt.all<Produto & { preco_custo?: number | null }>();
+  // preco_custo é dado interno (margem): não sai na rota pública
+  return c.json(results.map(({ preco_custo: _custo, ...p }) => p));
 });
 
 // Admin: lista todos os produtos

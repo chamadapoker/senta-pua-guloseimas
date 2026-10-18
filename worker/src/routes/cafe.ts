@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const cafe = new Hono<AppType>();
 
-// PUBLIC: list subscribers and who owes (for the public page)
-cafe.get('/devedores', async (c) => {
+// ADMIN: lista assinantes e quem deve (nenhuma tela pública usa; expunha ids de pagamento)
+cafe.get('/devedores', authMiddleware, async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT ca.id, cl.nome_guerra, ca.tipo, ca.plano, ca.valor,
       (SELECT COUNT(*) FROM cafe_pagamentos cp WHERE cp.assinante_id = ca.id AND cp.status = 'pendente') as meses_devendo,
@@ -237,9 +238,11 @@ cafe.put('/admin/mensalidades/:id/pagar', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const { results } = await c.env.DB.prepare(
     "UPDATE cafe_pagamentos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
+  ).bind(id).all<{ assinante_id: string; referencia: string; valor: number }>();
   if (!results.length) return c.json({ error: 'Pagamento não encontrado' }, 404);
-  return c.json(results[0]);
+  const pag = results[0];
+  await audit(c, 'pagar_mensalidade_cafe', 'cafe_pagamentos', id, null, { assinante_id: pag.assinante_id, referencia: pag.referencia, valor: pag.valor });
+  return c.json(pag);
 });
 
 // ADMIN: insumos CRUD

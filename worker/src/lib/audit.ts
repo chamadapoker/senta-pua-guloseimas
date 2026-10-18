@@ -9,7 +9,9 @@ export async function audit(
   dados_antes: unknown = null,
   dados_depois: unknown = null
 ) {
-  const email = c.get('adminEmail') || 'system';
+  // Ações de usuário (sem admin) ficam identificadas como "usuario:<email>"
+  const userEmail = c.get('userEmail');
+  const email = c.get('adminEmail') || (userEmail ? `usuario:${userEmail}` : 'system');
   const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || null;
   try {
     await c.env.DB.prepare(

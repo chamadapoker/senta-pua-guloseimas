@@ -4,11 +4,14 @@ import Confetti from 'react-confetti';
 /**
  * Rajada de confete de sucesso — dispara uma vez e some sozinha.
  * Uso: renderize condicionalmente quando uma ação der certo (pedido, ingresso, pagamento).
- * Cores do esquadrão (azul, dourado, verde, vermelho).
+ * Cores do brasão (azul-noite, faixa, escarlate) com um toque de dourado. Respeita redução de movimento.
  */
 export function SuccessBurst({ pieces = 180, duration = 3500 }: { pieces?: number; duration?: number }) {
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
-  const [ativo, setAtivo] = useState(true);
+  // Quem pediu menos movimento não recebe confete
+  const [ativo, setAtivo] = useState(() => {
+    try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return true; }
+  });
 
   useEffect(() => {
     const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
@@ -27,7 +30,7 @@ export function SuccessBurst({ pieces = 180, duration = 3500 }: { pieces?: numbe
         recycle={false}
         numberOfPieces={pieces}
         gravity={0.2}
-        colors={['#1d3fa0', '#2b52c4', '#d4a843', '#16a34a', '#d42b2b']}
+        colors={['#0d1640', '#3445d6', '#e0001b', '#d4a843', '#ffffff']}
       />
     </div>
   );

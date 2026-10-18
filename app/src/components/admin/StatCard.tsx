@@ -3,29 +3,24 @@ import { ReactNode } from 'react';
 interface StatCardProps {
   label: string;
   value: string;
-  color?: string;
+  color?: string; // classe de texto do valor (ex.: text-verde)
   icon?: ReactNode;
   trend?: string;
+  hint?: string;
 }
 
-export function StatCard({ label, value, color = 'text-azul', icon, trend }: StatCardProps) {
+export function StatCard({ label, value, color = 'text-azul', icon, trend, hint }: StatCardProps) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-borda shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden relative">
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] font-bold text-texto-fraco uppercase tracking-widest">{label}</div>
-          {icon && <div className={`${color} opacity-20 group-hover:opacity-40 transition-opacity`}>{icon}</div>}
-        </div>
-        <div className={`font-display text-3xl tracking-tight ${color} mb-1`}>{value}</div>
-        {trend && (
-          <div className="text-[10px] font-medium text-verde-escuro flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-            {trend} em relação ao mês anterior
-          </div>
-        )}
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-borda shadow-sm min-w-0">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="text-sm text-texto-fraco leading-snug">{label}</div>
+        {icon && <div className={`${color} shrink-0 opacity-80`}>{icon}</div>}
       </div>
-      {/* Subtle background glow */}
-      <div className={`absolute -right-4 -bottom-4 w-20 h-20 rounded-full blur-3xl opacity-5 ${color.replace('text-', 'bg-')}`} />
+      <div className={`font-display text-[2rem] leading-none tracking-wide ${color} truncate`}>{value}</div>
+      {trend && (
+        <div className="text-xs font-medium text-verde-escuro mt-2">{trend} em relação ao mês anterior</div>
+      )}
+      {hint && <div className="text-xs text-texto-fraco mt-2">{hint}</div>}
     </div>
   );
 }

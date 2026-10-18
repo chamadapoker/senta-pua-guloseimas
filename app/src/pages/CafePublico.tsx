@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Icon } from '../components/ui/Icon';
+import { PageHeader } from '../components/ui/PageHeader';
 import { api } from '../services/api';
 import { getConfig } from '../services/config';
 import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
+import { dataLocal } from '../services/periodo';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { useCopiar } from '../hooks/useCopiar';
 
 type Sala = 'oficial' | 'graduado' | null;
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface MeuCafeStatus {
   tem_assinatura: boolean;
@@ -52,34 +61,58 @@ export function CafePublico() {
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [copiadoChave, setCopiadoChave] = useState(false);
   const [copiadoCodigo, setCopiadoCodigo] = useState(false);
+  const [erroConfig, setErroConfig] = useState(false);
+  const [erroStatus, setErroStatus] = useState(false);
+  const { copiar, modalCopiaManual } = useCopiar();
+
+  const carregarConfig = () => {
+    setErroConfig(false);
+    getConfig().then(setConfig).catch(() => setErroConfig(true));
+  };
+
+  const carregarStatus = () => {
+    setLoadingStatus(true);
+    setErroStatus(false);
+    api.get<MeuCafeStatus>('/api/usuarios/me/cafe')
+      .then(setMeuStatus)
+      .catch(() => setErroStatus(true))
+      .finally(() => setLoadingStatus(false));
+  };
+
+  useEffect(() => { carregarConfig(); }, []);
 
   useEffect(() => {
-    getConfig().then(setConfig).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (ehMilitarEsquadrao) {
-      setLoadingStatus(true);
-      api.get<MeuCafeStatus>('/api/usuarios/me/cafe')
-        .then(setMeuStatus)
-        .finally(() => setLoadingStatus(false));
-    }
+    if (ehMilitarEsquadrao) carregarStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ehMilitarEsquadrao]);
 
-  // Praca logado sem sala
+  const cidadePix = config.pix_guloseimas_cidade || 'ANAPOLIS';
+
+  const avisoErroConfig = erroConfig && (
+    <div role="alert" className="text-vermelho text-sm mb-4 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+      <span>Não foi possível carregar os dados do PIX.</span>
+      <Button variant="chip-danger" size="sm" onClick={carregarConfig}><Icon name="refresh" size={14} /> Tentar de novo</Button>
+    </div>
+  );
+
+  // Praça logado sem sala
   if (user && !user.sala_cafe) {
     return (
       <AppLayout>
-        <div className="max-w-sm mx-auto py-16 text-center animate-fade-in">
-          <h1 className="font-display text-2xl text-azul tracking-wider mb-3">SEM CAIXINHA</h1>
-          <p className="text-texto-fraco text-sm mb-8">Praças não participam de caixinha do café.</p>
-          <Link to="/" className="text-azul font-medium hover:underline">Voltar</Link>
-        </div>
+        <PageHeader title="Caixinha do café" />
+        <Card>
+          <EmptyState
+            icon={<Icon name="coffee" size={24} />}
+            message="Você não participa da caixinha do café"
+            hint="A caixinha é das salas de oficiais e de graduados."
+            action={<Link to="/" className="inline-flex items-center min-h-[44px] px-5 rounded-xl border border-borda bg-white font-medium hover:bg-fundo-elevado">Voltar ao início</Link>}
+          />
+        </Card>
       </AppLayout>
     );
   }
 
-  // Militar do esquadrão: mostra status pessoal detalhado
+  // Militar do esquadrão: status pessoal detalhado
   if (ehMilitarEsquadrao) {
     const tipo = userSala!;
     const chave = config[tipo === 'oficial' ? 'pix_cafe_oficial_chave' : 'pix_cafe_graduado_chave'] || '';
@@ -89,15 +122,15 @@ export function CafePublico() {
 
     const copiarPix = async () => {
       if (!chave || !meuStatus?.total_pendente) return;
-      const payload = gerarPayloadPix(meuStatus.total_pendente, { chave, nome });
-      await navigator.clipboard.writeText(payload);
+      const payload = gerarPayloadPix(meuStatus.total_pendente, { chave, nome, cidade: cidadePix });
+      if (!(await copiar(payload))) return;
       setCopiadoCodigo(true);
       setTimeout(() => setCopiadoCodigo(false), 3000);
     };
 
     const copiarChave = async () => {
       if (!chave) return;
-      await navigator.clipboard.writeText(chave);
+      if (!(await copiar(chave))) return;
       setCopiadoChave(true);
       setTimeout(() => setCopiadoChave(false), 3000);
     };
@@ -108,141 +141,112 @@ export function CafePublico() {
       window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
+    const mesesPendentes = meuStatus?.historico?.filter(h => h.status === 'pendente').length || 0;
+
     return (
       <AppLayout>
-        <div className="max-w-sm mx-auto animate-fade-in">
-          <h1 className="font-display text-2xl text-azul tracking-wider mb-1">MEU CAFÉ</h1>
-          <p className="text-sm text-texto-fraco mb-5">{nomeCantina}</p>
+        <div className="max-w-xl mx-auto animate-fade-in">
+          <PageHeader title="Meu café" subtitle={nomeCantina} />
+          {avisoErroConfig}
 
           {loadingStatus ? (
-            <Loading />
+            <Loading label="Carregando sua caixinha..." />
+          ) : erroStatus ? (
+            <Card size="lg" className="text-center">
+              <p className="text-sm text-vermelho mb-3">Não foi possível carregar sua caixinha do café.</p>
+              <Button variant="outline" size="sm" onClick={carregarStatus}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+            </Card>
           ) : !meuStatus?.tem_assinatura ? (
-            <div className="bg-white rounded-2xl border border-borda p-6 text-center shadow-sm">
-              <p className="text-sm text-texto-fraco mb-2">Você ainda não é assinante.</p>
-              <p className="text-xs text-texto-fraco">Fale com o administrador da cantina para começar a participar da caixinha.</p>
-            </div>
+            <Card>
+              <EmptyState
+                icon={<Icon name="coffee" size={24} />}
+                message="Você ainda não é assinante"
+                hint="Fale com o responsável da cantina para começar a participar da caixinha."
+              />
+            </Card>
           ) : (
             <>
-              {/* Status do mes atual */}
-              <div className={`rounded-2xl p-5 mb-4 shadow-sm border ${
-                meuStatus.mes_atual_pago
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs uppercase tracking-wider text-texto-fraco font-medium">
+              {/* Mês atual */}
+              <Card size="lg" className="mb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-texto-fraco">
                     {meuStatus.mes_atual ? formatMesReferencia(meuStatus.mes_atual) : 'Mês atual'}
                   </span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    meuStatus.mes_atual_pago ? 'bg-verde text-white' : 'bg-vermelho text-white'
-                  }`}>
-                    {meuStatus.mes_atual_pago ? 'PAGO' : 'PENDENTE'}
-                  </span>
+                  <Badge variant={meuStatus.mes_atual_pago ? 'success' : 'danger'}>{meuStatus.mes_atual_pago ? 'Pago' : 'Pendente'}</Badge>
                 </div>
-                <div className={`font-display text-3xl tracking-wider ${
-                  meuStatus.mes_atual_pago ? 'text-verde-escuro' : 'text-vermelho'
-                }`}>
-                  R$ {(meuStatus.valor_mensal || 0).toFixed(2)}
+                <div className="font-display text-4xl leading-none tracking-wide text-noite mt-2">
+                  {brl(meuStatus.valor_mensal || 0)}
                 </div>
-                <div className="text-xs text-texto-fraco mt-1">
-                  Plano {meuStatus.plano === 'anual' ? 'Anual' : 'Mensal'}
+                <div className="text-sm text-texto-fraco mt-1.5">
+                  Plano {meuStatus.plano === 'anual' ? 'anual' : 'mensal'}
                   {meuStatus.plano === 'anual' && meuStatus.mes_atual_pago && (
-                    <span className="ml-2 text-verde-escuro font-medium">✓ Válido até 31/Dez/{new Date().getFullYear()}</span>
+                    <span className="text-verde-escuro font-medium"> · válido até 31/12/{dataLocal(new Date()).slice(0, 4)}</span>
                   )}
                   {meuStatus.plano === 'anual' && !meuStatus.mes_atual_pago && (
-                    <span className="ml-2 text-vermelho font-medium">Anuidade pendente</span>
+                    <span className="text-vermelho font-medium"> · anuidade pendente</span>
                   )}
                 </div>
-              </div>
+              </Card>
 
-              {/* Pendencia total (se > valor mensal, significa acumulou) */}
+              {/* Pagar o que está em aberto */}
               {(meuStatus.total_pendente || 0) > 0 && (
-                <>
-                  <div className="bg-white rounded-2xl border border-borda p-5 mb-4 shadow-sm">
-                    <div className="text-xs text-texto-fraco uppercase tracking-wider mb-1">Total a pagar</div>
-                    <div className="font-display text-3xl text-vermelho tracking-wider">
-                      R$ {(meuStatus.total_pendente || 0).toFixed(2)}
-                    </div>
-                    {meuStatus.historico && meuStatus.historico.filter(h => h.status === 'pendente').length > 1 && (
-                      <div className="text-xs text-texto-fraco mt-1">
-                        {meuStatus.historico.filter(h => h.status === 'pendente').length} mês(es) pendente(s)
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Chave PIX */}
-                  <div className="bg-white rounded-2xl p-5 mb-4 border border-borda shadow-sm">
-                    <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX</p>
-                    <p className="text-[10px] text-texto-fraco mb-3 text-center">{nome}</p>
-                    <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-                      <span className="text-sm text-azul font-medium truncate">{chave || '—'}</span>
-                      <button onClick={copiarChave} disabled={!chave} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors disabled:opacity-40">
-                        {copiadoChave ? (
-                          <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-texto-fraco" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                        )}
-                      </button>
-                    </div>
-                    {copiadoChave && <p className="text-verde text-xs mt-2 text-center">Chave copiada!</p>}
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    <Button variant="primary" size="lg" className="w-full" onClick={copiarPix} disabled={!chave}>
-                      {copiadoCodigo ? 'PIX copiado!' : `Copiar PIX (R$ ${(meuStatus.total_pendente || 0).toFixed(2)})`}
-                    </Button>
-                    <Button variant="success" size="lg" className="w-full" onClick={enviarComprovante} disabled={!whatsapp}>
-                      Enviar comprovante (WhatsApp)
-                    </Button>
-                  </div>
-                </>
+                <Card size="lg" className="mb-4 !border-escarlate/40">
+                  <p className="text-sm font-medium text-texto-fraco">Total a pagar</p>
+                  <p className="font-display text-5xl leading-none tracking-wide text-escarlate mt-1">{brl(meuStatus.total_pendente || 0)}</p>
+                  {mesesPendentes > 1 && (
+                    <p className="text-sm text-texto-fraco mt-1.5">{mesesPendentes} meses pendentes</p>
+                  )}
+                  <Button variant="success" size="lg" className="w-full mt-4 min-h-[56px]" onClick={copiarPix} disabled={!chave}>
+                    <Icon name={copiadoCodigo ? 'check' : 'document'} size={20} />
+                    {copiadoCodigo ? 'Código copiado' : 'Copiar código PIX'}
+                  </Button>
+                  <ChavePix chave={chave} nome={nome} copiado={copiadoChave} onCopiar={copiarChave} />
+                  <Button variant="ghost" size="lg" className="w-full mt-3" onClick={enviarComprovante} disabled={!whatsapp}>
+                    Enviar comprovante no WhatsApp
+                  </Button>
+                </Card>
               )}
 
-              {/* Historico */}
+              {/* Histórico */}
               {meuStatus.historico && meuStatus.historico.length > 0 && (
-                <div className="bg-white rounded-2xl border border-borda p-4 shadow-sm">
-                  <div className="text-xs text-texto-fraco uppercase tracking-wider mb-3">Histórico</div>
-                  <div className="space-y-2">
+                <Card>
+                  <h2 className="text-[15px] font-semibold text-noite mb-1">Histórico</h2>
+                  <ul className="divide-y divide-borda">
                     {meuStatus.historico.map(h => (
-                      <div key={h.referencia} className="flex items-center justify-between text-sm py-1.5 border-b border-borda last:border-0">
-                        <span className="text-texto-fraco">{formatMesReferencia(h.referencia)}</span>
-                        <span className="text-texto-fraco">R$ {h.valor.toFixed(2)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          h.status === 'pago' ? 'bg-green-100 text-verde-escuro' : 'bg-red-50 text-vermelho'
-                        }`}>
-                          {h.status === 'pago' ? 'Pago' : 'Pendente'}
-                        </span>
-                      </div>
+                      <li key={h.referencia} className="flex items-center justify-between gap-3 text-sm py-2.5">
+                        <span className="flex-1">{formatMesReferencia(h.referencia)}</span>
+                        <span className="text-texto-fraco tabular-nums">{brl(h.valor)}</span>
+                        <Badge variant={h.status === 'pago' ? 'success' : 'danger'}>{h.status === 'pago' ? 'Pago' : 'Pendente'}</Badge>
+                      </li>
                     ))}
-                  </div>
-                </div>
+                  </ul>
+                </Card>
               )}
             </>
           )}
         </div>
+        {modalCopiaManual}
       </AppLayout>
     );
   }
 
-  // Visitante ou deslogado: fluxo de pagamento com valor fixo
+  // Visitante ou deslogado: escolha da sala
   if (!sala) {
     return (
       <AppLayout>
-        <div className="py-6 animate-fade-in">
-          <div className="text-center mb-8">
-            <h1 className="font-display text-2xl text-azul tracking-wider mb-2">CAIXINHA DO CAFÉ</h1>
-            <p className="text-sm text-texto-fraco">Escolha sua cantina</p>
-          </div>
-          <div className="space-y-4 max-w-sm mx-auto">
-            <button onClick={() => setSala('oficial')}
-              className="w-full bg-white rounded-2xl p-5 border border-borda hover:border-azul shadow-sm transition-all text-left">
-              <h2 className="font-display text-lg text-azul tracking-wide uppercase">Cantina dos Oficiais</h2>
+        <PageHeader title="Caixinha do café" subtitle="De qual sala é o café que você tomou?" />
+        <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
+          {([
+            { v: 'oficial', titulo: 'Cantina dos Oficiais' },
+            { v: 'graduado', titulo: 'Cantina dos Graduados' },
+          ] as const).map(o => (
+            <button key={o.v} onClick={() => setSala(o.v)}
+              className="flex items-center gap-3.5 bg-white rounded-2xl p-4 min-h-[72px] border border-borda hover:border-azul/60 active:scale-[0.99] transition-[border-color,transform] text-left outline-none focus-visible:ring-2 focus-visible:ring-azul/40">
+              <span className="w-12 h-12 shrink-0 rounded-xl bg-noite text-white flex items-center justify-center"><Icon name="coffee" size={22} /></span>
+              <span className="flex-1 font-semibold text-texto">{o.titulo}</span>
+              <Icon name="chevron-right" size={18} className="text-texto-fraco" />
             </button>
-            <button onClick={() => setSala('graduado')}
-              className="w-full bg-white rounded-2xl p-5 border border-borda hover:border-vermelho shadow-sm transition-all text-left">
-              <h2 className="font-display text-lg text-vermelho tracking-wide uppercase">Cantina dos Graduados</h2>
-            </button>
-          </div>
+          ))}
         </div>
       </AppLayout>
     );
@@ -257,15 +261,15 @@ export function CafePublico() {
 
   const copiarPix = async () => {
     if (!chave) return;
-    const payload = gerarPayloadPix(valor, { chave, nome });
-    await navigator.clipboard.writeText(payload);
+    const payload = gerarPayloadPix(valor, { chave, nome, cidade: cidadePix });
+    if (!(await copiar(payload))) return;
     setCopiadoCodigo(true);
     setTimeout(() => setCopiadoCodigo(false), 3000);
   };
 
   const copiarChave = async () => {
     if (!chave) return;
-    await navigator.clipboard.writeText(chave);
+    if (!(await copiar(chave))) return;
     setCopiadoChave(true);
     setTimeout(() => setCopiadoChave(false), 3000);
   };
@@ -278,51 +282,65 @@ export function CafePublico() {
 
   return (
     <AppLayout>
-      <div className="max-w-sm mx-auto animate-fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          {!userSala && (
-            <button onClick={() => setSala(null)} className="text-texto-fraco hover:text-texto" aria-label="Voltar">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-          )}
-          <h1 className="font-display text-xl text-azul tracking-wider uppercase">Caixinha do Café</h1>
-        </div>
-        <p className="text-sm text-texto-fraco mb-6">{nomeCantina}</p>
+      <div className="max-w-md mx-auto animate-fade-in">
+        {!userSala && (
+          <button onClick={() => setSala(null)} className="inline-flex items-center gap-1.5 min-h-[44px] -ml-1 px-1 mb-1 text-sm font-medium text-texto-fraco hover:text-texto">
+            <Icon name="arrow-left" size={18} /> Trocar de sala
+          </button>
+        )}
+        <PageHeader title="Caixinha do café" subtitle={nomeCantina} />
+        {avisoErroConfig}
 
-        <div className="bg-azul rounded-2xl p-6 mb-4 text-center text-white shadow-sm">
-          <div className="text-xs opacity-70 uppercase tracking-widest">Valor mensal</div>
-          <div className="font-display text-4xl tracking-wider mt-1">R$ {valor.toFixed(2)}</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 mb-4 border border-borda shadow-sm">
-          <p className="text-xs text-texto-fraco mb-1 uppercase tracking-wider text-center">Chave PIX</p>
-          <p className="text-[10px] text-texto-fraco mb-3 text-center">{nome}</p>
-          <div className="flex items-center justify-center gap-2 bg-fundo rounded-xl py-3 px-4">
-            <span className="text-sm text-azul font-medium truncate">{chave || '—'}</span>
-            <button onClick={copiarChave} disabled={!chave} className="shrink-0 p-2 rounded-lg hover:bg-white transition-colors disabled:opacity-40" aria-label="Copiar chave PIX">
-              {copiadoChave ? (
-                <svg className="w-4 h-4 text-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              ) : (
-                <svg className="w-4 h-4 text-texto-fraco" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-              )}
-            </button>
+        <Card size="lg" className="text-center">
+          <p className="text-sm text-texto-fraco">Valor mensal</p>
+          <p className="font-display text-6xl leading-none tracking-wide text-noite mt-1">{brl(valor)}</p>
+          <Button variant="success" size="lg" className="w-full mt-5 min-h-[56px]" onClick={copiarPix} disabled={!chave}>
+            {!chave ? (erroConfig ? 'Dados do PIX indisponíveis' : 'Chave PIX não configurada') : copiadoCodigo ? <><Icon name="check" size={20} /> Código copiado</> : <><Icon name="document" size={20} /> Copiar código PIX</>}
+          </Button>
+          <div className="text-left">
+            <ChavePix chave={chave} nome={nome} copiado={copiadoChave} onCopiar={copiarChave} />
           </div>
-          {copiadoChave && <p className="text-verde text-xs mt-2 text-center">Chave copiada!</p>}
-        </div>
+        </Card>
 
-        <div className="space-y-3">
-          <Button variant="primary" size="lg" className="w-full" onClick={copiarPix} disabled={!chave}>
-            {!chave ? 'Chave PIX não configurada' : copiadoCodigo ? 'PIX copiado!' : 'Copiar código PIX'}
-          </Button>
-          <Button variant="success" size="lg" className="w-full" onClick={enviarComprovante} disabled={!whatsapp}>
-            Enviar comprovante (WhatsApp)
-          </Button>
-        </div>
+        <ol className="mt-5 space-y-3">
+          {[
+            'Copie o código e abra o app do seu banco.',
+            'Escolha "PIX copia e cola", cole e pague.',
+            'Volte aqui e envie o comprovante.',
+          ].map((t, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-noite text-white font-display text-base flex items-center justify-center">{i + 1}</span>
+              <span className="text-[15px] text-texto pt-0.5">{t}</span>
+            </li>
+          ))}
+        </ol>
 
-        <p className="text-center text-xs text-texto-fraco mt-6">
-          Após pagar, envie o comprovante pelo botão acima.
-        </p>
+        <Button variant="primary" size="lg" className="w-full mt-5" onClick={enviarComprovante} disabled={!whatsapp}>
+          Enviar comprovante no WhatsApp
+        </Button>
       </div>
+      {modalCopiaManual}
     </AppLayout>
+  );
+}
+
+function ChavePix({ chave, nome, copiado, onCopiar }: { chave: string; nome: string; copiado: boolean; onCopiar: () => void }) {
+  return (
+    <div className="mt-4">
+      <p className="text-sm text-texto-fraco mb-1.5">Ou use a chave PIX{nome ? ` (${nome})` : ''}:</p>
+      <div className="flex items-center gap-2 bg-fundo-elevado border border-borda rounded-xl pl-3.5 pr-1 py-1">
+        <span className="flex-1 min-w-0 text-[15px] text-noite font-medium truncate">{chave || '—'}</span>
+        <button
+          type="button"
+          onClick={onCopiar}
+          disabled={!chave}
+          aria-label="Copiar chave PIX"
+          className="shrink-0 min-h-[44px] px-3 inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-azul hover:bg-white disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-azul/40"
+        >
+          <Icon name={copiado ? 'check' : 'document'} size={16} className={copiado ? 'text-verde-escuro' : ''} />
+          {copiado ? 'Copiada' : 'Copiar'}
+        </button>
+      </div>
+    </div>
   );
 }

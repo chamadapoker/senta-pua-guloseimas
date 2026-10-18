@@ -42,7 +42,7 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   const id = c.req.param('id');
   const body = await c.req.json<{ nome?: string; role?: string; ativo?: boolean; senha?: string }>();
 
-  const alvo = await c.env.DB.prepare('SELECT role, ativo FROM admins WHERE id = ?').bind(id).first<{ role: string; ativo: number }>();
+  const alvo = await c.env.DB.prepare('SELECT email, nome, role, ativo FROM admins WHERE id = ?').bind(id).first<{ email: string; nome: string; role: string; ativo: number }>();
   if (!alvo) return c.json({ error: 'Admin não encontrado' }, 404);
 
   const vaiDesativar = body.ativo === false;
@@ -83,6 +83,8 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   ).bind(...values).all();
 
   if (!results.length) return c.json({ error: 'Admin não encontrado' }, 404);
+  // Nunca grava a senha no log, só que ela foi trocada
+  await audit(c, 'editar_admin', 'admins', id, alvo, { ...(results[0] as object), senha_alterada: !!body.senha });
   return c.json(results[0]);
 });
 

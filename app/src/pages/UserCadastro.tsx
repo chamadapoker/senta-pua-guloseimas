@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { useToast } from '../hooks/useToast';
 import type { Categoria } from '../types';
+import { TelaEntrada, SecaoForm, FotoOpcional, EscolhaCategoria, AceitePrivacidade, campoEntrada, rotuloEntrada } from './TelaEntrada';
 
 export function UserCadastro() {
   const [email, setEmail] = useState('');
@@ -21,6 +22,7 @@ export function UserCadastro() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { cadastrar, updateFoto, loading } = useUserAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const location = useLocation();
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo || '/';
 
@@ -82,181 +84,151 @@ export function UserCadastro() {
         data_nascimento: dataNascimento || null,
         aceite_lgpd: true,
       });
-      let fotoErro = '';
-      if (foto) {
-        try { await updateFoto(foto); } catch { fotoErro = ' Foto não pôde ser enviada, você pode tentar novamente no perfil.'; }
-      }
-      if (fotoErro) setErro(fotoErro);
-      else navigate(returnTo, { replace: true });
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao cadastrar');
+      return;
     }
+    // Conta já criada: falha na foto não pode prender o usuário na tela de cadastro
+    if (foto) {
+      try {
+        await updateFoto(foto);
+      } catch {
+        showToast('Conta criada, mas a foto não pôde ser enviada. Tente de novo no seu perfil.', 'warning');
+      }
+    }
+    navigate(returnTo, { replace: true });
   };
 
   return (
-    <AppLayout>
-      <div className="max-w-sm mx-auto py-6 animate-fade-in">
-        <h1 className="font-display text-3xl text-azul tracking-wider mb-6 text-center">CADASTRO</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Foto opcional */}
-          <div className="flex flex-col items-center">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="w-24 h-24 rounded-full bg-fundo border-2 border-dashed border-borda flex items-center justify-center overflow-hidden hover:border-azul transition-colors"
-            >
-              {fotoPreview ? (
-                <img src={fotoPreview} alt="Preview" className="w-full h-full object-cover" />
-              ) : (
-                <div className="text-center">
-                  <svg className="w-8 h-8 text-texto-fraco mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-[10px] text-texto-fraco">Foto</span>
-                </div>
-              )}
-            </button>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} className="hidden" />
-            <span className="text-xs text-texto-fraco mt-1">Opcional</span>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Categoria Militar</label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { v: 'oficial', label: 'Oficial' },
-                { v: 'graduado', label: 'Graduado/SO' },
-                { v: 'praca', label: 'Praça' },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.v}
-                  type="button"
-                  onClick={() => setCategoria(opt.v)}
-                  className={`py-3 px-2 rounded-xl text-sm font-medium border transition-all
-                    ${categoria === opt.v
-                      ? 'bg-azul text-white border-azul shadow-sm'
-                      : 'bg-white text-texto-fraco border-borda hover:border-azul/50'}
-                  `}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-              required
-              autoComplete="email"
-            />
-          </div>
-
+    <TelaEntrada
+      titulo="Cadastro de militar"
+      subtitulo="Leva um minuto. Os dados ficam só no sistema do esquadrão."
+      largura="md"
+      rodape={
+        <p>
+          Já tem conta?{' '}
+          <Link to="/login" state={{ returnTo }} className="text-white font-semibold underline underline-offset-4">Entrar</Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <SecaoForm titulo="Dados militares">
+          <EscolhaCategoria valor={categoria} onChange={setCategoria} />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-texto-fraco mb-1.5">Trigrama</label>
+              <label htmlFor="cad-trigrama" className={rotuloEntrada}>Trigrama</label>
               <input
+                id="cad-trigrama"
                 type="text"
                 value={trigrama}
                 onChange={(e) => setTrigrama(e.target.value.toUpperCase().replace(/[^A-ZÀ-ÚÖ]/g, '').slice(0, 3))}
                 maxLength={3}
-                placeholder="Ex: RET"
-                className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul uppercase tracking-widest font-display text-lg text-center"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="RET"
+                className={`${campoEntrada} uppercase tracking-[0.3em] font-display text-xl text-center`}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-texto-fraco mb-1.5">SARAM</label>
+              <label htmlFor="cad-saram" className={rotuloEntrada}>SARAM</label>
               <input
+                id="cad-saram"
                 type="text"
                 inputMode="numeric"
                 value={saram}
                 onChange={(e) => setSaram(e.target.value.replace(/\D/g, ''))}
-                placeholder="Identificação"
-                className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                placeholder="Só números"
+                className={campoEntrada}
                 required
               />
             </div>
           </div>
+        </SecaoForm>
 
+        <SecaoForm titulo="Contato">
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">WhatsApp</label>
+            <label htmlFor="cad-email" className={rotuloEntrada}>E-mail</label>
             <input
-              type="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
-              placeholder="Ex: 62999998888"
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              id="cad-email"
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={campoEntrada}
               required
+              autoComplete="email"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Data de Nascimento</label>
+            <label htmlFor="cad-whatsapp" className={rotuloEntrada}>WhatsApp com DDD</label>
             <input
+              id="cad-whatsapp"
+              type="tel"
+              inputMode="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ''))}
+              placeholder="62999998888"
+              className={campoEntrada}
+              required
+              autoComplete="tel"
+            />
+          </div>
+          <div>
+            <label htmlFor="cad-nascimento" className={rotuloEntrada}>Data de nascimento</label>
+            <input
+              id="cad-nascimento"
               type="date"
               value={dataNascimento}
               onChange={(e) => setDataNascimento(e.target.value)}
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              className={campoEntrada}
               required
+              autoComplete="bday"
             />
           </div>
+          <FotoOpcional preview={fotoPreview} onEscolher={() => fileRef.current?.click()} />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} className="hidden" />
+        </SecaoForm>
 
+        <SecaoForm titulo="Senha">
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Senha</label>
+            <label htmlFor="cad-senha" className={rotuloEntrada}>Senha</label>
             <input
+              id="cad-senha"
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               placeholder="Mínimo 6 caracteres"
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              minLength={6}
+              className={campoEntrada}
               required
               autoComplete="new-password"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-texto-fraco mb-1.5">Confirmar Senha</label>
+            <label htmlFor="cad-senha2" className={rotuloEntrada}>Confirme a senha</label>
             <input
+              id="cad-senha2"
               type="password"
               value={confirmarSenha}
               onChange={(e) => setConfirmarSenha(e.target.value)}
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+              minLength={6}
+              className={campoEntrada}
               required
               autoComplete="new-password"
             />
           </div>
+          <AceitePrivacidade marcado={aceiteLgpd} onChange={setAceiteLgpd} />
+        </SecaoForm>
 
-          <label className="flex items-start gap-2 text-xs text-texto-fraco bg-fundo rounded-xl p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={aceiteLgpd}
-              onChange={(e) => setAceiteLgpd(e.target.checked)}
-              className="mt-0.5 accent-azul"
-            />
-            <span>
-              Li e aceito a{' '}
-              <Link to="/privacidade" target="_blank" className="text-azul font-medium hover:underline">
-                Política de Privacidade
-              </Link>
-              . Autorizo o uso dos meus dados para os fins descritos.
-            </span>
-          </label>
-
-          {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
-          <Button type="submit" size="lg" className="w-full" disabled={loading || !aceiteLgpd}>
-            {loading ? 'Cadastrando...' : 'Cadastrar'}
-          </Button>
-        </form>
-        <p className="text-center text-sm text-texto-fraco mt-4">
-          Já tem conta? <Link to="/login" state={{ returnTo }} className="text-azul font-medium hover:underline">Entrar</Link>
-        </p>
-      </div>
-    </AppLayout>
+        {erro && <p role="alert" className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !aceiteLgpd}>
+          {loading ? 'Criando conta...' : 'Criar conta'}
+        </Button>
+      </form>
+    </TelaEntrada>
   );
 }

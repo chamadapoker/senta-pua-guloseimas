@@ -2,6 +2,7 @@ import { Hono, Context } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { audit } from '../lib/audit';
+import { pagarPedidoLoja, pagarParcelaLoja } from '../lib/loja';
 import type { AppType } from '../index';
 
 const comprovantes = new Hono<AppType>();
@@ -172,9 +173,11 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
   if (comp.origem === 'cantina') {
     await c.env.DB.prepare("UPDATE pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago'").bind(comp.referencia_id).run();
   } else if (comp.origem === 'loja') {
-    await c.env.DB.prepare("UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago'").bind(comp.referencia_id).run();
+    // Pedido inteiro pago => quita as parcelas pendentes
+    await pagarPedidoLoja(c.env.DB, comp.referencia_id);
   } else if (comp.origem === 'loja_parcela') {
-    await c.env.DB.prepare("UPDATE loja_parcelas SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago'").bind(comp.referencia_id).run();
+    // Última parcela paga => pedido pago
+    await pagarParcelaLoja(c.env.DB, comp.referencia_id);
   } else if (comp.origem === 'cafe') {
     await c.env.DB.prepare("UPDATE cafe_pagamentos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago'").bind(comp.referencia_id).run();
   } else if (comp.origem === 'ximboca') {

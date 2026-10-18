@@ -2,19 +2,21 @@ import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
-  right?: ReactNode; // ação à direita (ex: botão "+ Adicionar")
+  subtitle?: ReactNode;
+  right?: ReactNode; // ações à direita (ex: botão "Adicionar")
   className?: string;
 }
 
+// Título de página: Bebas em azul-noite com a flâmula escarlate embaixo (a mesma marca do item ativo do menu)
 export function PageHeader({ title, subtitle, right, className = '' }: PageHeaderProps) {
   return (
-    <div className={`flex items-start justify-between gap-3 gap-y-2 flex-wrap mb-5 ${className}`}>
-      <div>
-        <h1 className="font-display text-2xl text-azul tracking-wider">{title}</h1>
-        {subtitle && <p className="text-sm text-texto-fraco mt-1">{subtitle}</p>}
+    <div className={`flex items-end justify-between gap-x-4 gap-y-3 flex-wrap mb-6 ${className}`}>
+      <div className="min-w-0">
+        <h1 className="font-display text-[1.75rem] sm:text-3xl leading-none text-noite tracking-wide">{title}</h1>
+        <span className="flamula-sm block w-10 h-1.5 bg-escarlate mt-2" aria-hidden="true" />
+        {subtitle && <p className="text-sm text-texto-fraco mt-2 max-w-prose">{subtitle}</p>}
       </div>
-      {right && <div className="flex-shrink-0">{right}</div>}
+      {right && <div className="flex items-center gap-2 flex-wrap">{right}</div>}
     </div>
   );
 }

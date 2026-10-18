@@ -1,10 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { Loading } from '../../components/ui/Loading';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { Modal } from '../../components/ui/Modal';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Field, inputClass } from '../../components/ui/Field';
+import { Icon } from '../../components/ui/Icon';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -41,6 +46,8 @@ export function Aniversariantes() {
   const { showToast } = useToast();
   const [lista, setLista] = useState<Aniversariante[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarga, setErroCarga] = useState(false);
+  const navigate = useNavigate();
   const [editModal, setEditModal] = useState<Aniversariante | null>(null);
   const [form, setForm] = useState({ titulo: '', texto: '', imagem_url: '' });
   const [salvando, setSalvando] = useState(false);
@@ -48,10 +55,12 @@ export function Aniversariantes() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const carregar = async () => {
+    setErroCarga(false);
     try {
       const data = await api.get<Aniversariante[]>('/api/usuarios/admin/aniversariantes');
       setLista(data);
     } catch (e) {
+      setErroCarga(true);
       showToast('Erro ao carregar aniversariantes', 'error');
     } finally {
       setLoading(false);
@@ -78,7 +87,7 @@ export function Aniversariantes() {
         niver_texto: form.texto,
         niver_imagem_url: form.imagem_url,
       });
-      showToast(`Homenagem para ${editModal.trigrama} salva!`, 'success');
+      showToast(`Homenagem para ${editModal.trigrama} salva`, 'success');
       setEditModal(null);
       carregar();
     } catch (e) {
@@ -96,7 +105,7 @@ export function Aniversariantes() {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showToast('Imagem muito grande (máx 5MB)', 'error');
+      showToast('Imagem muito grande (máximo 5 MB)', 'error');
       return;
     }
     setUploading(true);
@@ -111,12 +120,14 @@ export function Aniversariantes() {
     }
   };
 
+  const fechar = useCallback(() => setEditModal(null), []);
+
   const formatData = (iso: string) => {
     if (!iso) return '--/--';
     if (iso.includes('/')) return iso.substring(0, 5); // Fallback para DD/MM
     const partes = iso.split('-');
     if (partes.length < 3) return iso;
-    const [y, m, d] = partes;
+    const [, m, d] = partes;
     return `${d}/${m}`;
   };
 
@@ -124,133 +135,139 @@ export function Aniversariantes() {
     <AppLayout>
       <PageHeader
         title="Aniversariantes"
-        right={
-          <div className="text-xs text-texto-fraco bg-white px-3 py-1.5 rounded-full border border-borda">
-            {lista.length} militares com data cadastrada
-          </div>
-        }
+        subtitle="Personalize a mensagem de parabéns que cada militar vê no dia do aniversário."
+        right={!loading && !erroCarga && lista.length > 0 ? (
+          <span className="text-sm text-texto-fraco">
+            {lista.length} {lista.length === 1 ? 'militar com data cadastrada' : 'militares com data cadastrada'}
+          </span>
+        ) : undefined}
       />
 
       {loading ? (
         <Loading />
+      ) : erroCarga ? (
+        <div className="bg-white rounded-2xl border border-borda">
+          <EmptyState
+            icon={<Icon name="warning" size={24} />}
+            message="Não foi possível carregar os aniversariantes"
+            hint="Verifique a conexão e tente outra vez."
+            action={<Button variant="ghost" size="sm" onClick={() => { setLoading(true); carregar(); }}><Icon name="refresh" size={16} /> Tentar de novo</Button>}
+          />
+        </div>
       ) : lista.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {lista.map(u => (
-            <div key={u.id} className="bg-white rounded-2xl border border-borda p-5 shadow-sm hover:shadow-md transition-all group">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="font-display text-xl text-azul tracking-wider">{u.trigrama}</div>
-                  <div className="text-[10px] text-texto-fraco uppercase font-bold tracking-widest">{u.categoria}</div>
+            <article key={u.id} className="bg-white rounded-2xl border border-borda p-4 shadow-sm flex flex-col min-w-0">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <div className="font-display text-2xl leading-none text-noite tracking-wide">{u.trigrama}</div>
+                  <div className="text-sm text-texto-fraco mt-1 capitalize">{u.categoria}</div>
                 </div>
-                <div className="bg-azul/10 text-azul text-xs font-bold px-3 py-1 rounded-full">
-                  {formatData(u.data_nascimento)}
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-texto-fraco">Aniversário</div>
+                  <div className="font-display text-2xl leading-none text-escarlate tracking-wide">{formatData(u.data_nascimento)}</div>
                 </div>
               </div>
 
               {u.niver_titulo ? (
-                <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl">
-                  <div className="text-[10px] text-verde-escuro font-bold uppercase mb-1">Homenagem Ativa</div>
-                  <div className="text-xs text-verde-escuro font-medium truncate">{u.niver_titulo}</div>
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl min-w-0">
+                  <div className="text-xs text-verde-escuro font-medium mb-0.5">Homenagem personalizada</div>
+                  <div className="text-sm text-texto truncate">{u.niver_titulo}</div>
                 </div>
               ) : (
-                <div className="mb-4 p-3 bg-fundo border border-borda border-dashed rounded-xl">
-                  <div className="text-xs text-texto-fraco italic">Usando mensagem genérica da RP</div>
+                <div className="mb-4 p-3 bg-fundo border border-dashed border-borda rounded-xl">
+                  <div className="text-sm text-texto-fraco">Usa a mensagem padrão da RP</div>
                 </div>
               )}
 
-              <Button variant="outline" size="sm" className="w-full" onClick={() => abrirHomenagem(u)}>
-                {u.niver_titulo ? 'Editar Homenagem' : 'Personalizar Parabéns'}
+              <Button variant={u.niver_titulo ? 'ghost' : 'chip-primary'} size="sm" className="w-full mt-auto" onClick={() => abrirHomenagem(u)}>
+                <Icon name="pencil" size={16} />
+                {u.niver_titulo ? 'Editar homenagem' : 'Personalizar parabéns'}
               </Button>
-            </div>
+            </article>
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-borda p-12 text-center shadow-sm max-w-lg mx-auto mt-10">
-          <h2 className="font-display text-xl text-azul tracking-wider uppercase mb-3">Aguardando Dados</h2>
-          <p className="text-sm text-texto-fraco leading-relaxed mb-8">
-            Nenhum aniversário foi identificado no sistema ainda. Para começar, adicione a data de nascimento no perfil dos militares.
-          </p>
-          <Button variant="outline" onClick={() => window.location.href = '/admin/usuarios'}>
-            Gerenciar Usuários
-          </Button>
+        <div className="bg-white rounded-2xl border border-borda">
+          <EmptyState
+            icon={<Icon name="bell" size={24} />}
+            message="Nenhum aniversário cadastrado"
+            hint="Adicione a data de nascimento no cadastro dos militares para que eles apareçam aqui."
+            action={<Button variant="ghost" size="sm" onClick={() => navigate('/admin/usuarios')}><Icon name="users" size={16} /> Ir para usuários</Button>}
+          />
         </div>
       )}
 
-      {/* Modal Homenagem */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setEditModal(null)}>
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display text-xl text-azul tracking-wider mb-5 uppercase">Preparar Homenagem</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-texto-fraco uppercase tracking-widest mb-1.5 ml-1">Título da Surpresa</label>
-                <input
-                  type="text"
-                  value={form.titulo}
-                  onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
-                  placeholder="Ex: Parabéns, Guerreiro!"
-                  className="w-full bg-fundo border border-borda rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-azul/20 outline-none"
-                />
-              </div>
+      {/* Modal homenagem */}
+      <Modal open={!!editModal} onClose={fechar} title={editModal ? `Homenagem para ${editModal.trigrama}` : 'Homenagem'}>
+        <form onSubmit={(e) => { e.preventDefault(); salvar(); }} className="space-y-4">
+          <Field label="Título">
+            <input
+              aria-label="Título"
+              type="text"
+              value={form.titulo}
+              onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
+              placeholder="Ex.: Parabéns, guerreiro!"
+              className={inputClass}
+            />
+          </Field>
 
-              <div>
-                <label className="block text-[10px] font-bold text-texto-fraco uppercase tracking-widest mb-1.5 ml-1">Texto da Mensagem</label>
-                <textarea
-                  value={form.texto}
-                  onChange={e => setForm(p => ({ ...p, texto: e.target.value }))}
-                  rows={4}
-                  placeholder="Escreva uma mensagem especial para o dia..."
-                  className="w-full bg-fundo border border-borda rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-azul/20 outline-none resize-none"
-                />
-              </div>
+          <Field label="Mensagem">
+            <textarea
+              aria-label="Mensagem"
+              value={form.texto}
+              onChange={e => setForm(p => ({ ...p, texto: e.target.value }))}
+              rows={4}
+              placeholder="Escreva uma mensagem especial para o dia"
+              className={`${inputClass} resize-none`}
+            />
+          </Field>
 
-              <div>
-                <label className="block text-[10px] font-bold text-texto-fraco uppercase tracking-widest mb-1.5 ml-1">Imagem Especial</label>
+          <Field label="Imagem" hint="JPG, PNG, WEBP ou GIF, até 5 MB. Ou cole o link de uma imagem.">
+            <button
+              type="button"
+              onClick={() => !uploading && fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full border-2 border-dashed border-borda rounded-xl p-4 text-center hover:border-azul transition-colors mb-2 outline-none focus-visible:ring-2 focus-visible:ring-azul/40"
+            >
+              {uploading ? (
+                <span className="block text-sm text-texto-fraco py-6" role="status">Enviando imagem...</span>
+              ) : form.imagem_url ? (
+                <img src={resolveImg(form.imagem_url)!} alt="Prévia da imagem" className="max-h-40 mx-auto rounded-lg object-contain" />
+              ) : (
+                <span className="flex flex-col items-center gap-2 py-5 text-sm text-texto-fraco">
+                  <Icon name="upload" size={22} />
+                  Toque para enviar uma foto
+                </span>
+              )}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
 
-                <div
-                  onClick={() => !uploading && fileRef.current?.click()}
-                  className="w-full border-2 border-dashed border-borda rounded-2xl p-4 text-center cursor-pointer hover:border-azul transition-colors mb-2"
-                >
-                  {uploading ? (
-                    <div className="text-sm text-texto-fraco animate-pulse py-6">Enviando...</div>
-                  ) : form.imagem_url ? (
-                    <img src={resolveImg(form.imagem_url)!} alt="Prévia" className="max-h-40 mx-auto rounded-xl object-contain" />
-                  ) : (
-                    <div className="py-6 text-sm text-texto-fraco">Toque para enviar uma foto<br /><span className="text-[10px]">JPG, PNG, WEBP · máx 5MB</span></div>
-                  )}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-
-                {form.imagem_url && (
-                  <button
-                    type="button"
-                    onClick={() => setForm(p => ({ ...p, imagem_url: '' }))}
-                    className="text-xs text-vermelho hover:underline mb-2"
-                  >
-                    Remover imagem
-                  </button>
-                )}
-
-                <input
-                  type="text"
-                  value={form.imagem_url}
-                  onChange={e => setForm(p => ({ ...p, imagem_url: e.target.value }))}
-                  placeholder="Ou cole um link de imagem"
-                  className="w-full bg-fundo border border-borda rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-azul/20 outline-none"
-                />
-              </div>
+            <div className="flex gap-2 items-center">
+              <input
+                aria-label="Link da imagem"
+                type="text"
+                value={form.imagem_url}
+                onChange={e => setForm(p => ({ ...p, imagem_url: e.target.value }))}
+                placeholder="Ou cole um link de imagem"
+                className={inputClass}
+              />
+              {form.imagem_url && (
+                <Button variant="chip-danger" size="sm" className="shrink-0" onClick={() => setForm(p => ({ ...p, imagem_url: '' }))} aria-label="Remover imagem">
+                  <Icon name="trash" size={16} />
+                </Button>
+              )}
             </div>
+          </Field>
 
-            <div className="grid grid-cols-2 gap-3 mt-8">
-              <Button variant="ghost" onClick={() => setEditModal(null)}>Cancelar</Button>
-              <Button onClick={salvar} disabled={salvando || uploading}>
-                {salvando ? 'Salvando...' : uploading ? 'Enviando foto...' : 'Salvar Homenagem'}
-              </Button>
-            </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="ghost" onClick={fechar}>Cancelar</Button>
+            <Button type="submit" disabled={salvando || uploading}>
+              {salvando ? 'Salvando...' : uploading ? 'Enviando foto...' : 'Salvar homenagem'}
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '../components/AppLayout';
 import { Button } from '../components/ui/Button';
+import { Icon } from '../components/ui/Icon';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { getConfig } from '../services/config';
+import { TelaEntrada } from './TelaEntrada';
 
 export function AcessoExpirado() {
   const { logout } = useUserAuth();
@@ -23,27 +24,21 @@ export function AcessoExpirado() {
   };
 
   return (
-    <AppLayout>
-      <div className="max-w-sm mx-auto py-16 text-center animate-fade-in">
-        <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </div>
-        <h1 className="font-display text-2xl text-azul tracking-wider mb-3">ACESSO EXPIRADO</h1>
-        <p className="text-texto-fraco text-sm mb-8">
-          Seu acesso de visitante chegou ao fim ou foi pausado pelo administrador.
-          Para renovar, fale com o responsável da cantina.
+    <TelaEntrada titulo="Acesso expirado">
+      <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 p-3.5 mb-5">
+        <Icon name="clock" size={22} className="text-amber-700 shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-900">
+          Seu acesso de visitante chegou ao fim ou foi pausado pelo administrador. Para renovar, fale com o responsável pela cantina.
         </p>
-        <div className="space-y-3">
-          <Button variant="success" size="lg" className="w-full" onClick={abrirWhats} disabled={!whatsapp}>
-            Falar no WhatsApp
-          </Button>
-          <Button variant="outline" size="lg" className="w-full" onClick={() => { logout(); navigate('/'); }}>
-            Sair
-          </Button>
-        </div>
       </div>
-    </AppLayout>
+      <div className="space-y-3">
+        <Button variant="success" size="lg" className="w-full" onClick={abrirWhats} disabled={!whatsapp}>
+          Pedir renovação no WhatsApp
+        </Button>
+        <Button variant="ghost" size="lg" className="w-full" onClick={() => { logout(); navigate('/'); }}>
+          Sair da conta
+        </Button>
+      </div>
+    </TelaEntrada>
   );
 }

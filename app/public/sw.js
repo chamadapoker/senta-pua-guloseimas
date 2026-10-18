@@ -1,4 +1,6 @@
-const CACHE_NAME = 'senta-pua-v1.0.20';
+// O build (package.json) troca o marcador abaixo por um hash novo a cada deploy:
+// muda o nome do cache (limpa o antigo no activate) e o próprio sw.js (dispara a atualização).
+const CACHE_NAME = 'senta-pua-' + '__BUILD_HASH__';
 const PRECACHE = ['/', '/logo.png', '/sabre.png', '/manifest.json'];
 
 self.addEventListener('install', (e) => {

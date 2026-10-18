@@ -3,6 +3,9 @@ import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
 import { podeFazerFiado } from '../lib/fiado';
+import { resolverClienteDoPedido } from '../lib/cliente';
+import { pagarPedidoLoja, pagarParcelaLoja } from '../lib/loja';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 import type { Context, Next } from 'hono';
 
@@ -35,7 +38,8 @@ loja.get('/produtos', async (c) => {
     `SELECT * FROM loja_produto_imagens WHERE produto_id IN (${placeholders}) ORDER BY ordem ASC`
   ).bind(...produtoIds).all();
 
-  const produtosComVariacoes = produtos.map((p: any) => ({
+  // preco_custo é dado interno (margem): não sai na rota pública
+  const produtosComVariacoes = produtos.map(({ preco_custo: _custo, ...p }: any) => ({
     ...p,
     variacoes: variacoes.filter((v: any) => v.produto_id === p.id),
     imagens: imagens.filter((i: any) => i.produto_id === p.id),
@@ -45,6 +49,7 @@ loja.get('/produtos', async (c) => {
 });
 
 // PUBLIC: create order (same trigrama flow as guloseimas)
+// Sem login: só PIX/dinheiro (fiado exige login). Logado: o dono é sempre o usuário do token.
 loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   const { nome_guerra, itens, metodo, whatsapp, parcelas, visitante, esquadrao_origem, entrega_tipo, endereco } = await c.req.json<{
     nome_guerra: string;
@@ -58,8 +63,12 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
     endereco?: string;
   }>();
 
-  if (!nome_guerra || !itens?.length || !metodo) {
+  const logado = !!c.get('userId');
+  if ((!logado && !nome_guerra) || !itens?.length || !metodo) {
     return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
+  }
+  if (!['pix', 'fiado', 'dinheiro'].includes(metodo)) {
+    return c.json({ error: 'Método de pagamento inválido' }, 400);
   }
 
   if (itens.some(i => !Number.isInteger(i.quantidade) || i.quantidade < 1)) {
@@ -70,23 +79,10 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
   const fiadoCheck = await podeFazerFiado(c, metodo);
   if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);
 
-  // Reuse same client table
-  let cliente = await c.env.DB.prepare(
-    'SELECT id, ativo FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(nome_guerra).first<{ id: string; ativo: number }>();
-
-  if (cliente && !cliente.ativo) {
-    return c.json({ error: 'Militar bloqueado.' }, 403);
-  }
-
-  if (!cliente) {
-    const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, ?) RETURNING id'
-    ).bind(nome_guerra, whatsapp || null, visitante ? 1 : 0, esquadrao_origem || null).all<{ id: string }>();
-    cliente = { ...results[0], ativo: 1 };
-  } else if (visitante) {
-    await c.env.DB.prepare('UPDATE clientes SET visitante = 1, esquadrao_origem = ? WHERE id = ?').bind(esquadrao_origem || null, cliente.id).run();
-  }
+  // Reuse same client table (logado: cliente do usuário; anônimo: não altera cliente existente)
+  const resolvido = await resolverClienteDoPedido(c, { nome_guerra, whatsapp, visitante, esquadrao_origem }, 'Militar bloqueado.');
+  if (!resolvido.ok) return c.json({ error: resolvido.erro }, resolvido.status);
+  const cliente = resolvido.cliente;
 
   // Calculate total
   let total = 0;
@@ -420,11 +416,11 @@ loja.get('/admin/pedidos', authMiddleware, async (c) => {
 // ADMIN: mark as paid
 loja.put('/admin/pedidos/:id/pagar', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status != 'pago' RETURNING *"
-  ).bind(id).all();
-  if (!results.length) return c.json({ error: 'Pedido não encontrado ou já pago' }, 404);
-  return c.json(results[0]);
+  // Pedido pago => todas as parcelas pendentes também
+  const { pedido, parcelas_quitadas } = await pagarPedidoLoja(c.env.DB, id!);
+  if (!pedido) return c.json({ error: 'Pedido não encontrado ou já pago' }, 404);
+  await audit(c, 'pagar_pedido_loja', 'loja_pedidos', id, null, { total: pedido.total, cliente_id: pedido.cliente_id, parcelas_quitadas });
+  return c.json(pedido);
 });
 
 // ADMIN: marcar pedido de envio como enviado (+ rastreio) e avisar o cliente
@@ -451,9 +447,19 @@ loja.put('/admin/pedidos/:id/enviar', authMiddleware, async (c) => {
 // ADMIN: delete order
 loja.delete('/admin/pedidos/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(id).run();
-  const result = await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE id = ?').bind(id).run();
-  if (!result.meta.changes) return c.json({ error: 'Pedido não encontrado' }, 404);
+  const antes = await c.env.DB.prepare(
+    'SELECT p.id, p.cliente_id, cl.nome_guerra, p.total, p.status, p.metodo_pagamento, p.parcelas, p.created_at FROM loja_pedidos p LEFT JOIN clientes cl ON cl.id = p.cliente_id WHERE p.id = ?'
+  ).bind(id).first();
+  if (!antes) return c.json({ error: 'Pedido não encontrado' }, 404);
+
+  // Parcelas também saem (antes ficavam órfãs)
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM loja_pedidos WHERE id = ?').bind(id),
+  ]);
+
+  await audit(c, 'excluir_pedido_loja', 'loja_pedidos', id, antes, null);
   return c.json({ ok: true });
 });
 
@@ -493,23 +499,13 @@ loja.get('/admin/pedidos/:id/parcelas', authMiddleware, async (c) => {
 // ADMIN: mark parcela as paid
 loja.put('/admin/parcelas/:id/pagar', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    "UPDATE loja_parcelas SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
-  ).bind(id).all();
-  if (!results.length) return c.json({ error: 'Parcela não encontrada' }, 404);
-
-  const parcela = results[0] as any;
-  const pendentes = await c.env.DB.prepare(
-    "SELECT COUNT(*) as total FROM loja_parcelas WHERE pedido_id = ? AND status = 'pendente'"
-  ).bind(parcela.pedido_id).first<{ total: number }>();
-
-  if (pendentes?.total === 0) {
-    await c.env.DB.prepare(
-      "UPDATE loja_pedidos SET status = 'pago', paid_at = datetime('now') WHERE id = ?"
-    ).bind(parcela.pedido_id).run();
-  }
-
-  return c.json(results[0]);
+  // Última parcela paga => pedido pago
+  const { parcela, pedido_quitado } = await pagarParcelaLoja(c.env.DB, id!);
+  if (!parcela) return c.json({ error: 'Parcela não encontrada' }, 404);
+  await audit(c, 'pagar_parcela_loja', 'loja_parcelas', id, null, {
+    pedido_id: parcela.pedido_id, numero: parcela.numero, valor: parcela.valor, pedido_quitado,
+  });
+  return c.json(parcela);
 });
 
 // ADMIN: dashboard stats

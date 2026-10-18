@@ -63,7 +63,7 @@ export function UpdatePrompt() {
   };
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 md:bottom-4 md:left-auto md:right-4 md:w-80 z-[60] bg-azul text-white rounded-2xl shadow-2xl p-4 border border-azul-claro/30 animate-fade-in">
+    <div className="fixed acima-nav mb-2 left-4 right-4 lg:mb-4 lg:left-auto lg:right-4 lg:w-80 z-[60] bg-noite text-white rounded-2xl shadow-flutua p-4 border-t-[3px] border-escarlate animate-fade-in">
       <button
         onClick={() => setDispensado(true)}
         aria-label="Fechar"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { AppLayout } from '../../../components/AppLayout';
@@ -11,9 +11,14 @@ import { Menu } from '../../../components/ui/Menu';
 import { api } from '../../../services/api';
 import { Loading } from '../../../components/ui/Loading';
 import { inputClass } from '../../../components/ui/Field';
+import { PageHeader } from '../../../components/ui/PageHeader';
+import { Card } from '../../../components/ui/Card';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { StatCard } from '../../../components/admin/StatCard';
 import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useToast } from '../../../hooks/useToast';
+import { useAcao } from '../../../hooks/useAcao';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -28,16 +33,48 @@ interface Tarefa { id: string; titulo: string; responsavel: string | null; feito
 interface Cautela { id: string; item: string; quantidade: number; unidade: string; origem: string | null; responsavel: string | null; qtd_devolvida: number; }
 interface Evento { id: string; nome: string; data: string; valor_por_pessoa: number; valor_cerveja: number | null; valor_refri: number | null; descricao: string; status: string; pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null; pix_whatsapp: string | null; imagem_url: string | null; }
 
+type Aba = 'participantes' | 'despesas' | 'organizacao' | 'divulgacao';
+
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataEvento = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+const CATEGORIAS: Record<string, string> = {
+  carne: 'Carne', bebida: 'Bebida', carvao: 'Carvão', descartavel: 'Descartável', tempero: 'Tempero', geral: 'Geral',
+};
+const rotuloCategoria = (c: string) => CATEGORIAS[c] || c;
+const CONSUMO: Record<string, string> = { padrao: 'Padrão', refri: 'Só refri', cerveja: 'Cerveja', chopp: 'Chopp' };
+const rotuloConsumo = (c: string) => CONSUMO[c] || c;
+
+// Bloco de seção (fora do componente para não remontar a cada render)
+function Secao({ titulo, resumo, acao, children }: { titulo: string; resumo?: string; acao?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-2xl border border-borda shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-borda flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="font-display text-xl text-noite tracking-wide leading-none">{titulo}</h2>
+          {resumo && <p className="text-xs text-texto-fraco mt-1">{resumo}</p>}
+        </div>
+        {acao && <div className="flex items-center gap-2 flex-wrap">{acao}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function XimbocaEvento() {
   const { id } = useParams<{ id: string }>();
   const confirm = useConfirm();
   const { showToast } = useToast();
+  const { busy, executar } = useAcao();
   const [evento, setEvento] = useState<Evento | null>(null);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
+  const [erroCarga, setErroCarga] = useState('');
+  const [aba, setAba] = useState<Aba>('participantes');
 
   // Add participant
   const [modalPart, setModalPart] = useState(false);
+  const fecharModalPart = useCallback(() => setModalPart(false), []);
   const [partNome, setPartNome] = useState('');
   const [partWhats, setPartWhats] = useState('');
   const [partCategoria, setPartCategoria] = useState('padrao');
@@ -45,6 +82,7 @@ export function XimbocaEvento() {
 
   // Edit event
   const [modalEdit, setModalEdit] = useState(false);
+  const fecharModalEdit = useCallback(() => setModalEdit(false), []);
   const [edNome, setEdNome] = useState('');
   const [edData, setEdData] = useState('');
   const [edValor, setEdValor] = useState('');
@@ -58,16 +96,19 @@ export function XimbocaEvento() {
 
   // QR code
   const [modalQR, setModalQR] = useState(false);
+  const fecharModalQR = useCallback(() => setModalQR(false), []);
   const qrRef = useRef<HTMLDivElement>(null);
 
   // Consumir estoque
   const [modalEstoque, setModalEstoque] = useState(false);
+  const fecharModalEstoque = useCallback(() => setModalEstoque(false), []);
   const [estoqueLista, setEstoqueLista] = useState<EstoqueItem[]>([]);
   const [estoqueId, setEstoqueId] = useState('');
   const [estoqueQtd, setEstoqueQtd] = useState('');
 
   // Add expense
   const [modalDesp, setModalDesp] = useState(false);
+  const fecharModalDesp = useCallback(() => setModalDesp(false), []);
   const [despDescricao, setDespDescricao] = useState('');
   const [despValor, setDespValor] = useState('');
   const [despCategoria, setDespCategoria] = useState('geral');
@@ -94,6 +135,7 @@ export function XimbocaEvento() {
   const [cautResp, setCautResp] = useState('');
 
   const carregar = () => {
+    setErroCarga('');
     api.get<{ evento: Evento; participantes: Participante[]; despesas: Despesa[]; tipos: IngressoTipo[]; tarefas: Tarefa[]; cautelas: Cautela[] }>(`/api/ximboca/eventos/${id}`).then(d => {
       setEvento(d.evento);
       setParticipantes(d.participantes);
@@ -101,7 +143,7 @@ export function XimbocaEvento() {
       setTipos(d.tipos || []);
       setTarefas(d.tarefas || []);
       setCautelas(d.cautelas || []);
-    });
+    }).catch((e: any) => setErroCarga(e?.message || 'Não foi possível carregar o evento.'));
     api.get<{ total_pagos: number; entraram: number; faltam: number }>(`/api/ximboca/eventos/${id}/checkin-stats`).then(setCheckinStats).catch(() => {});
   };
 
@@ -115,8 +157,8 @@ export function XimbocaEvento() {
   };
 
   const marcarPago = async (pid: string) => {
-    await api.put(`/api/ximboca/participantes/${pid}/pagar`, {});
-    carregar();
+    const ok = await executar(`pagar:${pid}`, () => api.put(`/api/ximboca/participantes/${pid}/pagar`, {}), { sucesso: 'Participante marcado como pago' });
+    if (ok !== undefined) carregar();
   };
 
   const cobrarParticipante = async (p: Participante) => {
@@ -281,273 +323,340 @@ export function XimbocaEvento() {
     setTimeout(() => setLinkCopiado(false), 2500);
   };
 
-  if (!evento) return <AppLayout><Loading /></AppLayout>;
+  if (!evento) {
+    return (
+      <AppLayout>
+        <BackButton to="/admin/ximboca/eventos" className="mb-3" />
+        {erroCarga ? (
+          <Card size="lg" className="text-center">
+            <p className="text-escarlate text-sm mb-4">{erroCarga}</p>
+            <Button variant="ghost" size="sm" onClick={carregar}><Icon name="refresh" size={16} />Tentar de novo</Button>
+          </Card>
+        ) : <Loading />}
+      </AppLayout>
+    );
+  }
 
   const valorEfetivo = (p: Participante) => p.valor_individual ?? evento.valor_por_pessoa;
   const totalPagos = participantes.filter(p => p.status === 'pago').length;
+  const totalPendentes = participantes.length - totalPagos;
   const totalArrecadado = participantes.filter(p => p.status === 'pago').reduce((a, p) => a + valorEfetivo(p), 0);
+  const totalPendente = participantes.filter(p => p.status !== 'pago').reduce((a, p) => a + valorEfetivo(p), 0);
   const totalDespesas = despesas.reduce((a, d) => a + d.valor, 0);
   const saldo = totalArrecadado - totalDespesas;
+  const tarefasFeitas = tarefas.filter(t => t.feito).length;
+  const cautelasAbertas = cautelas.filter(ct => (ct.quantidade || 0) - (ct.qtd_devolvida || 0) > 0).length;
+  const dataFmt = dataEvento(evento.data);
+
+  const abas: { id: Aba; label: string; extra?: string }[] = [
+    { id: 'participantes', label: 'Participantes', extra: String(participantes.length) },
+    { id: 'despesas', label: 'Despesas', extra: String(despesas.length) },
+    { id: 'organizacao', label: 'Organização', extra: tarefas.length ? `${tarefasFeitas}/${tarefas.length}` : undefined },
+    { id: 'divulgacao', label: 'Divulgação' },
+  ];
+  // No mobile só a aba ativa aparece; a partir de lg tudo fica visível em sequência
+  const visivel = (a: Aba) => (aba === a ? '' : 'hidden lg:block');
 
   return (
     <AppLayout>
       <BackButton to="/admin/ximboca/eventos" className="mb-3" />
-      <div className="flex items-center gap-3 mb-2 flex-wrap">
-        <h1 className="font-display text-2xl text-azul tracking-wider">{evento.nome}</h1>
-        <Badge variant={evento.status === 'aberto' ? 'success' : 'warning'}>{evento.status}</Badge>
-      </div>
-      <p className="text-sm text-texto-fraco mb-3">{new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')} | R$ {evento.valor_por_pessoa.toFixed(2)}/pessoa</p>
-      <div className="flex gap-2 flex-wrap mb-5">
-        <Button variant="chip-primary" size="xs" onClick={abrirEdicao} className="inline-flex items-center gap-1.5"><Icon name="pencil" size={12} /> Editar Evento</Button>
-        <Button variant="chip-primary" size="xs" onClick={() => setModalQR(true)} className="inline-flex items-center gap-1.5"><Icon name="qr-code" size={12} /> QR Code</Button>
-      </div>
+      <PageHeader
+        title={evento.nome}
+        subtitle={
+          <span className="inline-flex items-center gap-2 flex-wrap">
+            <Badge variant={evento.status === 'aberto' ? 'success' : 'neutral'}>{evento.status === 'aberto' ? 'Aberto' : 'Fechado'}</Badge>
+            <span>{dataFmt} · {brl(evento.valor_por_pessoa)} por pessoa</span>
+          </span>
+        }
+        right={
+          <>
+            <Button variant="ghost" size="sm" onClick={abrirEdicao}><Icon name="pencil" size={16} />Editar evento</Button>
+            <Button variant="ghost" size="sm" onClick={() => setModalQR(true)}><Icon name="qr-code" size={16} />QR code</Button>
+          </>
+        }
+      />
 
-      {/* Financial summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-xl p-3 border border-borda text-center">
-          <div className="text-xs text-texto-fraco">Participantes</div>
-          <div className="font-display text-lg text-azul">{totalPagos}/{participantes.length}</div>
-        </div>
-        <div className="bg-white rounded-xl p-3 border border-borda text-center">
-          <div className="text-xs text-texto-fraco">Arrecadado</div>
-          <div className="font-display text-lg text-verde">R$ {totalArrecadado.toFixed(2)}</div>
-        </div>
-        <div className="bg-white rounded-xl p-3 border border-borda text-center">
-          <div className="text-xs text-texto-fraco">Gasto</div>
-          <div className="font-display text-lg text-vermelho">R$ {totalDespesas.toFixed(2)}</div>
-        </div>
-        <div className="bg-white rounded-xl p-3 border border-borda text-center">
-          <div className="text-xs text-texto-fraco">Saldo</div>
-          <div className={`font-display text-lg ${saldo >= 0 ? 'text-verde' : 'text-vermelho'}`}>R$ {saldo.toFixed(2)}</div>
-        </div>
+      {/* Resumo financeiro */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard label="Pagos" value={`${totalPagos}/${participantes.length}`} color="text-azul" icon={<Icon name="users" size={18} />}
+          hint={totalPendentes > 0 ? `${totalPendentes} pendente${totalPendentes > 1 ? 's' : ''}` : 'Todos em dia'} />
+        <StatCard label="Arrecadado" value={brl(totalArrecadado)} color="text-verde-escuro" icon={<Icon name="cash" size={18} />}
+          hint={totalPendente > 0 ? `Falta receber ${brl(totalPendente)}` : undefined} />
+        <StatCard label="Gasto" value={brl(totalDespesas)} color="text-escarlate" icon={<Icon name="cart" size={18} />} />
+        <StatCard label="Saldo" value={brl(saldo)} color={saldo >= 0 ? 'text-verde-escuro' : 'text-escarlate'} icon={<Icon name="vault" size={18} />} />
       </div>
 
-      {/* Ingressos e Portaria */}
-      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
-        <div className="bg-azul px-5 py-3 rounded-t-xl">
-          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Ingressos & Portaria</h2>
-        </div>
-        <div className="p-4 space-y-5">
-          <div>
-            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Compartilhar evento</div>
-            <div className="bg-fundo rounded-lg p-2 text-xs break-all mb-2 border border-borda">{qrUrl}</div>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="xs" variant="chip" onClick={copiarLinkEvento}>{linkCopiado ? 'Copiado!' : 'Copiar link'}</Button>
-              <a href={`https://wa.me/?text=${encodeURIComponent(`${evento.nome} — ${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')}. Bora? ${qrUrl}`)}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100">WhatsApp</a>
-              <a href={`https://t.me/share/url?url=${encodeURIComponent(qrUrl)}&text=${encodeURIComponent(evento.nome)}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Telegram</a>
-              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrUrl)}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Facebook</a>
-            </div>
-            <p className="text-[11px] text-texto-fraco mt-1.5">Página pública do evento (sem login) — mande no grupo pra divulgar. O QR Code também aponta pra ela.</p>
-          </div>
-
-          <div>
-            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Capa do evento</div>
-            {evento.imagem_url && <img src={resolveImg(evento.imagem_url)!} alt="capa" className="w-full max-w-xs rounded-lg border border-borda mb-2" />}
-            <label className="text-xs font-medium px-3 py-1.5 rounded-lg text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1.5 cursor-pointer">
-              <Icon name="upload" size={12} /> {evento.imagem_url ? 'Trocar capa' : 'Enviar capa'}
-              <input type="file" accept="image/*" onChange={enviarCapa} className="hidden" />
-            </label>
-          </div>
-
-          <div>
-            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-2">Tipos de ingresso</div>
-            <div className="space-y-1 mb-2">
-              {tipos.map(t => (
-                <div key={t.id} className="flex items-center justify-between bg-fundo rounded-lg px-3 py-2 text-sm">
-                  <span>{t.nome} — <span className="font-medium">R$ {t.valor.toFixed(2)}</span></span>
-                  <Button variant="chip-danger" size="xs" onClick={() => removerTipo(t.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
-                </div>
-              ))}
-              {tipos.length === 0 && <p className="text-xs text-texto-fraco">Sem tipos — o evento usa o valor por pessoa padrão.</p>}
-            </div>
-            <form onSubmit={adicionarTipo} className="flex gap-2">
-              <input value={novoTipoNome} onChange={e => setNovoTipoNome(e.target.value)} className={inputClass} placeholder="Ex: Militar" />
-              <input type="number" step="0.01" value={novoTipoValor} onChange={e => setNovoTipoValor(e.target.value)} className={inputClass} placeholder="Valor" />
-              <Button type="submit" size="sm">+ Tipo</Button>
-            </form>
-          </div>
-
-          <div>
-            <div className="text-xs font-medium text-texto uppercase tracking-wider mb-1">Check-in na portaria</div>
-            {checkinStats
-              ? <p className="text-sm">Entraram: <span className="font-display text-azul">{checkinStats.entraram}/{checkinStats.total_pagos}</span></p>
-              : <p className="text-xs text-texto-fraco">Sem pagamentos ainda.</p>}
-            <p className="text-[11px] text-texto-fraco mt-1">Quem faz o check-in são os militares marcados como <b>recepcionista</b> em Admin → Usuários. Eles acessam pelo menu <b>Check-in</b>.</p>
-          </div>
-        </div>
+      {/* Abas (só no mobile/tablet) */}
+      <div role="tablist" aria-label="Seções do evento" className="lg:hidden flex flex-wrap gap-2 mb-4">
+        {abas.map(a => (
+          <button
+            key={a.id}
+            role="tab"
+            aria-selected={aba === a.id}
+            onClick={() => setAba(a.id)}
+            className={`min-h-[40px] px-3.5 rounded-xl text-sm font-medium border transition-colors ${
+              aba === a.id ? 'bg-noite text-white border-noite' : 'bg-white text-texto border-borda hover:bg-fundo-elevado'
+            }`}
+          >
+            {a.label}
+            {a.extra && <span className={`ml-1.5 text-xs ${aba === a.id ? 'text-white/70' : 'text-texto-fraco'}`}>{a.extra}</span>}
+          </button>
+        ))}
       </div>
 
-      {/* Checklist / Tarefas */}
-      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
-        <div className="bg-azul px-5 py-3 rounded-t-xl flex items-center justify-between">
-          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Checklist da organização</h2>
-          {tarefas.length > 0 && (
-            <span className="text-xs text-white/90 font-medium">{tarefas.filter(t => t.feito).length}/{tarefas.length} feitas</span>
-          )}
-        </div>
-        <div className="p-4">
-          <div className="divide-y divide-borda/60 mb-3">
-            {tarefas.map(t => (
-              <div key={t.id} className="flex items-center gap-3 py-2.5">
-                <button onClick={() => toggleTarefa(t)}
-                  className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${t.feito ? 'bg-verde border-verde text-white' : 'border-borda-forte hover:border-azul'}`}
-                  aria-label={t.feito ? 'Desmarcar' : 'Marcar como feito'}>
-                  {t.feito ? <Icon name="check" size={13} /> : null}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm ${t.feito ? 'line-through text-texto-fraco' : 'text-texto'}`}>{t.titulo}</div>
-                  {t.responsavel && <div className="text-[11px] text-texto-fraco">Responsável: {t.responsavel}</div>}
-                </div>
-                <button onClick={() => removerTarefa(t)} aria-label="Remover"
-                  className="p-1.5 rounded-lg text-vermelho hover:bg-red-50 transition-colors flex-shrink-0"><Icon name="trash" size={14} /></button>
-              </div>
-            ))}
-            {tarefas.length === 0 && <p className="text-sm text-texto-fraco py-3 text-center">Nenhuma tarefa ainda. Monte a checklist do evento.</p>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 lg:items-start">
+        <div className="space-y-6 mb-6 lg:mb-0">
+          {/* Participantes */}
+          <div className={visivel('participantes')}>
+            <Secao
+              titulo="Participantes"
+              resumo={participantes.length > 0 ? `${totalPagos} pagos · ${totalPendentes} pendentes` : undefined}
+              acao={<Button size="sm" onClick={() => setModalPart(true)}><Icon name="plus" size={16} />Adicionar</Button>}
+            >
+              {participantes.length === 0 ? (
+                <EmptyState
+                  icon={<Icon name="users" size={24} />}
+                  message="Nenhum participante"
+                  hint="As inscrições pela página pública aparecem aqui. Você também pode adicionar alguém na mão."
+                  action={<Button size="sm" variant="ghost" onClick={() => setModalPart(true)}><Icon name="plus" size={16} />Adicionar participante</Button>}
+                />
+              ) : (
+                <ul className="divide-y divide-borda">
+                  {participantes.map(p => (
+                    <li key={p.id} className="px-4 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-noite text-sm break-words">{p.nome}</div>
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-texto-fraco">
+                          <span className="capitalize">{rotuloConsumo(p.categoria_consumo)}</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="text-dourado font-medium">{brl(valorEfetivo(p))}</span>
+                        </div>
+                      </div>
+                      {p.status === 'pago' ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge variant="success">Pago</Badge>
+                          <Menu label={`Ações de ${p.nome}`} items={[
+                            { label: 'Remover', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
+                          ]} />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button variant="chip-success" size="sm" disabled={busy(`pagar:${p.id}`)} onClick={() => marcarPago(p.id)}>
+                            {busy(`pagar:${p.id}`) ? 'Salvando...' : 'Pago'}
+                          </Button>
+                          <Menu label={`Ações de ${p.nome}`} items={[
+                            { label: 'Cobrar no WhatsApp', icon: 'device-phone', disabled: !p.whatsapp, onClick: () => window.open(`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`, '_blank') },
+                            { label: 'Gerar cobrança em PDF', icon: 'document', onClick: () => cobrarParticipante(p) },
+                            { label: 'Remover', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
+                          ]} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Secao>
           </div>
-          <form onSubmit={adicionarTarefa} className="flex gap-2 flex-wrap">
-            <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)} className={`${inputClass} flex-1 min-w-[160px]`} placeholder="Ex: Comprar carvão" />
-            <input value={novaTarefaResp} onChange={e => setNovaTarefaResp(e.target.value)} className={`${inputClass} w-36`} placeholder="Responsável" />
-            <Button type="submit" size="sm">+ Tarefa</Button>
-          </form>
-        </div>
-      </div>
 
-      {/* Cautela de material */}
-      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
-        <div className="bg-azul px-5 py-3 rounded-t-xl">
-          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Cautela de material</h2>
+          {/* Despesas */}
+          <div className={visivel('despesas')}>
+            <Secao
+              titulo="Despesas"
+              resumo={despesas.length > 0 ? `Total ${brl(totalDespesas)}` : undefined}
+              acao={
+                <>
+                  <Button size="sm" variant="ghost" onClick={abrirEstoque}><Icon name="archive" size={16} />Do estoque</Button>
+                  <Button size="sm" onClick={() => setModalDesp(true)}><Icon name="plus" size={16} />Adicionar</Button>
+                </>
+              }
+            >
+              {despesas.length === 0 ? (
+                <EmptyState
+                  icon={<Icon name="cart" size={24} />}
+                  message="Nenhuma despesa lançada"
+                  hint="Registre compras de carne, bebida e carvão para fechar o saldo do evento."
+                  action={<Button size="sm" variant="ghost" onClick={() => setModalDesp(true)}><Icon name="plus" size={16} />Adicionar despesa</Button>}
+                />
+              ) : (
+                <ul className="divide-y divide-borda">
+                  {despesas.map(d => (
+                    <li key={d.id} className="px-4 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-noite break-words">{d.descricao}</div>
+                        <div className="text-xs text-texto-fraco mt-0.5">
+                          {rotuloCategoria(d.categoria)}
+                          {d.quantidade ? ` · ${d.quantidade.toLocaleString('pt-BR')} ${d.unidade || 'un'}` : ''}
+                        </div>
+                      </div>
+                      <span className="font-display text-lg leading-none text-escarlate shrink-0">{brl(d.valor)}</span>
+                      <Button variant="chip-danger" size="sm" className="shrink-0" onClick={() => removerDespesa(d.id)} aria-label={`Remover despesa ${d.descricao}`}><Icon name="trash" size={15} /></Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Secao>
+          </div>
         </div>
-        <div className="p-4">
-          <p className="text-xs text-texto-fraco mb-3">Material emprestado (ex: do rancho) — dá baixa na devolução. Não entra no estoque (não é seu).</p>
-          <div className="space-y-2 mb-3">
-            {cautelas.map(ct => {
-              const falta = (ct.quantidade || 0) - (ct.qtd_devolvida || 0);
-              const ok = falta <= 0;
-              return (
-                <div key={ct.id} className="bg-fundo rounded-lg p-3 border border-borda">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-texto">{ct.item} <span className="text-texto-fraco font-normal">· {ct.quantidade} {ct.unidade}</span></div>
-                      <div className="text-[11px] text-texto-fraco">
-                        {ct.origem && <>de {ct.origem}{ct.responsavel ? ' · ' : ''}</>}{ct.responsavel && <>resp: {ct.responsavel}</>}
+
+        <div className="space-y-6">
+          {/* Organização: checklist + cautela */}
+          <div className={`space-y-6 ${visivel('organizacao')}`}>
+            <Secao titulo="Checklist da organização" resumo={tarefas.length > 0 ? `${tarefasFeitas} de ${tarefas.length} feitas` : undefined}>
+              {tarefas.length === 0 ? (
+                <p className="text-sm text-texto-fraco px-4 pt-4 text-center">Nenhuma tarefa ainda. Monte a checklist do evento abaixo.</p>
+              ) : (
+                <ul className="divide-y divide-borda">
+                  {tarefas.map(t => (
+                    <li key={t.id} className="flex items-center gap-2 px-2 py-1">
+                      <button onClick={() => toggleTarefa(t)}
+                        className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-azul/40"
+                        aria-label={t.feito ? `Desmarcar ${t.titulo}` : `Marcar ${t.titulo} como feita`}>
+                        <span className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${t.feito ? 'bg-verde border-verde text-white' : 'border-borda-forte bg-white'}`}>
+                          {t.feito ? <Icon name="check" size={13} /> : null}
+                        </span>
+                      </button>
+                      <div className="flex-1 min-w-0 py-1.5">
+                        <div className={`text-sm break-words ${t.feito ? 'line-through text-texto-fraco' : 'text-texto'}`}>{t.titulo}</div>
+                        {t.responsavel && <div className="text-xs text-texto-fraco">Responsável: {t.responsavel}</div>}
+                      </div>
+                      <button onClick={() => removerTarefa(t)} aria-label={`Remover tarefa ${t.titulo}`}
+                        className="w-10 h-10 flex items-center justify-center rounded-lg text-texto-fraco hover:text-escarlate hover:bg-red-50 transition-colors shrink-0"><Icon name="trash" size={15} /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form onSubmit={adicionarTarefa} className="grid grid-cols-1 sm:grid-cols-[1fr_10rem_auto] gap-2 p-4 border-t border-borda mt-2">
+                <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)} className={inputClass} placeholder="Ex.: Comprar carvão" aria-label="Nova tarefa" />
+                <input value={novaTarefaResp} onChange={e => setNovaTarefaResp(e.target.value)} className={inputClass} placeholder="Responsável" aria-label="Responsável pela tarefa" />
+                <Button type="submit" size="sm"><Icon name="plus" size={16} />Tarefa</Button>
+              </form>
+            </Secao>
+
+            <Secao titulo="Cautela de material" resumo={cautelas.length > 0 ? (cautelasAbertas > 0 ? `${cautelasAbertas} a devolver` : 'Tudo devolvido') : undefined}>
+              <p className="text-xs text-texto-fraco px-4 pt-3">Material emprestado (ex.: do rancho). Dê baixa na devolução. Não entra no estoque.</p>
+              <div className="space-y-2 p-4">
+                {cautelas.map(ct => {
+                  const falta = (ct.quantidade || 0) - (ct.qtd_devolvida || 0);
+                  const ok = falta <= 0;
+                  return (
+                    <div key={ct.id} className="bg-fundo rounded-xl p-3 border border-borda">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-noite break-words">{ct.item} <span className="text-texto-fraco font-normal">· {ct.quantidade} {ct.unidade}</span></div>
+                          {(ct.origem || ct.responsavel) && (
+                            <div className="text-xs text-texto-fraco">
+                              {ct.origem && <>De {ct.origem}{ct.responsavel ? ' · ' : ''}</>}{ct.responsavel && <>Responsável: {ct.responsavel}</>}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {ok ? <Badge variant="success">Devolvido</Badge> : <Badge variant="warning">Falta {falta} {ct.unidade}</Badge>}
+                          <button onClick={() => removerCautela(ct)} aria-label={`Remover cautela ${ct.item}`} className="w-10 h-10 flex items-center justify-center rounded-lg text-texto-fraco hover:text-escarlate hover:bg-red-50"><Icon name="trash" size={15} /></button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-sm flex-wrap">
+                        <label htmlFor={`dev-${ct.id}`} className="text-texto-fraco">Devolvido</label>
+                        <input id={`dev-${ct.id}`} type="number" step="0.01" min="0" inputMode="decimal" defaultValue={ct.qtd_devolvida}
+                          key={`${ct.id}-${ct.qtd_devolvida}`}
+                          onBlur={(e) => salvarDevolucao(ct, e.target.value)}
+                          className="w-24 min-h-[40px] bg-white border border-borda rounded-lg px-2.5 text-texto" />
+                        <span className="text-texto-fraco">de {ct.quantidade} {ct.unidade}</span>
+                        {!ok && <Button size="sm" variant="chip-success" className="ml-auto" onClick={() => devolverTudo(ct)}>Devolver tudo</Button>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {ok
-                        ? <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-50 text-verde-escuro border border-green-200">DEVOLVIDO</span>
-                        : <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">FALTA {falta} {ct.unidade}</span>}
-                      <button onClick={() => removerCautela(ct)} aria-label="Remover" className="p-1.5 rounded-lg text-vermelho hover:bg-red-50"><Icon name="trash" size={14} /></button>
-                    </div>
+                  );
+                })}
+                {cautelas.length === 0 && <p className="text-sm text-texto-fraco text-center">Nenhum material sob cautela.</p>}
+              </div>
+              <form onSubmit={adicionarCautela} className="grid grid-cols-2 gap-2 p-4 border-t border-borda">
+                <input value={cautItem} onChange={e => setCautItem(e.target.value)} className={`${inputClass} col-span-2`} placeholder="Item (ex.: taças)" aria-label="Item" />
+                <input type="number" step="0.01" inputMode="decimal" value={cautQtd} onChange={e => setCautQtd(e.target.value)} className={inputClass} placeholder="Quantidade" aria-label="Quantidade" />
+                <select value={cautUnidade} onChange={e => setCautUnidade(e.target.value)} className={inputClass} aria-label="Unidade">
+                  <option value="un">un</option><option value="cx">cx</option><option value="kg">kg</option><option value="L">L</option><option value="pct">pct</option>
+                </select>
+                <input value={cautOrigem} onChange={e => setCautOrigem(e.target.value)} className={`${inputClass} col-span-2 sm:col-span-1`} placeholder="De onde (ex.: rancho)" aria-label="De onde vem" />
+                <input value={cautResp} onChange={e => setCautResp(e.target.value)} className={`${inputClass} col-span-2 sm:col-span-1`} placeholder="Responsável" aria-label="Responsável pela cautela" />
+                <Button type="submit" size="sm" className="col-span-2"><Icon name="plus" size={16} />Adicionar à cautela</Button>
+              </form>
+            </Secao>
+          </div>
+
+          {/* Divulgação, ingressos e portaria */}
+          <div className={visivel('divulgacao')}>
+            <Secao titulo="Divulgação e portaria">
+              <div className="p-4 space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-noite mb-2">Link público do evento</h3>
+                  <div className="bg-fundo rounded-xl px-3 py-2 text-xs break-all mb-2 border border-borda">{qrUrl}</div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="chip" onClick={copiarLinkEvento}><Icon name={linkCopiado ? 'check' : 'paper-clip'} size={15} />{linkCopiado ? 'Copiado' : 'Copiar link'}</Button>
+                    <a href={`https://wa.me/?text=${encodeURIComponent(`${evento.nome} — ${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')}. Bora? ${qrUrl}`)}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-sm font-medium bg-green-50 text-verde-escuro border border-green-200 hover:bg-green-100">WhatsApp</a>
+                    <a href={`https://t.me/share/url?url=${encodeURIComponent(qrUrl)}&text=${encodeURIComponent(evento.nome)}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-sm font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Telegram</a>
+                    <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrUrl)}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center min-h-[40px] rounded-xl px-3.5 text-sm font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100">Facebook</a>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 text-xs flex-wrap">
-                    <span className="text-texto-fraco">Devolvido:</span>
-                    <input type="number" step="0.01" min="0" defaultValue={ct.qtd_devolvida}
-                      key={`${ct.id}-${ct.qtd_devolvida}`}
-                      onBlur={(e) => salvarDevolucao(ct, e.target.value)}
-                      className="w-20 bg-white border border-borda rounded-lg px-2 py-1 text-texto" />
-                    <span className="text-texto-fraco">de {ct.quantidade} {ct.unidade}</span>
-                    {!ok && <Button size="xs" variant="chip-success" onClick={() => devolverTudo(ct)}>Devolver tudo</Button>}
-                  </div>
+                  <p className="text-xs text-texto-fraco mt-2">Página aberta, sem login. Mande no grupo para divulgar; o QR code aponta para ela.</p>
                 </div>
-              );
-            })}
-            {cautelas.length === 0 && <p className="text-sm text-texto-fraco py-2 text-center">Nenhum material sob cautela.</p>}
-          </div>
-          <form onSubmit={adicionarCautela} className="grid grid-cols-2 gap-2">
-            <input value={cautItem} onChange={e => setCautItem(e.target.value)} className={`${inputClass} col-span-2`} placeholder="Item (ex: Taças)" />
-            <input type="number" step="0.01" value={cautQtd} onChange={e => setCautQtd(e.target.value)} className={inputClass} placeholder="Qtd" />
-            <select value={cautUnidade} onChange={e => setCautUnidade(e.target.value)} className={inputClass}>
-              <option value="un">un</option><option value="cx">cx</option><option value="kg">kg</option><option value="L">L</option><option value="pct">pct</option>
-            </select>
-            <input value={cautOrigem} onChange={e => setCautOrigem(e.target.value)} className={inputClass} placeholder="De onde (ex: Rancho)" />
-            <input value={cautResp} onChange={e => setCautResp(e.target.value)} className={inputClass} placeholder="Responsável" />
-            <Button type="submit" size="sm" className="col-span-2">+ Adicionar à cautela</Button>
-          </form>
-        </div>
-      </div>
 
-      {/* Participants */}
-      <div className="bg-white rounded-xl border border-borda shadow-sm mb-6">
-        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl">
-          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Participantes</h2>
-          <Button size="sm" onClick={() => setModalPart(true)}>+ Adicionar</Button>
-        </div>
-        <div className="divide-y divide-borda/50 list-zebra">
-          {participantes.map(p => (
-            <div key={p.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
-              <div>
-                <span className="font-medium text-texto text-sm">{p.nome}</span>
-                <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-fundo text-texto-fraco">{p.categoria_consumo}</span>
-                <span className="text-xs text-texto-fraco ml-2">R$ {valorEfetivo(p).toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-1 flex-wrap justify-end">
-                {p.status === 'pago' ? (
-                  <>
-                    <Badge variant="success">Pago</Badge>
-                    <Button variant="chip-danger" size="xs" onClick={() => removerParticipante(p.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
-                  </>
-                ) : (
-                  <Menu items={[
-                    { label: 'Marcar como pago', icon: 'cash', onClick: () => marcarPago(p.id) },
-                    { label: 'Cobrar (WhatsApp)', icon: 'device-phone', disabled: !p.whatsapp, onClick: () => window.open(`https://wa.me/${p.whatsapp ? '55' + p.whatsapp : ''}?text=${encodeURIComponent(`Opa! Ximboca "${evento.nome}" (${new Date(evento.data + 'T12:00:00').toLocaleDateString('pt-BR')})\nSeu valor: R$ ${valorEfetivo(p).toFixed(2)}\nFavor regularizar o pagamento!`)}`, '_blank') },
-                    { label: 'Gerar PDF', icon: 'document', onClick: () => cobrarParticipante(p) },
-                    { label: 'Excluir', icon: 'trash', danger: true, onClick: () => removerParticipante(p.id) },
-                  ]} />
-                )}
-              </div>
-            </div>
-          ))}
-          {participantes.length === 0 && <div className="text-center py-6 text-texto-fraco text-sm">Nenhum participante</div>}
-        </div>
-      </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-noite mb-2">Capa do evento</h3>
+                  {evento.imagem_url && <img src={resolveImg(evento.imagem_url)!} alt={`Capa de ${evento.nome}`} className="w-full max-w-xs rounded-xl border border-borda mb-2" />}
+                  <label className="min-h-[40px] text-sm font-medium px-3.5 rounded-xl text-azul bg-blue-50 border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-2 cursor-pointer focus-within:ring-2 focus-within:ring-azul/40">
+                    <Icon name="upload" size={15} /> {evento.imagem_url ? 'Trocar capa' : 'Enviar capa'}
+                    <input type="file" accept="image/*" onChange={enviarCapa} className="sr-only" />
+                  </label>
+                </div>
 
-      {/* Expenses */}
-      <div className="bg-white rounded-xl border border-borda shadow-sm">
-        <div className="bg-azul px-5 py-3 flex items-center justify-between rounded-t-xl flex-wrap gap-2">
-          <h2 className="text-sm font-medium text-white uppercase tracking-wider">Despesas</h2>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={abrirEstoque}><span className="inline-flex items-center gap-1.5"><Icon name="archive" size={12} /> Do Estoque</span></Button>
-            <Button size="sm" onClick={() => setModalDesp(true)}>+ Adicionar</Button>
+                <div>
+                  <h3 className="text-sm font-semibold text-noite mb-2">Tipos de ingresso</h3>
+                  <div className="space-y-1.5 mb-2">
+                    {tipos.map(t => (
+                      <div key={t.id} className="flex items-center justify-between gap-2 bg-fundo rounded-xl pl-3 pr-1 py-1 text-sm">
+                        <span className="min-w-0 break-words">{t.nome} <span className="text-dourado font-medium ml-1">{brl(t.valor)}</span></span>
+                        <Button variant="chip-danger" size="sm" onClick={() => removerTipo(t.id)} aria-label={`Remover ingresso ${t.nome}`}><Icon name="trash" size={15} /></Button>
+                      </div>
+                    ))}
+                    {tipos.length === 0 && <p className="text-xs text-texto-fraco">Sem tipos cadastrados. O evento usa o valor por pessoa padrão.</p>}
+                  </div>
+                  <form onSubmit={adicionarTipo} className="grid grid-cols-[1fr_7rem_auto] gap-2">
+                    <input value={novoTipoNome} onChange={e => setNovoTipoNome(e.target.value)} className={inputClass} placeholder="Ex.: Militar" aria-label="Nome do tipo de ingresso" />
+                    <input type="number" step="0.01" inputMode="decimal" value={novoTipoValor} onChange={e => setNovoTipoValor(e.target.value)} className={inputClass} placeholder="Valor" aria-label="Valor do ingresso" />
+                    <Button type="submit" size="sm" aria-label="Adicionar tipo de ingresso"><Icon name="plus" size={16} /></Button>
+                  </form>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-noite mb-1">Check-in na portaria</h3>
+                  {checkinStats
+                    ? <p className="text-sm">Entraram <span className="font-display text-xl text-azul ml-1">{checkinStats.entraram}/{checkinStats.total_pagos}</span></p>
+                    : <p className="text-xs text-texto-fraco">Sem pagamentos ainda.</p>}
+                  <p className="text-xs text-texto-fraco mt-1">O check-in é feito pelos militares marcados como <b>recepcionista</b> em Usuários. Eles acessam pelo menu <b>Check-in</b>.</p>
+                </div>
+              </div>
+            </Secao>
           </div>
-        </div>
-        <div className="divide-y divide-borda/50 list-zebra">
-          {despesas.map(d => (
-            <div key={d.id} className="px-4 py-3 flex items-center justify-between">
-              <div>
-                <span className="text-sm text-texto">{d.descricao}</span>
-                {d.quantidade && <span className="text-xs text-texto-fraco ml-1">({d.quantidade} {d.unidade || 'un'})</span>}
-                <span className="text-[10px] text-texto-fraco ml-2 bg-fundo px-1.5 py-0.5 rounded">{d.categoria}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-vermelho text-sm">R$ {d.valor.toFixed(2)}</span>
-                <Button variant="chip-danger" size="xs" onClick={() => removerDespesa(d.id)} aria-label="Excluir"><Icon name="trash" size={14} /></Button>
-              </div>
-            </div>
-          ))}
-          {despesas.length === 0 && <div className="text-center py-6 text-texto-fraco text-sm">Nenhuma despesa</div>}
         </div>
       </div>
 
       {/* Add participant modal */}
-      <Modal open={modalPart} onClose={() => setModalPart(false)} title="Adicionar Participante">
+      <Modal open={modalPart} onClose={fecharModalPart} title="Adicionar participante">
         <form onSubmit={adicionarParticipante} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={partNome} onChange={e => setPartNome(e.target.value.toUpperCase())} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto uppercase" required placeholder="Trigrama ou nome" />
+            <input value={partNome} onChange={e => setPartNome(e.target.value.toUpperCase())} className={`${inputClass} uppercase`} required placeholder="Trigrama ou nome" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp (opcional)</label>
-            <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
+            <input type="tel" value={partWhats} onChange={e => setPartWhats(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex.: 62999998888" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Consumo</label>
               <select value={partCategoria} onChange={e => setPartCategoria(e.target.value)} className={inputClass}>
-                <option value="padrao">Padrao (R$ {evento?.valor_por_pessoa.toFixed(2)})</option>
-                <option value="refri">So refri</option>
+                <option value="padrao">Padrão ({brl(evento?.valor_por_pessoa ?? 0)})</option>
+                <option value="refri">Só refri</option>
                 <option value="cerveja">Cerveja</option>
                 <option value="chopp">Chopp</option>
               </select>
@@ -555,19 +664,19 @@ export function XimbocaEvento() {
             <div>
               <label className="block text-sm font-medium mb-1">Valor (R$)</label>
               <input type="number" step="0.01" value={partValor} onChange={e => setPartValor(e.target.value)} className={inputClass} placeholder={evento?.valor_por_pessoa.toFixed(2)} />
-              <p className="text-xs text-texto-fraco mt-0.5">Deixe vazio para valor padrao</p>
+              <p className="text-xs text-texto-fraco mt-1">Deixe vazio para usar o valor padrão.</p>
             </div>
           </div>
-          <Button type="submit" className="w-full">Adicionar</Button>
+          <Button type="submit" className="w-full">Adicionar participante</Button>
         </form>
       </Modal>
 
       {/* Consumir estoque modal */}
-      <Modal open={modalEstoque} onClose={() => setModalEstoque(false)} title="Consumir do Estoque">
+      <Modal open={modalEstoque} onClose={fecharModalEstoque} title="Usar item do estoque">
         <form onSubmit={consumirEstoque} className="space-y-4">
-          <p className="text-xs text-texto-fraco">Debita a quantidade do estoque central da Ximboca e registra como despesa neste evento (R$ 0 — custo já foi pago ao adquirir).</p>
+          <p className="text-xs text-texto-fraco">Tira a quantidade do estoque da Ximboca e registra como despesa de R$ 0 neste evento (o custo já foi pago na compra).</p>
           {estoqueLista.length === 0 ? (
-            <p className="text-sm text-texto-fraco text-center py-4">Nenhum item no estoque. Cadastre em Ximboca → Estoque.</p>
+            <p className="text-sm text-texto-fraco text-center py-4">Nenhum item no estoque. Cadastre em Ximboca, Estoque.</p>
           ) : (
             <>
               <div>
@@ -583,36 +692,36 @@ export function XimbocaEvento() {
                 <label className="block text-sm font-medium mb-1">Quantidade a consumir</label>
                 <input type="number" step="0.01" min="0.01" value={estoqueQtd} onChange={e => setEstoqueQtd(e.target.value)} className={inputClass} required />
               </div>
-              <Button type="submit" className="w-full" disabled={!estoqueId || !estoqueQtd}>Confirmar Consumo</Button>
+              <Button type="submit" className="w-full" disabled={!estoqueId || !estoqueQtd}>Usar do estoque</Button>
             </>
           )}
         </form>
       </Modal>
 
       {/* Edit event modal */}
-      <Modal open={modalEdit} onClose={() => setModalEdit(false)} title="Editar Evento">
+      <Modal open={modalEdit} onClose={fecharModalEdit} title="Editar evento" size="lg">
         <form onSubmit={salvarEdicao} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Nome</label>
             <input value={edNome} onChange={e => setEdNome(e.target.value)} className={inputClass} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Data</label>
               <input type="date" value={edData} onChange={e => setEdData(e.target.value)} className={inputClass} required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">R$/pessoa</label>
+              <label className="block text-sm font-medium mb-1">Valor por pessoa (R$)</label>
               <input type="number" step="0.01" value={edValor} onChange={e => setEdValor(e.target.value)} className={inputClass} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="beer" size={14} /> Cerveja</label>
+              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="beer" size={14} /> Valor com cerveja</label>
               <input type="number" step="0.01" value={edCerveja} onChange={e => setEdCerveja(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
             <div>
-              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="soda" size={14} /> Refri</label>
+              <label className="flex items-center gap-1 text-sm font-medium mb-1"><Icon name="soda" size={14} /> Valor com refri</label>
               <input type="number" step="0.01" value={edRefri} onChange={e => setEdRefri(e.target.value)} className={inputClass} placeholder="Vazio = não oferece" />
             </div>
           </div>
@@ -622,8 +731,8 @@ export function XimbocaEvento() {
           </div>
 
           <div className="border-t border-borda pt-3 space-y-3">
-            <p className="text-xs font-medium text-texto uppercase tracking-wider">PIX do Responsável (opcional)</p>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="text-sm font-semibold text-noite">PIX do responsável <span className="font-normal text-texto-fraco">(opcional)</span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo</label>
                 <select value={edPixTipo} onChange={e => setEdPixTipo(e.target.value)} className={inputClass}>
@@ -640,52 +749,53 @@ export function XimbocaEvento() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Nome do recebedor</label>
-              <input value={edPixNome} onChange={e => setEdPixNome(e.target.value)} className={inputClass} />
+              <input value={edPixNome} onChange={e => setEdPixNome(e.target.value)} className={inputClass} placeholder="Ex.: JOAO SILVA" />
+              <p className="text-xs text-texto-fraco mt-1">Sem acento, até 25 letras.</p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp (comprovante)</label>
-              <input type="tel" value={edPixWhatsapp} onChange={e => setEdPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex: 62999998888" />
+              <input type="tel" value={edPixWhatsapp} onChange={e => setEdPixWhatsapp(e.target.value.replace(/\D/g, ''))} className={inputClass} placeholder="Ex.: 62999998888" />
             </div>
           </div>
 
-          <Button type="submit" className="w-full">Salvar Alterações</Button>
+          <Button type="submit" className="w-full">Salvar alterações</Button>
         </form>
       </Modal>
 
       {/* QR Code modal */}
-      <Modal open={modalQR} onClose={() => setModalQR(false)} title="QR Code do Evento">
+      <Modal open={modalQR} onClose={fecharModalQR} title="QR code do evento">
         <div className="space-y-4 text-center">
-          <p className="text-sm text-texto-fraco">Compartilhe com os participantes para se inscreverem</p>
+          <p className="text-sm text-texto-fraco">Compartilhe para o pessoal se inscrever pela página pública.</p>
           <div ref={qrRef} className="inline-block bg-white p-4 rounded-xl border border-borda">
-            <QRCodeCanvas value={qrUrl} size={240} level="M" includeMargin />
+            <QRCodeCanvas value={qrUrl} size={240} level="M" includeMargin style={{ maxWidth: '100%', height: 'auto' }} />
           </div>
           <div className="text-xs text-texto-fraco break-all">{qrUrl}</div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={baixarQR}><span className="inline-flex items-center gap-1.5"><Icon name="download" size={14} /> Baixar PNG</span></Button>
-            <Button variant="outline" onClick={() => window.print()}><span className="inline-flex items-center gap-1.5"><Icon name="printer" size={14} /> Imprimir</span></Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button onClick={baixarQR}><Icon name="download" size={16} />Baixar imagem</Button>
+            <Button variant="ghost" onClick={() => window.print()}><Icon name="printer" size={16} />Imprimir</Button>
           </div>
         </div>
       </Modal>
 
       {/* Add expense modal */}
-      <Modal open={modalDesp} onClose={() => setModalDesp(false)} title="Adicionar Despesa">
+      <Modal open={modalDesp} onClose={fecharModalDesp} title="Adicionar despesa">
         <form onSubmit={adicionarDespesa} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Descricao</label>
-            <input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className={inputClass} required placeholder="Ex: 10kg Picanha, Carvao..." />
+            <label className="block text-sm font-medium mb-1">Descrição</label>
+            <input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className={inputClass} required placeholder="Ex.: 10 kg de picanha, carvão" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-              <input type="number" step="0.01" value={despValor} onChange={e => setDespValor(e.target.value)} className={inputClass} required />
+              <input type="number" step="0.01" inputMode="decimal" value={despValor} onChange={e => setDespValor(e.target.value)} className={inputClass} required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Categoria</label>
               <select value={despCategoria} onChange={e => setDespCategoria(e.target.value)} className={inputClass}>
                 <option value="carne">Carne</option>
                 <option value="bebida">Bebida</option>
-                <option value="carvao">Carvao</option>
-                <option value="descartavel">Descartavel</option>
+                <option value="carvao">Carvão</option>
+                <option value="descartavel">Descartável</option>
                 <option value="tempero">Tempero</option>
                 <option value="geral">Geral</option>
               </select>
@@ -694,7 +804,7 @@ export function XimbocaEvento() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Quantidade</label>
-              <input type="number" step="0.01" value={despQtd} onChange={e => setDespQtd(e.target.value)} className={inputClass} placeholder="Ex: 10" />
+              <input type="number" step="0.01" value={despQtd} onChange={e => setDespQtd(e.target.value)} className={inputClass} placeholder="Ex.: 10" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Unidade</label>
@@ -710,7 +820,7 @@ export function XimbocaEvento() {
               </select>
             </div>
           </div>
-          <Button type="submit" className="w-full">Adicionar</Button>
+          <Button type="submit" className="w-full">Adicionar despesa</Button>
         </form>
       </Modal>
     </AppLayout>

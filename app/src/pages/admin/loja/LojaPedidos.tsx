@@ -6,6 +6,21 @@ import { Icon } from '../../../components/ui/Icon';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useToast } from '../../../hooks/useToast';
+import { useAcao } from '../../../hooks/useAcao';
+import { Loading } from '../../../components/ui/Loading';
+import { PageHeader } from '../../../components/ui/PageHeader';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Card } from '../../../components/ui/Card';
+import { inputClass } from '../../../components/ui/Field';
+
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataBR = (s: string) => new Date(s.replace(' ', 'T') + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+const FILTROS: { valor: string; label: string }[] = [
+  { valor: '', label: 'Todos' },
+  { valor: 'pendente', label: 'Pendentes' },
+  { valor: 'fiado', label: 'Fiado' },
+  { valor: 'pago', label: 'Pagos' },
+];
 
 interface LojaPedido {
   id: string;
@@ -30,23 +45,31 @@ export function LojaPedidos() {
   const [rastreamentos, setRastreamentos] = useState<Record<string, string>>({});
   const confirmar = useConfirm();
   const { showToast } = useToast();
+  const { busy, executar } = useAcao();
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
   const carregar = () => {
     const params = filtroStatus ? `?status=${filtroStatus}` : '';
-    api.get<LojaPedido[]>(`/api/loja/admin/pedidos${params}`).then(setPedidos);
+    setCarregando(true);
+    setErro('');
+    api.get<LojaPedido[]>(`/api/loja/admin/pedidos${params}`)
+      .then(setPedidos)
+      .catch((e: any) => setErro(e?.message || 'Erro ao carregar pedidos'))
+      .finally(() => setCarregando(false));
   };
 
   useEffect(() => { carregar(); }, [filtroStatus]);
 
   const marcarPago = async (id: string) => {
-    await api.put(`/api/loja/admin/pedidos/${id}/pagar`, {});
-    carregar();
+    const ok = await executar(`pagar:${id}`, () => api.put(`/api/loja/admin/pedidos/${id}/pagar`, {}), { sucesso: 'Pedido marcado como pago' });
+    if (ok !== undefined) carregar();
   };
 
   const excluir = async (id: string) => {
     if (!(await confirmar({ title: 'Excluir pedido', message: 'Excluir este pedido?', confirmText: 'Excluir', danger: true }))) return;
-    await api.delete(`/api/loja/admin/pedidos/${id}`);
-    carregar();
+    const ok = await executar(`excluir:${id}`, () => api.delete(`/api/loja/admin/pedidos/${id}`));
+    if (ok !== undefined) carregar();
   };
 
   const marcarEnviado = async (id: string) => {
@@ -67,97 +90,134 @@ export function LojaPedidos() {
     return <Badge variant="warning">Pendente</Badge>;
   };
 
+  const entrega = (p: LojaPedido) => p.entrega_tipo === 'envio' ? (
+    <div className="flex flex-col gap-1 min-w-0">
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-azul border border-blue-200 w-fit">
+        <Icon name="archive" size={12} /> Envio
+      </span>
+      {p.endereco && <span className="text-xs text-texto-fraco break-words" title={p.endereco}>{p.endereco}</span>}
+      <span className="text-xs text-texto-fraco">Frete: {brl(p.frete || 0)}</span>
+      {p.envio_status === 'enviado' ? (
+        <span className="text-xs font-medium text-verde-escuro break-all">Enviado{p.rastreamento ? ` · ${p.rastreamento}` : ''}</span>
+      ) : (
+        <span className="text-xs font-medium text-amber-700">A enviar</span>
+      )}
+    </div>
+  ) : (
+    <span className="text-xs text-texto-fraco">Retirada</span>
+  );
+
+  const acoes = (p: LojaPedido) => (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        {p.status !== 'pago' && (
+          <Button variant="chip-success" size="sm" onClick={() => marcarPago(p.id)} disabled={busy(`pagar:${p.id}`)}>
+            <Icon name="check" size={15} /> {busy(`pagar:${p.id}`) ? 'Salvando...' : 'Marcar pago'}
+          </Button>
+        )}
+        <Button variant="chip-danger" size="sm" onClick={() => excluir(p.id)} disabled={busy(`excluir:${p.id}`)}>
+          <Icon name="trash" size={15} /> Excluir
+        </Button>
+      </div>
+      {p.entrega_tipo === 'envio' && p.envio_status !== 'enviado' && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            aria-label={`Código de rastreio do pedido de ${p.nome_guerra || 'militar'}`}
+            value={rastreamentos[p.id] || ''}
+            onChange={e => setRastreamentos(prev => ({ ...prev, [p.id]: e.target.value }))}
+            placeholder="Rastreio (opcional)"
+            className={`${inputClass} !w-auto flex-1 min-w-[8rem] !py-2`}
+          />
+          <Button variant="chip-primary" size="sm" onClick={() => marcarEnviado(p.id)}>Marcar enviado</Button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-        <h1 className="font-display text-2xl text-azul tracking-wider">PEDIDOS - LOJA</h1>
-        <div className="flex gap-1">
-          {['', 'pendente', 'fiado', 'pago'].map((s) => (
-            <button key={s} onClick={() => setFiltroStatus(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
-              }`}>
-              {s || 'Todos'}
-            </button>
-          ))}
-        </div>
+      <PageHeader title="Pedidos da loja" subtitle="Confirme pagamentos e registre os envios dos pedidos." />
+
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por status">
+        {FILTROS.map((f) => (
+          <Button key={f.valor} size="sm" variant={filtroStatus === f.valor ? 'primary' : 'chip'}
+            aria-pressed={filtroStatus === f.valor} onClick={() => setFiltroStatus(f.valor)}>
+            {f.label}
+          </Button>
+        ))}
       </div>
 
-      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-azul">
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Data</th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider hidden sm:table-cell">Itens</th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Entrega</th>
-                <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Total</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidos.map((p) => (
-                <tr key={p.id} className="border-b border-borda/50 hover:bg-fundo transition-colors">
-                  <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">
-                    {new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-                  </td>
-                  <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
-                  <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">{p.itens_resumo}</td>
-                  <td className="px-3 py-3 text-xs">
-                    {p.entrega_tipo === 'envio' ? (
-                      <div className="flex flex-col gap-1 min-w-[140px]">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-azul border border-blue-200 w-fit">
-                          <Icon name="archive" size={12} /> Envio
-                        </span>
-                        {p.endereco && (
-                          <span className="text-texto-fraco max-w-[180px] truncate" title={p.endereco}>{p.endereco}</span>
-                        )}
-                        <span className="text-texto-fraco">Frete: R$ {(p.frete || 0).toFixed(2)}</span>
-                        {p.envio_status === 'enviado' ? (
-                          <span className="text-[10px] font-medium text-verde-escuro">
-                            Enviado{p.rastreamento ? ` · ${p.rastreamento}` : ''}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-medium text-amber-700">A enviar</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-texto-fraco">Retirada</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
-                  <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex flex-col items-start gap-1.5">
-                      <div className="flex items-center gap-2">
-                        {p.status !== 'pago' && (
-                          <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
-                        )}
-                        <Button variant="chip-danger" size="xs" onClick={() => excluir(p.id)}>Excluir</Button>
-                      </div>
-                      {p.entrega_tipo === 'envio' && p.envio_status !== 'enviado' && (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            value={rastreamentos[p.id] || ''}
-                            onChange={e => setRastreamentos(prev => ({ ...prev, [p.id]: e.target.value }))}
-                            placeholder="Rastreio (opcional)"
-                            className="w-28 bg-white border border-borda rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-                          />
-                          <Button variant="chip-primary" size="xs" onClick={() => marcarEnviado(p.id)}>Marcar enviado</Button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
+      {erro ? (
+        <Card className="text-center py-10">
+          <p className="text-escarlate text-sm mb-4">{erro}</p>
+          <Button size="sm" onClick={carregar}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+        </Card>
+      ) : carregando && pedidos.length === 0 ? (
+        <Loading label="Carregando pedidos..." />
+      ) : pedidos.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="bag" size={24} />}
+            message={filtroStatus ? 'Nenhum pedido com este status' : 'Nenhum pedido ainda'}
+            hint={filtroStatus ? 'Troque o filtro para ver os outros pedidos.' : 'Os pedidos feitos na loja aparecem aqui.'}
+            action={filtroStatus ? <Button variant="ghost" size="sm" onClick={() => setFiltroStatus('')}>Ver todos</Button> : undefined}
+          />
+        </Card>
+      ) : (
+        <>
+          {/* Celular: cartões */}
+          <div className="md:hidden space-y-3">
+            {pedidos.map((p) => (
+              <Card key={p.id}>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-noite truncate">{p.nome_guerra}</div>
+                    <div className="text-xs text-texto-fraco">{dataBR(p.created_at)}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-display text-xl text-dourado tracking-wide leading-none">{brl(p.total)}</div>
+                    <div className="mt-1">{statusBadge(p.status)}</div>
+                  </div>
+                </div>
+                {p.itens_resumo && <p className="text-sm text-texto-fraco mb-2 break-words">{p.itens_resumo}</p>}
+                <div className="mb-3">{entrega(p)}</div>
+                {acoes(p)}
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl overflow-hidden border border-borda shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-noite text-left">
+                  <th className="px-4 py-3 text-xs font-medium text-white">Data</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white">Militar</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white">Itens</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white">Entrega</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white text-right">Total</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white text-center">Status</th>
+                  <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {pedidos.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>}
-      </div>
+              </thead>
+              <tbody>
+                {pedidos.map((p) => (
+                  <tr key={p.id} className="border-b border-borda/50 last:border-0 hover:bg-fundo align-top">
+                    <td className="px-4 py-3 text-xs text-texto-fraco whitespace-nowrap">{dataBR(p.created_at)}</td>
+                    <td className="px-4 py-3 font-medium text-texto">{p.nome_guerra}</td>
+                    <td className="px-4 py-3 text-xs text-texto-fraco max-w-[200px]"><span className="line-clamp-2" title={p.itens_resumo}>{p.itens_resumo}</span></td>
+                    <td className="px-4 py-3 max-w-[220px]">{entrega(p)}</td>
+                    <td className="px-4 py-3 text-right font-display text-lg text-dourado tracking-wide whitespace-nowrap">{brl(p.total)}</td>
+                    <td className="px-4 py-3 text-center">{statusBadge(p.status)}</td>
+                    <td className="px-4 py-3">{acoes(p)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </AppLayout>
   );
 }

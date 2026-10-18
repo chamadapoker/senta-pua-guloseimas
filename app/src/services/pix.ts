@@ -8,6 +8,21 @@ export function setPixDefaults(chave: string, nome: string, cidade: string) {
   MERCHANT_CITY = cidade;
 }
 
+// Nome/cidade do recebedor no BR Code: sem acentos, maiúsculas, só [A-Z0-9 ].
+// Bancos rejeitam (ou calculam errado) payloads com acento/caracteres especiais,
+// e o padrão limita nome a 25 e cidade a 15 caracteres.
+function normalizarCampoPix(valor: string, max: number): string {
+  return (valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
 function tlv(id: string, value: string): string {
   const len = value.length.toString().padStart(2, '0');
   return `${id}${len}${value}`;
@@ -45,8 +60,8 @@ export function gerarPayloadPix(valor?: number, opcoes?: { chave?: string; nome?
   }
 
   payload += tlv('58', 'BR');                    // Country Code
-  payload += tlv('59', opcoes?.nome || MERCHANT_NAME);  // Merchant Name
-  payload += tlv('60', opcoes?.cidade || MERCHANT_CITY); // Merchant City
+  payload += tlv('59', normalizarCampoPix(opcoes?.nome || MERCHANT_NAME, 25));   // Merchant Name
+  payload += tlv('60', (normalizarCampoPix(opcoes?.cidade || MERCHANT_CITY, 15) || 'ANAPOLIS')); // Merchant City (campo obrigatório)
 
   // Additional Data Field com txid
   const txid = tlv('05', '***');

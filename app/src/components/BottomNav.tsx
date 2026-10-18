@@ -2,15 +2,18 @@ import { Link, useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
+import { useComprovantesPendentes } from '../hooks/useComprovantesPendentes';
 import { Icon } from './ui/Icon';
 import { itensBottomNav } from '../config/bottomNav';
 
+// Barra flutuante do mobile: 60px de altura + área segura (a classe .acima-nav depende dessa medida)
 export function BottomNav({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const { pathname } = useLocation();
   const { token: adminToken } = useAuth();
   const { user, token: userToken } = useUserAuth();
   const isAdmin = !!adminToken;
   const isUser = !!(userToken || user);
+  const compPendentes = useComprovantesPendentes(isAdmin);
 
   const itens = useMemo(
     () => itensBottomNav(pathname, { isAdmin, isUser }),
@@ -27,31 +30,41 @@ export function BottomNav({ onAbrirMenu }: { onAbrirMenu: () => void }) {
     return prefixos[0]?.to ?? null;
   }, [itens, pathname]);
 
+  const celula = 'relative flex flex-col items-center justify-center gap-1 h-full text-[11px] font-medium outline-none focus-visible:bg-noite-2 rounded-xl transition-colors';
+
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-borda shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+    <nav aria-label="Navegação rápida" className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-safe pointer-events-none">
       <div
-        className="grid"
+        className="pointer-events-auto mx-auto max-w-md h-[60px] grid bg-noite rounded-2xl shadow-flutua ring-1 ring-white/5 px-1"
         style={{ gridTemplateColumns: `repeat(${itens.length + 1}, minmax(0, 1fr))` }}
       >
         {itens.map((item) => {
           const ativo = item.to === activeTo;
+          const n = isAdmin && item.to === '/admin/comprovantes' ? compPendentes : 0;
           return (
             <Link
               key={item.to}
               to={item.to}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
-                ativo ? 'text-azul' : 'text-texto-fraco'
-              }`}
+              aria-current={ativo ? 'page' : undefined}
+              className={`${celula} ${ativo ? 'text-white' : 'text-noite-fraco active:text-white'}`}
             >
-              <Icon name={item.icon as never} size={22} />
-              <span className="truncate max-w-[68px]">{item.label}</span>
+              {ativo && <span className="flamula-v absolute top-0 w-6 h-[7px] bg-escarlate" aria-hidden="true" />}
+              <span className="relative">
+                <Icon name={item.icon as never} size={22} />
+                {n > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-escarlate text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-noite">
+                    {n > 99 ? '99+' : n}
+                  </span>
+                )}
+              </span>
+              <span className="truncate max-w-[72px]">{item.label}</span>
             </Link>
           );
         })}
         <button
           onClick={onAbrirMenu}
-          className="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium text-texto-fraco"
-          aria-label="Abrir menu"
+          className={`${celula} text-noite-fraco active:text-white`}
+          aria-label="Abrir menu completo"
         >
           <Icon name="menu" size={22} />
           <span>Menu</span>

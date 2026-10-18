@@ -29,7 +29,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
+      {/* Mobile: acima da barra de navegação; desktop: canto inferior direito */}
+      <div role="status" aria-live="polite" className="fixed acima-nav mb-2 left-4 right-4 lg:left-auto lg:right-6 lg:mb-6 z-[100] flex flex-col gap-3 pointer-events-none">
+
         {toasts.map(toast => (
           <div
             key={toast.id}

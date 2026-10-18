@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const clientes = new Hono<AppType>();
@@ -76,39 +77,48 @@ clientes.put('/:id/bloquear', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const { ativo } = await c.req.json<{ ativo: number }>();
 
+  const antes = await c.env.DB.prepare('SELECT nome_guerra, ativo FROM clientes WHERE id = ?')
+    .bind(id).first<{ nome_guerra: string; ativo: number }>();
+  if (!antes) return c.json({ error: 'Militar não encontrado' }, 404);
+
   const { results } = await c.env.DB.prepare(
     'UPDATE clientes SET ativo = ? WHERE id = ? RETURNING *'
-  ).bind(ativo, id).all();
+  ).bind(ativo ? 1 : 0, id).all();
 
   if (!results.length) return c.json({ error: 'Militar não encontrado' }, 404);
+  await audit(c, ativo ? 'desbloquear_cliente' : 'bloquear_cliente', 'clientes', id, antes, { nome_guerra: antes.nome_guerra, ativo: ativo ? 1 : 0 });
   return c.json(results[0]);
 });
 
 // Admin: excluir militar permanentemente
 clientes.delete('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  // Excluir pedidos e itens relacionados
-  const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(id).all();
-  for (const p of pedidos) {
-    await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind((p as any).id).run();
-  }
-  await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(id).run();
-  // Excluir assinante café se existir
-  const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(id).all();
-  for (const a of assinantes) {
-    await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind((a as any).id).run();
-  }
-  await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(id).run();
-  // Excluir pedidos loja
-  const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(id).all();
-  for (const p of lojaPedidos) {
-    await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind((p as any).id).run();
-    await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind((p as any).id).run();
-  }
-  await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(id).run();
-  // Excluir o cliente
-  const result = await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(id).run();
+  // Snapshot para auditoria (inclui o saldo em aberto que será apagado junto)
+  const antes = await c.env.DB.prepare(
+    `SELECT cl.id, cl.nome_guerra, cl.saram, cl.whatsapp, cl.visitante, cl.ativo,
+       (SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE cliente_id = cl.id AND status IN ('pendente', 'fiado')) as saldo_cantina,
+       (SELECT COALESCE(SUM(total), 0) FROM loja_pedidos WHERE cliente_id = cl.id AND status IN ('pendente', 'fiado')) as saldo_loja,
+       (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE ca.cliente_id = cl.id AND cp.status = 'pendente') as saldo_cafe
+     FROM clientes cl WHERE cl.id = ?`
+  ).bind(id).first();
+  if (!antes) return c.json({ error: 'Militar não encontrado' }, 404);
+  // Tudo num único batch (atômico): ou apaga tudo, ou nada. Antes, uma falha no meio deixava o militar pela metade.
+  // Comprovantes são evidência financeira: ficam guardados (com o trigrama), só perdem o vínculo com o cliente apagado.
+  const db = c.env.DB;
+  const resultados = await db.batch([
+    db.prepare('DELETE FROM itens_pedido WHERE pedido_id IN (SELECT id FROM pedidos WHERE cliente_id = ?)').bind(id),
+    db.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(id),
+    db.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id IN (SELECT id FROM cafe_assinantes WHERE cliente_id = ?)').bind(id),
+    db.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(id),
+    db.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(id),
+    db.prepare('DELETE FROM loja_parcelas WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(id),
+    db.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(id),
+    db.prepare('UPDATE comprovantes SET cliente_id = NULL WHERE cliente_id = ?').bind(id),
+    db.prepare('DELETE FROM clientes WHERE id = ?').bind(id),
+  ]);
+  const result = resultados[resultados.length - 1];
   if (!result.meta.changes) return c.json({ error: 'Militar não encontrado' }, 404);
+  await audit(c, 'excluir_cliente', 'clientes', id, antes, null);
   return c.json({ ok: true });
 });
 

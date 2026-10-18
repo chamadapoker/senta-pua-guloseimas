@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Pedido } from '../types';
 import { api } from './api';
+import { parseDataBanco } from './datas';
 
 let _configCache: Record<string, string> | null = null;
 async function getConfig(): Promise<Record<string, string>> {
@@ -65,7 +66,7 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 20, yStart + 12);
 
   let currentY = yStart + 28;
 
@@ -220,11 +221,11 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+  doc.text(`Data de emissão: ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 20, yStart + 12);
 
   // ===== TABELA DE PEDIDOS =====
   const tableData = pedidos.map((p) => {
-    const dt = new Date(p.created_at + 'Z');
+    const dt = parseDataBanco(p.created_at);
     const data = dt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
     return [
@@ -327,7 +328,7 @@ export async function gerarCobrancaCafePDF(nome: string, tipo: string, mesesPend
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR')}`, 20, yStart + 12);
+  doc.text(`Data de emissao: ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 20, yStart + 12);
 
   // Tabela
   const tableData = mesesPendentes.map(m => [m.referencia, `R$ ${m.valor.toFixed(2)}`, 'PENDENTE']);

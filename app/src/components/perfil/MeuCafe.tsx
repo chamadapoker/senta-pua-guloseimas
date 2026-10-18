@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import { Icon } from '../ui/Icon';
 import { EnviarComprovante } from '../ui/EnviarComprovante';
 import { api } from '../../services/api';
 import { getConfig } from '../../services/config';
 import { gerarPayloadPix } from '../../services/pix';
+import { useCopiar } from '../../hooks/useCopiar';
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface HistoricoItem { id?: string; referencia: string; valor: number; status: string; paid_at: string | null }
 
@@ -24,23 +30,56 @@ export function MeuCafe() {
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Record<string, string>>({});
   const [copiado, setCopiado] = useState(false);
+  const [erro, setErro] = useState(false);
+  const { copiar, modalCopiaManual } = useCopiar();
 
-  useEffect(() => {
+  const carregar = () => {
+    setLoading(true);
+    setErro(false);
     Promise.all([
       api.get<CafeStatus>('/api/usuarios/me/cafe'),
       getConfig(),
-    ]).then(([s, c]) => { setStatus(s); setConfig(c); }).finally(() => setLoading(false));
-  }, []);
+    ]).then(([s, c]) => { setStatus(s); setConfig(c); })
+      .catch(() => setErro(true))
+      .finally(() => setLoading(false));
+  };
 
-  if (loading) return <div className="bg-white rounded-xl border border-borda p-4 text-sm text-texto-fraco text-center">Carregando café...</div>;
+  useEffect(() => { carregar(); }, []);
+
+  const titulo = (
+    <h2 className="text-[15px] font-semibold text-noite flex items-center gap-2">
+      <Icon name="coffee" size={18} /> Caixinha do café
+    </h2>
+  );
+
+  if (loading) {
+    return (
+      <Card>
+        {titulo}
+        <div className="mt-3 space-y-2 animate-pulse" aria-label="Carregando café">
+          <div className="h-5 w-1/3 rounded bg-fundo-elevado" />
+          <div className="h-11 rounded-xl bg-fundo-elevado" />
+        </div>
+      </Card>
+    );
+  }
+  if (erro) {
+    return (
+      <Card>
+        {titulo}
+        <p className="text-sm text-vermelho mt-2">Não foi possível carregar seus dados do café.</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={carregar}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+      </Card>
+    );
+  }
   if (!status || status.sem_sala) return null;
 
   if (!status.tem_assinatura) {
     return (
-      <div className="bg-white rounded-xl border border-borda p-4">
-        <div className="text-sm font-medium text-texto-fraco mb-2">Meu Café</div>
-        <p className="text-xs text-texto-fraco">Você não tem assinatura ativa. Fale com o administrador.</p>
-      </div>
+      <Card>
+        {titulo}
+        <p className="text-sm text-texto-fraco mt-2">Você não tem assinatura ativa. Fale com o responsável da sua sala.</p>
+      </Card>
     );
   }
 
@@ -52,8 +91,8 @@ export function MeuCafe() {
 
   const copiarPix = async () => {
     if (!chave || totalPendente <= 0) return;
-    const payload = gerarPayloadPix(totalPendente, { chave, nome });
-    await navigator.clipboard.writeText(payload);
+    const payload = gerarPayloadPix(totalPendente, { chave, nome, cidade: config.pix_guloseimas_cidade || 'ANAPOLIS' });
+    if (!(await copiar(payload))) return;
     setCopiado(true);
     setTimeout(() => setCopiado(false), 3000);
   };
@@ -65,53 +104,56 @@ export function MeuCafe() {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-borda p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-texto-fraco">Meu Café</div>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.mes_atual_pago ? 'bg-green-100 text-verde-escuro' : 'bg-red-50 text-vermelho'}`}>
-          {status.mes_atual_pago ? 'Pago' : 'Pendente'}
-        </span>
+    <Card>
+      <div className="flex items-center justify-between gap-3">
+        {titulo}
+        <Badge variant={status.mes_atual_pago ? 'success' : 'danger'}>{status.mes_atual_pago ? 'Mês pago' : 'Mês pendente'}</Badge>
       </div>
 
-      <div className="flex items-baseline gap-2">
-        <div className="text-xs text-texto-fraco">Mensalidade:</div>
-        <div className="font-display text-azul text-lg tracking-wider">R$ {(status.valor_mensal || 0).toFixed(2)}</div>
-      </div>
+      <p className="text-sm text-texto-fraco mt-2">
+        Mensalidade: <span className="font-display text-xl leading-none tracking-wide text-texto">{brl(status.valor_mensal || 0)}</span>
+      </p>
 
       {totalPendente > 0 && (
-        <>
-          <div className="bg-red-50 rounded-lg p-3">
-            <div className="text-xs text-vermelho font-medium">Total pendente</div>
-            <div className="font-display text-2xl text-vermelho tracking-wider">R$ {totalPendente.toFixed(2)}</div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="primary" size="sm" className="flex-1" onClick={copiarPix}>
-              {copiado ? 'Copiado!' : 'Copiar PIX'}
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3.5">
+          <p className="text-sm text-red-700 font-medium">Total pendente</p>
+          <p className="font-display text-4xl leading-none text-escarlate tracking-wide mt-1">{brl(totalPendente)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+            <Button variant="success" onClick={copiarPix} disabled={!chave}>
+              <Icon name={copiado ? 'check' : 'document'} size={16} /> {copiado ? 'Código copiado' : 'Copiar código PIX'}
             </Button>
-            <Button variant="success" size="sm" className="flex-1" onClick={enviarComprovante}>
-              Enviar Comprovante
+            <Button variant="ghost" onClick={enviarComprovante} disabled={!whatsapp}>
+              Enviar comprovante no WhatsApp
             </Button>
           </div>
-        </>
+          {!chave && <p className="text-xs text-red-700 mt-2">Chave PIX do café não configurada. Fale com o responsável.</p>}
+        </div>
       )}
 
       {status.historico && status.historico.length > 0 && (
-        <div>
-          <div className="text-xs text-texto-fraco mb-1.5 mt-2">Histórico</div>
-          <div className="space-y-1">
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-texto-fraco mb-1">Histórico</h3>
+          <ul className="divide-y divide-borda">
             {status.historico.map(h => (
-              <div key={h.id || h.referencia} className="flex items-center justify-between text-xs py-1 border-b border-borda last:border-0 gap-2">
-                <span>{h.referencia}</span>
-                <span className="text-texto-fraco">R$ {h.valor.toFixed(2)}</span>
-                <span className={h.status === 'pago' ? 'text-verde-escuro' : 'text-vermelho'}>{h.status}</span>
+              <li key={h.id || h.referencia} className="py-2.5">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{h.referencia}</span>
+                  <span className="flex items-center gap-2.5">
+                    <span className="tabular-nums text-texto-fraco">{brl(h.valor)}</span>
+                    <Badge variant={h.status === 'pago' ? 'success' : 'danger'}>{h.status === 'pago' ? 'Pago' : h.status === 'pendente' ? 'Pendente' : h.status}</Badge>
+                  </span>
+                </div>
                 {h.status === 'pendente' && h.id && (
-                  <EnviarComprovante origem="cafe" referenciaId={h.id} />
+                  <div className="mt-2">
+                    <EnviarComprovante origem="cafe" referenciaId={h.id} />
+                  </div>
                 )}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
-    </div>
+      {modalCopiaManual}
+    </Card>
   );
 }

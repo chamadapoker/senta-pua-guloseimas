@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -6,9 +6,18 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
+import { dataLocal } from '../../../services/periodo';
 import { getConfig } from '../../../services/config';
 import { gerarCobrancaCafePDF } from '../../../services/pdf';
 import { useToast } from '../../../hooks/useToast';
+import { useAcao } from '../../../hooks/useAcao';
+import { Icon } from '../../../components/ui/Icon';
+import { Card } from '../../../components/ui/Card';
+import { Loading } from '../../../components/ui/Loading';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { StatCard } from '../../../components/admin/StatCard';
+
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface Mensalidade {
   id: string;
@@ -23,6 +32,7 @@ interface Mensalidade {
 
 export function CafeMensalidades() {
   const { showToast } = useToast();
+  const { busy, executar } = useAcao();
   const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
     (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
   );
@@ -33,6 +43,10 @@ export function CafeMensalidades() {
   const [referencia, setReferencia] = useState('');
   const [gerando, setGerando] = useState(false);
   const [pixConfig, setPixConfig] = useState({ oficial: '', graduado: '' });
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const abrirGerar = useCallback(() => setModalGerar(true), []);
+  const fecharGerar = useCallback(() => setModalGerar(false), []);
 
   useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
   useEffect(() => {
@@ -46,14 +60,18 @@ export function CafeMensalidades() {
     params.set('tipo', tipo);
     if (filtroStatus) params.set('status', filtroStatus);
     if (filtroRef) params.set('referencia', filtroRef);
-    api.get<Mensalidade[]>(`/api/cafe/admin/mensalidades?${params}`).then(setMensalidades);
+    setCarregando(true);
+    setErro('');
+    api.get<Mensalidade[]>(`/api/cafe/admin/mensalidades?${params}`)
+      .then(setMensalidades)
+      .catch((e: any) => setErro(e?.message || 'Erro ao carregar mensalidades'))
+      .finally(() => setCarregando(false));
   };
 
   useEffect(() => { carregar(); }, [tipo, filtroStatus, filtroRef]);
 
   useEffect(() => {
-    const now = new Date();
-    setReferencia(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    setReferencia(dataLocal(new Date()).slice(0, 7));
   }, []);
 
   const gerarMensalidades = async () => {
@@ -76,96 +94,151 @@ export function CafeMensalidades() {
   };
 
   const marcarPago = async (id: string) => {
-    await api.put(`/api/cafe/admin/mensalidades/${id}/pagar`, {});
-    carregar();
+    const ok = await executar(`pagar:${id}`, () => api.put(`/api/cafe/admin/mensalidades/${id}/pagar`, {}), { sucesso: 'Mensalidade marcada como paga' });
+    if (ok !== undefined) carregar();
   };
 
   // Get unique references for filter
   const referencias = [...new Set(mensalidades.map(m => m.referencia))].sort().reverse();
 
+  const refBR = (r: string) => {
+    const [a, m] = r.split('-');
+    return m ? `${m}/${a}` : r;
+  };
+  const totalPendente = mensalidades.filter(m => m.status === 'pendente').reduce((a, m) => a + m.valor, 0);
+  const totalPago = mensalidades.filter(m => m.status === 'pago').reduce((a, m) => a + m.valor, 0);
+
+  const acoes = (m: Mensalidade) => m.status === 'pendente' && (
+    <div className="flex gap-2 flex-wrap">
+      <Button variant="chip-success" size="sm" onClick={() => marcarPago(m.id)} disabled={busy(`pagar:${m.id}`)}>
+        <Icon name="check" size={15} /> {busy(`pagar:${m.id}`) ? 'Salvando...' : 'Marcar pago'}
+      </Button>
+      <Button variant="chip-primary" size="sm" onClick={() => cobrar(m)}>
+        <Icon name="document" size={15} /> Cobrança em PDF
+      </Button>
+    </div>
+  );
+
   return (
     <AppLayout>
-      <PageHeader title="MENSALIDADES" right={<Button size="sm" onClick={() => setModalGerar(true)}>Gerar Mensalidades</Button>} />
-      <div className="flex gap-1 mb-5">
-        <button onClick={() => setTipo('oficial')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'oficial' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
-          Oficiais
-        </button>
-        <button onClick={() => setTipo('graduado')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tipo === 'graduado' ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda'}`}>
-          Graduados
-        </button>
+      <PageHeader
+        title="Mensalidades do café"
+        subtitle="Gere as cobranças do mês e marque quem já pagou."
+        right={<Button size="sm" onClick={abrirGerar}><Icon name="plus" size={16} /> Gerar mensalidades</Button>}
+      />
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Sala do café">
+        {(['oficial', 'graduado'] as const).map(t => (
+          <Button key={t} size="sm" variant={tipo === t ? 'primary' : 'chip'} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
+            {t === 'oficial' ? 'Oficiais' : 'Graduados'}
+          </Button>
+        ))}
       </div>
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <div className="flex gap-1">
-          {['', 'pendente', 'pago'].map((s) => (
-            <button key={s} onClick={() => setFiltroStatus(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda'
-              }`}>
-              {s || 'Todos'}
-            </button>
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar por status">
+          {[{ v: '', l: 'Todas' }, { v: 'pendente', l: 'Pendentes' }, { v: 'pago', l: 'Pagas' }].map((s) => (
+            <Button key={s.v} size="sm" variant={filtroStatus === s.v ? 'chip-primary' : 'chip'} aria-pressed={filtroStatus === s.v} onClick={() => setFiltroStatus(s.v)}>
+              {s.l}
+            </Button>
           ))}
         </div>
         {referencias.length > 0 && (
-          <select value={filtroRef} onChange={(e) => setFiltroRef(e.target.value)}
-            className="bg-white border border-borda rounded-lg px-3 py-1.5 text-xs">
-            <option value="">Todas as referencias</option>
-            {referencias.map(r => <option key={r} value={r}>{r}</option>)}
+          <select value={filtroRef} onChange={(e) => setFiltroRef(e.target.value)} aria-label="Mês de referência"
+            className={`${inputClass} !w-auto min-h-[40px] !py-2`}>
+            <option value="">Todos os meses</option>
+            {referencias.map(r => <option key={r} value={r}>{refBR(r)}</option>)}
           </select>
         )}
       </div>
 
-      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
-            <thead>
-              <tr className="bg-azul">
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Tipo</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Ref.</th>
-                <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Valor</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {mensalidades.map((m) => (
-                <tr key={m.id} className="border-b border-borda/50 hover:bg-fundo transition-colors">
-                  <td className="px-3 py-3 font-medium text-texto">{m.nome_guerra}</td>
-                  <td className="px-3 py-3 text-center text-xs text-texto-fraco capitalize">{m.tipo}</td>
-                  <td className="px-3 py-3 text-center text-xs text-texto-fraco">{m.referencia}</td>
-                  <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {m.valor.toFixed(2)}</td>
-                  <td className="px-3 py-3 text-center">
-                    <Badge variant={m.status === 'pago' ? 'success' : 'warning'}>{m.status === 'pago' ? 'Pago' : 'Pendente'}</Badge>
-                  </td>
-                  <td className="px-3 py-3">
-                    {m.status === 'pendente' && (
-                      <div className="flex gap-2">
-                        <Button variant="chip-success" size="xs" onClick={() => marcarPago(m.id)}>Pagar</Button>
-                        <Button variant="chip-primary" size="xs" onClick={() => cobrar(m)}>PDF</Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {mensalidades.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <StatCard label="Pendente na lista" value={brl(totalPendente)} color={totalPendente > 0 ? 'text-amber-600' : 'text-verde'} icon={<Icon name="clock" size={18} />} />
+          <StatCard label="Pago na lista" value={brl(totalPago)} color="text-verde" icon={<Icon name="check" size={18} />} />
         </div>
-        {mensalidades.length === 0 && <div className="text-center py-10 text-texto-fraco">Nenhuma mensalidade</div>}
-      </div>
+      )}
 
-      <Modal open={modalGerar} onClose={() => setModalGerar(false)} title="Gerar Mensalidades">
+      {erro ? (
+        <Card className="text-center py-10">
+          <p className="text-escarlate text-sm mb-4">{erro}</p>
+          <Button size="sm" onClick={carregar}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+        </Card>
+      ) : carregando && mensalidades.length === 0 ? (
+        <Loading label="Carregando mensalidades..." />
+      ) : mensalidades.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="credit-card" size={24} />}
+            message={filtroStatus || filtroRef ? 'Nenhuma mensalidade com estes filtros' : 'Nenhuma mensalidade gerada'}
+            hint={filtroStatus || filtroRef ? 'Troque os filtros para ver as outras.' : 'Gere as mensalidades do mês para os assinantes ativos.'}
+            action={filtroStatus || filtroRef
+              ? <Button variant="ghost" size="sm" onClick={() => { setFiltroStatus(''); setFiltroRef(''); }}>Limpar filtros</Button>
+              : <Button size="sm" onClick={abrirGerar}><Icon name="plus" size={16} /> Gerar mensalidades</Button>}
+          />
+        </Card>
+      ) : (
+        <>
+          {/* Celular: cartões */}
+          <div className="md:hidden space-y-3">
+            {mensalidades.map((m) => (
+              <Card key={m.id}>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <div className="font-display text-2xl text-noite tracking-wide leading-none">{m.nome_guerra}</div>
+                    <div className="text-xs text-texto-fraco mt-1">Referência {refBR(m.referencia)} · <span className="capitalize">{m.tipo}</span></div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-display text-xl text-dourado tracking-wide leading-none">{brl(m.valor)}</div>
+                    <div className="mt-1"><Badge variant={m.status === 'pago' ? 'success' : 'warning'}>{m.status === 'pago' ? 'Pago' : 'Pendente'}</Badge></div>
+                  </div>
+                </div>
+                {acoes(m)}
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl overflow-hidden border border-borda shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-noite">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white">Militar</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-white">Sala</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-white">Referência</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-white">Valor</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-white">Status</th>
+                  <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {mensalidades.map((m) => (
+                  <tr key={m.id} className="border-b border-borda/50 last:border-0 hover:bg-fundo">
+                    <td className="px-4 py-3 font-medium text-texto">{m.nome_guerra}</td>
+                    <td className="px-4 py-3 text-center text-xs text-texto-fraco capitalize">{m.tipo}</td>
+                    <td className="px-4 py-3 text-center text-xs text-texto-fraco">{refBR(m.referencia)}</td>
+                    <td className="px-4 py-3 text-right font-display text-lg text-dourado tracking-wide whitespace-nowrap">{brl(m.valor)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <Badge variant={m.status === 'pago' ? 'success' : 'warning'}>{m.status === 'pago' ? 'Pago' : 'Pendente'}</Badge>
+                    </td>
+                    <td className="px-4 py-3">{acoes(m)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <Modal open={modalGerar} onClose={fecharGerar} title="Gerar mensalidades">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Referencia (mes)</label>
-            <input type="month" value={referencia} onChange={(e) => setReferencia(e.target.value)}
-              className={inputClass} />
-            <p className="text-xs text-texto-fraco mt-1">Mensal: cobra o mes selecionado. Anual: cobra 1x por ano automaticamente.</p>
+            <label htmlFor="cm-ref" className="block text-sm font-medium mb-1.5">Mês de referência</label>
+            <input id="cm-ref" type="month" value={referencia} onChange={(e) => setReferencia(e.target.value)} className={inputClass} />
+            <p className="text-xs text-texto-fraco mt-1">Plano mensal: cobra o mês escolhido. Plano anual: cobra uma vez por ano, automaticamente.</p>
           </div>
+          <p className="text-sm text-texto-fraco">Sala: <strong className="text-texto">{tipo === 'oficial' ? 'Oficiais' : 'Graduados'}</strong></p>
           <Button className="w-full" onClick={gerarMensalidades} disabled={gerando}>
-            {gerando ? 'Gerando...' : 'Gerar'}
+            {gerando ? 'Gerando...' : 'Gerar mensalidades'}
           </Button>
         </div>
       </Modal>

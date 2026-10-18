@@ -8,8 +8,57 @@ import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante
 import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import { audit } from '../lib/audit';
 import type { AppType } from '../index';
+import type { Context } from 'hono';
 
 const usuarios = new Hono<AppType>();
+
+type ClienteExistente = { id: string; nome_guerra: string; saram: string | null; whatsapp: string | null };
+
+/**
+ * Cadastro: localiza cliente preexistente (SARAM ou trigrama) ANTES de criar o usuário
+ * e impede que um cadastro novo assuma um militar que já pertence a outra conta.
+ */
+async function localizarClienteParaCadastro(
+  c: Context<AppType>,
+  trigrama: string,
+  saram: string
+): Promise<{ ok: true; cliente: ClienteExistente | null; temHistorico: boolean } | { ok: false; erro: string }> {
+  let cliente = await c.env.DB.prepare(
+    'SELECT id, nome_guerra, saram, whatsapp FROM clientes WHERE saram = ?'
+  ).bind(saram).first<ClienteExistente>();
+
+  if (!cliente) {
+    cliente = await c.env.DB.prepare(
+      'SELECT id, nome_guerra, saram, whatsapp FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
+    ).bind(trigrama).first<ClienteExistente>();
+  }
+
+  if (!cliente) return { ok: true, cliente: null, temHistorico: false };
+
+  // Achado pelo trigrama mas com outro SARAM: não é a mesma pessoa (ou dado errado) — admin resolve
+  if (cliente.saram && cliente.saram !== saram) {
+    return { ok: false, erro: 'Este trigrama já está registrado com outro SARAM. Procure o administrador.' };
+  }
+
+  // O usuário novo ainda não foi inserido: qualquer usuário com o mesmo trigrama/SARAM do cliente é outra conta
+  const dono = await c.env.DB.prepare(
+    'SELECT id FROM usuarios WHERE trigrama = ? COLLATE NOCASE OR (? IS NOT NULL AND saram = ?) LIMIT 1'
+  ).bind(cliente.nome_guerra, cliente.saram, cliente.saram).first();
+  if (dono) {
+    return { ok: false, erro: 'Este militar já está vinculado a outra conta. Procure o administrador.' };
+  }
+
+  const hist = await c.env.DB.prepare(
+    `SELECT (
+       EXISTS(SELECT 1 FROM pedidos WHERE cliente_id = ?) OR
+       EXISTS(SELECT 1 FROM loja_pedidos WHERE cliente_id = ?) OR
+       EXISTS(SELECT 1 FROM cafe_assinantes WHERE cliente_id = ?) OR
+       EXISTS(SELECT 1 FROM ximboca_participantes WHERE nome = ? COLLATE NOCASE)
+     ) as tem`
+  ).bind(cliente.id, cliente.id, cliente.id, cliente.nome_guerra).first<{ tem: number }>();
+
+  return { ok: true, cliente, temHistorico: !!hist?.tem };
+}
 
 // Publico: cadastro
 usuarios.post('/cadastro', async (c) => {
@@ -44,6 +93,11 @@ usuarios.post('/cadastro', async (c) => {
   const existSaram = await c.env.DB.prepare('SELECT id FROM usuarios WHERE saram = ?').bind(saramClean).first();
   if (existSaram) return c.json({ error: 'SARAM já cadastrado' }, 409);
 
+  // Cliente preexistente: valida antes de criar o usuário
+  const loc = await localizarClienteParaCadastro(c, trigramaClean, saramClean);
+  if (!loc.ok) return c.json({ error: loc.erro }, 409);
+  const existCliente = loc.cliente;
+
   const senhaHash = await hashPassword(senha);
   const whatsappClean = whatsapp.trim();
   const salaCafe = derivarSalaCafe(categoria as Categoria);
@@ -55,23 +109,17 @@ usuarios.post('/cadastro', async (c) => {
 
   const userId = results[0].id;
 
-  // Tenta encontrar cliente preexistente pelo SARAM (âncora estável) ou Trigrama
-  let existCliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE saram = ?'
-  ).bind(saramClean).first<{ id: string }>();
-
-  if (!existCliente) {
-    existCliente = await c.env.DB.prepare(
-      'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-    ).bind(trigramaClean).first<{ id: string }>();
-  }
-
   if (!existCliente) {
     await c.env.DB.prepare('INSERT INTO clientes (nome_guerra, saram, whatsapp) VALUES (?, ?, ?)')
       .bind(trigramaClean, saramClean, whatsappClean).run();
   } else {
-    await c.env.DB.prepare('UPDATE clientes SET saram = ?, whatsapp = ? WHERE nome_guerra = ? COLLATE NOCASE')
-      .bind(saramClean, whatsappClean, trigramaClean).run();
+    // Atualiza pelo id do cliente achado; whatsapp só é preenchido se estava vazio
+    await c.env.DB.prepare("UPDATE clientes SET saram = ?, whatsapp = COALESCE(NULLIF(whatsapp, ''), ?) WHERE id = ?")
+      .bind(saramClean, whatsappClean, existCliente.id).run();
+    if (loc.temHistorico) {
+      await audit(c, 'cadastro_vincula_cliente', 'clientes', existCliente.id, existCliente,
+        { usuario_id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean });
+    }
   }
 
   const token = await sign(
@@ -124,6 +172,11 @@ usuarios.post('/cadastro/visitante', async (c) => {
   const existSaram = await c.env.DB.prepare('SELECT id FROM usuarios WHERE saram = ?').bind(saramClean).first();
   if (existSaram) return c.json({ error: 'SARAM já cadastrado' }, 409);
 
+  // Cliente preexistente: valida antes de criar o usuário
+  const loc = await localizarClienteParaCadastro(c, trigramaClean, saramClean);
+  if (!loc.ok) return c.json({ error: loc.erro }, 409);
+  const existCliente = loc.cliente;
+
   const senhaHash = await hashPassword(senha);
   const whatsappClean = whatsapp.trim();
   const salaCafe = derivarSalaCafe(categoria as Categoria);
@@ -137,25 +190,19 @@ usuarios.post('/cadastro/visitante', async (c) => {
 
   const userId = results[0].id;
 
-  // Tenta encontrar cliente preexistente pelo SARAM ou Trigrama
-  let existCliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE saram = ?'
-  ).bind(saramClean).first<{ id: string }>();
-
-  if (!existCliente) {
-    existCliente = await c.env.DB.prepare(
-      'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-    ).bind(trigramaClean).first<{ id: string }>();
-  }
-
   if (!existCliente) {
     await c.env.DB.prepare(
       'INSERT INTO clientes (nome_guerra, saram, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, 1, ?)'
     ).bind(trigramaClean, saramClean, whatsappClean, esquadraoClean).run();
   } else {
+    // Atualiza pelo id do cliente achado; whatsapp só é preenchido se estava vazio
     await c.env.DB.prepare(
-      'UPDATE clientes SET saram = ?, whatsapp = ?, visitante = 1, esquadrao_origem = ? WHERE nome_guerra = ? COLLATE NOCASE'
-    ).bind(saramClean, whatsappClean, esquadraoClean, trigramaClean).run();
+      "UPDATE clientes SET saram = ?, whatsapp = COALESCE(NULLIF(whatsapp, ''), ?), visitante = 1, esquadrao_origem = ? WHERE id = ?"
+    ).bind(saramClean, whatsappClean, esquadraoClean, existCliente.id).run();
+    if (loc.temHistorico) {
+      await audit(c, 'cadastro_vincula_cliente', 'clientes', existCliente.id, existCliente,
+        { usuario_id: userId, email: emailClean, trigrama: trigramaClean, saram: saramClean, visitante: 1 });
+    }
   }
 
   const token = await sign(
@@ -624,51 +671,102 @@ usuarios.post('/me/foto', userAuthMiddleware, async (c) => {
 });
 
 // Usuario logado: excluir a propria conta (LGPD - direito ao esquecimento)
+// Exige a senha atual e recusa se houver qualquer débito em aberto (excluir não pode apagar dívida).
 usuarios.delete('/me', userAuthMiddleware, async (c) => {
   const userId = c.get('userId');
-  const trigrama = c.get('userTrigrama');
+  const body = await c.req.json<{ senha?: string }>().catch(() => ({} as { senha?: string }));
+  const senha = body.senha;
+  if (!senha) return c.json({ error: 'Informe sua senha para excluir a conta' }, 400);
 
-  // Apaga foto do R2 se existir
-  const current = await c.env.DB.prepare('SELECT foto_url FROM usuarios WHERE id = ?').bind(userId)
-    .first<{ foto_url: string | null }>();
-  if (current?.foto_url) {
-    const key = current.foto_url.replace('/api/images/', '');
-    await c.env.IMAGES.delete(key).catch(() => {});
-  }
+  const rlKey = `${clientKey(c)}:${userId}`;
+  const rl = await checkRateLimit(c, 'user_delete', rlKey, 5, 15);
+  if (!rl.ok) return c.json({ error: `Muitas tentativas. Tente de novo em ${rl.retry_after_min} minutos.` }, 429);
 
-  // Apaga registros do cliente ligado (em cascata manual, seguindo padrao de DELETE /api/clientes/:id)
+  const user = await c.env.DB.prepare(
+    'SELECT id, email, trigrama, saram, senha_hash, foto_url FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ id: number; email: string; trigrama: string; saram: string; senha_hash: string; foto_url: string | null }>();
+  if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
+
+  const valid = await verifyPassword(senha, user.senha_hash);
+  if (!valid) { await recordAttempt(c, 'user_delete', rlKey); return c.json({ error: 'Senha incorreta' }, 403); }
+  await clearAttempts(c, 'user_delete', rlKey);
+
+  // Trigrama do banco (o do token pode estar desatualizado)
+  const trigrama = user.trigrama;
   const cliente = await c.env.DB.prepare('SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE')
     .bind(trigrama).first<{ id: string }>();
 
-  if (cliente) {
-    // Pedidos guloseimas
-    const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const p of pedidos) {
-      await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(p.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id).run();
+  // Pendências em todos os módulos (mesmos critérios do dashboard do usuário)
+  const pend = await c.env.DB.prepare(
+    `SELECT
+       (SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE cliente_id = ? AND status IN ('pendente', 'fiado')) as cantina,
+       (SELECT COALESCE(SUM(total), 0) FROM loja_pedidos WHERE cliente_id = ? AND status != 'pago') as loja,
+       (SELECT COALESCE(SUM(cp.valor), 0) FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+          WHERE ca.cliente_id = ? AND cp.status = 'pendente') as cafe,
+       (SELECT COALESCE(SUM(COALESCE(xp.valor_individual, xe.valor_por_pessoa)), 0) FROM ximboca_participantes xp
+          JOIN ximboca_eventos xe ON xe.id = xp.evento_id
+          WHERE xp.nome = ? COLLATE NOCASE AND xp.status != 'pago') as ximboca`
+  ).bind(cliente?.id ?? null, cliente?.id ?? null, cliente?.id ?? null, trigrama)
+    .first<{ cantina: number; loja: number; cafe: number; ximboca: number }>();
 
-    // Cafe
-    const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const a of assinantes) {
-      await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind(a.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).run();
-
-    // Loja
-    const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const p of lojaPedidos) {
-      await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(p.id).run();
-      await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind(p.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).run();
-
-    // Cliente
-    await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id).run();
+  const pendencias = {
+    cantina: pend?.cantina || 0,
+    loja: pend?.loja || 0,
+    cafe: pend?.cafe || 0,
+    ximboca: pend?.ximboca || 0,
+  };
+  const totalPendente = Math.round((pendencias.cantina + pendencias.loja + pendencias.cafe + pendencias.ximboca) * 100) / 100;
+  if (totalPendente > 0) {
+    return c.json({
+      error: `Você possui R$ ${totalPendente.toFixed(2)} em aberto (cantina, loja, café ou ximboca). Regularize ou cancele suas pendências antes de excluir a conta.`,
+      pendencias,
+    }, 409);
   }
 
-  // Usuario
-  await c.env.DB.prepare('DELETE FROM usuarios WHERE id = ?').bind(userId).run();
+  // Imagens de comprovantes do usuário (apagadas do R2 depois do banco)
+  const { results: comps } = await c.env.DB.prepare(
+    'SELECT imagem_key FROM comprovantes WHERE usuario_id = ? OR trigrama = ? COLLATE NOCASE' + (cliente ? ' OR cliente_id = ?' : '')
+  ).bind(...(cliente ? [String(userId), trigrama, cliente.id] : [String(userId), trigrama])).all<{ imagem_key: string }>();
+
+  await audit(c, 'excluir_propria_conta', 'usuarios', String(userId),
+    { email: user.email, trigrama, saram: user.saram, cliente_id: cliente?.id ?? null }, null);
+
+  // Exclusão atômica (cascata manual, seguindo padrao de DELETE /api/clientes/:id)
+  const db = c.env.DB;
+  const stmts: D1PreparedStatement[] = [];
+  if (cliente) {
+    stmts.push(
+      // Pedidos guloseimas
+      db.prepare('DELETE FROM itens_pedido WHERE pedido_id IN (SELECT id FROM pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id),
+      // Cafe
+      db.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id IN (SELECT id FROM cafe_assinantes WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id),
+      // Loja
+      db.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM loja_parcelas WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id),
+      // Comprovantes ligados ao cliente (FK para clientes)
+      db.prepare('DELETE FROM comprovantes WHERE cliente_id = ?').bind(cliente.id),
+      // Cliente
+      db.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id),
+    );
+  }
+  stmts.push(
+    db.prepare('DELETE FROM comprovantes WHERE usuario_id = ? OR trigrama = ? COLLATE NOCASE').bind(String(userId), trigrama),
+    db.prepare('DELETE FROM notificacoes WHERE trigrama = ? COLLATE NOCASE').bind(trigrama),
+    // Usuario
+    db.prepare('DELETE FROM usuarios WHERE id = ?').bind(userId),
+  );
+  await db.batch(stmts);
+
+  // Arquivos no R2 (best-effort, depois que o banco já foi limpo)
+  if (user.foto_url) {
+    await c.env.IMAGES.delete(user.foto_url.replace('/api/images/', '')).catch(() => {});
+  }
+  for (const comp of comps) {
+    if (comp.imagem_key) await c.env.IMAGES.delete(comp.imagem_key).catch(() => {});
+  }
 
   return c.json({ ok: true });
 });
@@ -716,6 +814,8 @@ usuarios.put('/admin/:id/senha', authMiddleware, async (c) => {
     .bind(senhaHash, id).run();
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  // Nunca grava a senha no log
+  await audit(c, 'resetar_senha_usuario', 'usuarios', id, null, { senha_resetada: true });
   return c.json({ ok: true });
 });
 
@@ -728,11 +828,15 @@ usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
 
   const salaCafe = derivarSalaCafe(categoria as Categoria);
 
+  const antes = await c.env.DB.prepare('SELECT trigrama, categoria, sala_cafe FROM usuarios WHERE id = ?').bind(id).first();
+  if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
+
   const result = await c.env.DB.prepare(
     'UPDATE usuarios SET categoria = ?, sala_cafe = ? WHERE id = ?'
   ).bind(categoria, salaCafe, id).run();
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  await audit(c, 'alterar_categoria_usuario', 'usuarios', id, antes, { categoria, sala_cafe: salaCafe });
   return c.json({ ok: true, categoria, sala_cafe: salaCafe });
 });
 
@@ -745,11 +849,15 @@ usuarios.put('/admin/:id/fiado', authMiddleware, async (c) => {
     return c.json({ error: 'permite_fiado deve ser 0 ou 1' }, 400);
   }
 
+  const antes = await c.env.DB.prepare('SELECT trigrama, permite_fiado FROM usuarios WHERE id = ?').bind(id).first();
+  if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
+
   const result = await c.env.DB.prepare(
     'UPDATE usuarios SET permite_fiado = ? WHERE id = ?'
   ).bind(permite_fiado, id).run();
 
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  await audit(c, 'alterar_fiado_usuario', 'usuarios', id, antes, { permite_fiado });
   return c.json({ ok: true, permite_fiado });
 });
 
@@ -813,16 +921,20 @@ usuarios.get('/admin/por-trigrama/:trigrama', authMiddleware, async (c) => {
 // Admin: desativar usuario
 usuarios.put('/admin/:id/desativar', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  const antes = await c.env.DB.prepare('SELECT trigrama, ativo FROM usuarios WHERE id = ?').bind(id).first();
   const result = await c.env.DB.prepare('UPDATE usuarios SET ativo = 0 WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  await audit(c, 'desativar_usuario', 'usuarios', id, antes, { ativo: 0 });
   return c.json({ ok: true });
 });
 
 // Admin: ativar usuario
 usuarios.put('/admin/:id/ativar', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  const antes = await c.env.DB.prepare('SELECT trigrama, ativo FROM usuarios WHERE id = ?').bind(id).first();
   const result = await c.env.DB.prepare('UPDATE usuarios SET ativo = 1 WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  await audit(c, 'ativar_usuario', 'usuarios', id, antes, { ativo: 1 });
   return c.json({ ok: true });
 });
 
@@ -1053,30 +1165,24 @@ usuarios.delete('/admin/:id', authMiddleware, superAdminMiddleware, async (c) =>
     'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
   ).bind(user.trigrama).first<{ id: string }>();
 
+  // Atômico: apaga dados do cliente vinculado e a conta juntos. Comprovantes ficam (evidência financeira), sem o vínculo.
+  const db = c.env.DB;
+  const ops: D1PreparedStatement[] = [];
   if (cliente) {
-    const { results: pedidos } = await c.env.DB.prepare('SELECT id FROM pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const p of pedidos) {
-      await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(p.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id).run();
-
-    const { results: assinantes } = await c.env.DB.prepare('SELECT id FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const a of assinantes) {
-      await c.env.DB.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id = ?').bind(a.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id).run();
-
-    const { results: lojaPedidos } = await c.env.DB.prepare('SELECT id FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).all<{ id: string }>();
-    for (const p of lojaPedidos) {
-      await c.env.DB.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id = ?').bind(p.id).run();
-      await c.env.DB.prepare('DELETE FROM loja_parcelas WHERE pedido_id = ?').bind(p.id).run();
-    }
-    await c.env.DB.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id).run();
-
-    await c.env.DB.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id).run();
+    ops.push(
+      db.prepare('DELETE FROM itens_pedido WHERE pedido_id IN (SELECT id FROM pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM pedidos WHERE cliente_id = ?').bind(cliente.id),
+      db.prepare('DELETE FROM cafe_pagamentos WHERE assinante_id IN (SELECT id FROM cafe_assinantes WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM cafe_assinantes WHERE cliente_id = ?').bind(cliente.id),
+      db.prepare('DELETE FROM loja_itens_pedido WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM loja_parcelas WHERE pedido_id IN (SELECT id FROM loja_pedidos WHERE cliente_id = ?)').bind(cliente.id),
+      db.prepare('DELETE FROM loja_pedidos WHERE cliente_id = ?').bind(cliente.id),
+      db.prepare('UPDATE comprovantes SET cliente_id = NULL WHERE cliente_id = ?').bind(cliente.id),
+      db.prepare('DELETE FROM clientes WHERE id = ?').bind(cliente.id),
+    );
   }
-
-  await c.env.DB.prepare('DELETE FROM usuarios WHERE id = ?').bind(id).run();
+  ops.push(db.prepare('DELETE FROM usuarios WHERE id = ?').bind(id));
+  await db.batch(ops);
 
   await audit(c, 'excluir_usuario', 'usuarios', String(id), { trigrama: user.trigrama, email: user.email }, null);
   return c.json({ ok: true });

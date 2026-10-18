@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { AppLayout } from '../../../components/AppLayout';
 import { Button } from '../../../components/ui/Button';
 import { PageHeader } from '../../../components/ui/PageHeader';
@@ -8,6 +8,13 @@ import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useToast } from '../../../hooks/useToast';
+import { Icon } from '../../../components/ui/Icon';
+import { Card } from '../../../components/ui/Card';
+import { Loading } from '../../../components/ui/Loading';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Badge } from '../../../components/ui/Badge';
+
+const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -72,6 +79,7 @@ interface LojaProduto {
 export function LojaProdutos() {
   const [produtos, setProdutos] = useState<LojaProduto[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
+  const fecharModal = useCallback(() => setModalAberto(false), []);
   const [editando, setEditando] = useState<LojaProduto | null>(null);
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -87,7 +95,15 @@ export function LojaProdutos() {
   const confirmar = useConfirm();
   const { showToast } = useToast();
 
-  const carregar = () => api.get<LojaProduto[]>('/api/loja/admin/produtos').then(setProdutos);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const carregar = () => {
+    setErro('');
+    return api.get<LojaProduto[]>('/api/loja/admin/produtos')
+      .then(setProdutos)
+      .catch((e: any) => setErro(e?.message || 'Erro ao carregar produtos'))
+      .finally(() => setCarregando(false));
+  };
   useEffect(() => { carregar(); }, []);
 
   const abrirNovo = () => {
@@ -186,180 +202,208 @@ export function LojaProdutos() {
 
   return (
     <AppLayout>
-      <PageHeader title="PRODUTOS - LOJA" right={<Button size="sm" onClick={abrirNovo}>+ Adicionar</Button>} />
+      <PageHeader
+        title="Produtos da loja"
+        subtitle="Cadastre produtos, fotos, tamanhos e estoque."
+        right={<Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo produto</Button>}
+      />
 
+      {erro ? (
+        <Card className="text-center py-10">
+          <p className="text-escarlate text-sm mb-4">{erro}</p>
+          <Button size="sm" onClick={() => { setCarregando(true); carregar(); }}><Icon name="refresh" size={16} /> Tentar de novo</Button>
+        </Card>
+      ) : carregando ? (
+        <Loading label="Carregando produtos..." />
+      ) : produtos.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="tag" size={24} />}
+            message="Nenhum produto cadastrado"
+            hint="Cadastre o primeiro produto para ele aparecer na loja."
+            action={<Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo produto</Button>}
+          />
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {produtos.map((p) => (
-          <div key={p.id} className="bg-fundo-card rounded-xl overflow-hidden border border-borda">
+          <div key={p.id} className={`bg-white rounded-2xl overflow-hidden border border-borda shadow-sm flex flex-col ${p.disponivel ? '' : 'opacity-75'}`}>
             <div className="aspect-video bg-fundo relative">
               {p.imagens?.length > 0 ? (
                 <img src={resolveImg(p.imagens[0].url)!} alt={p.nome} className="w-full h-full object-cover" />
               ) : resolveImg(p.imagem_url) ? (
                 <img src={resolveImg(p.imagem_url)!} alt={p.nome} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-texto-fraco/30">
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <div className="w-full h-full flex items-center justify-center text-texto-fraco/40">
+                  <Icon name="tag" size={40} />
                 </div>
               )}
-              <div className="absolute top-2 right-2">
-                <Toggle checked={!!p.disponivel} onChange={() => toggleDisponivel(p)} />
-              </div>
               {p.imagens?.length > 1 && (
-                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
+                <div className="absolute bottom-2 left-2 bg-noite/70 text-white text-xs px-2 py-0.5 rounded-full">
                   {p.imagens.length} fotos
                 </div>
               )}
             </div>
-            <div className="bg-azul p-3">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-sm text-white">{p.nome}</h3>
-                <span className="text-white/90 font-bold">R$ {p.preco.toFixed(2)}</span>
+            <div className="p-4 flex-1 flex flex-col">
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h3 className="font-semibold text-noite min-w-0 break-words">{p.nome}</h3>
+                <span className="font-display text-xl text-dourado tracking-wide leading-none shrink-0">{brl(p.preco)}</span>
               </div>
-              {p.descricao && <p className="text-xs text-white/60">{p.descricao}</p>}
-            </div>
-            <div className="p-3">
+              {p.descricao && <p className="text-sm text-texto-fraco mb-2 break-words">{p.descricao}</p>}
+
+              <div className="flex items-center justify-between gap-2 bg-fundo rounded-xl px-3 py-2 my-2">
+                <span className="text-sm">{p.disponivel ? <Badge variant="success">À venda</Badge> : <Badge variant="neutral">Fora da loja</Badge>}</span>
+                <label className="flex items-center gap-2 text-xs text-texto-fraco">
+                  <span className="sr-only">Disponível na loja: {p.nome}</span>
+                  <Toggle checked={!!p.disponivel} onChange={() => toggleDisponivel(p)} />
+                </label>
+              </div>
+
               {p.variacoes?.length > 0 ? (
-                <div className="space-y-1 mb-3">
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {ordenarVariacoes(p.variacoes).map((v, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-texto font-medium">{v.tamanho || ''}</span>
-                        {v.cor && <span className="text-texto-fraco">({v.cor})</span>}
-                        {!v.tamanho && !v.cor && <span className="text-texto">{v.nome}</span>}
-                      </div>
-                      <span className={`font-medium ${v.estoque <= 0 ? 'text-vermelho' : v.estoque <= 3 ? 'text-amber-500' : 'text-verde'}`}>
-                        Est: {v.estoque}
-                      </span>
-                    </div>
+                    <span key={i} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border ${
+                      v.estoque <= 0 ? 'bg-red-50 border-red-200 text-red-700' : v.estoque <= 3 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-green-50 border-green-200 text-verde-escuro'
+                    }`}>
+                      <span className="font-medium">{v.tamanho || (!v.cor ? v.nome : '')}</span>
+                      {v.cor && <span>{v.tamanho ? `(${v.cor})` : v.cor}</span>}
+                      <span>· {v.estoque}</span>
+                    </span>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-texto-fraco mb-3">Sem variações</p>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-texto-fraco">Total: {estoqueTotal(p)} un.</span>
+              <div className="mt-auto flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-borda">
+                <span className="text-xs text-texto-fraco">Estoque total: <strong className="text-texto">{estoqueTotal(p)}</strong> un.</span>
                 <div className="flex gap-2">
-                  <Button variant="chip-primary" size="xs" onClick={() => abrirEditar(p)}>Editar</Button>
-                  <Button variant="chip-danger" size="xs" onClick={() => excluir(p)}>Excluir</Button>
+                  <Button variant="chip-primary" size="sm" onClick={() => abrirEditar(p)}><Icon name="pencil" size={15} /> Editar</Button>
+                  <Button variant="chip-danger" size="sm" onClick={() => excluir(p)} aria-label={`Excluir ${p.nome}`}><Icon name="trash" size={15} /></Button>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
-
-      {produtos.length === 0 && (
-        <div className="text-center py-12 text-gray-400">Nenhum produto cadastrado</div>
       )}
 
-      <Modal open={modalAberto} onClose={() => setModalAberto(false)} title={editando ? 'Editar Produto' : 'Novo Produto'}>
+      <Modal open={modalAberto} onClose={fecharModal} title={editando ? 'Editar produto' : 'Novo produto'} size="lg">
         <form onSubmit={salvar} className="space-y-4">
           {/* Upload de imagens (até 3) */}
           <div>
-            <label className="block text-sm font-medium mb-2">Fotos do produto (até 3)</label>
+            <span className="block text-sm font-medium mb-2">Fotos do produto (até 3)</span>
             <div className="flex gap-2 flex-wrap">
               {imagens.map((img, i) => (
                 <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-borda">
                   <img src={img.preview} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removerImagem(i)}
-                    className="absolute top-1 right-1 w-5 h-5 bg-vermelho text-white rounded-full flex items-center justify-center text-xs">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  <button type="button" onClick={() => removerImagem(i)} aria-label={`Remover foto ${i + 1}`}
+                    className="absolute top-1 right-1 w-8 h-8 bg-escarlate text-white rounded-full flex items-center justify-center">
+                    <Icon name="close" size={14} />
                   </button>
                 </div>
               ))}
               {imagens.length < 3 && (
-                <div
+                <button
+                  type="button"
                   onClick={() => !uploading && fileRef.current?.click()}
-                  className="w-24 h-24 rounded-xl bg-fundo border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-azul transition-colors"
+                  disabled={uploading}
+                  className="w-24 h-24 rounded-xl bg-fundo border-2 border-dashed border-borda flex flex-col items-center justify-center gap-1 text-texto-fraco hover:border-azul hover:text-azul transition-colors"
                 >
                   {uploading ? (
-                    <div className="text-[10px] text-texto-fraco animate-pulse">Enviando...</div>
+                    <span className="text-xs">Enviando...</span>
                   ) : (
-                    <div className="text-center">
-                      <svg className="w-6 h-6 mx-auto text-texto-fraco/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>
-                      <span className="text-[10px] text-texto-fraco">Foto</span>
-                    </div>
+                    <>
+                      <Icon name="upload" size={20} />
+                      <span className="text-xs">Adicionar foto</span>
+                    </>
                   )}
-                </div>
+                </button>
               )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            <p className="text-xs text-texto-fraco mt-1">A primeira foto é a capa do produto.</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Descrição</label>
-            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} className={inputClass} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-              <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} className={inputClass} required />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label htmlFor="lp-nome" className="block text-sm font-medium mb-1.5">Nome</label>
+              <input id="lp-nome" value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="lp-desc" className="block text-sm font-medium mb-1.5">Descrição</label>
+              <input id="lp-desc" value={descricao} onChange={(e) => setDescricao(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Ordem</label>
-              <input type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className={inputClass} />
+              <label htmlFor="lp-preco" className="block text-sm font-medium mb-1.5">Preço (R$)</label>
+              <input id="lp-preco" type="number" step="0.01" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} className={inputClass} required />
+            </div>
+            <div>
+              <label htmlFor="lp-ordem" className="block text-sm font-medium mb-1.5">Ordem na vitrine</label>
+              <input id="lp-ordem" type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {/* Variações */}
           <div>
-            <label className="block text-sm font-medium mb-2">Variações</label>
+            <span className="block text-sm font-medium mb-2">Tamanhos e cores</span>
             {variacoes.length > 0 && (
               <div className="space-y-2 mb-3">
                 {variacoes.map((v, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-fundo rounded-lg px-3 py-2">
-                    <div className="flex-1 flex items-center gap-1.5 text-sm">
-                      {v.tamanho && <span className="bg-azul text-white px-2 py-0.5 rounded text-xs font-bold">{v.tamanho}</span>}
+                  <div key={i} className="flex items-center gap-2 bg-fundo rounded-xl px-3 py-2">
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5 text-sm flex-wrap">
+                      {v.tamanho && <span className="bg-noite text-white px-2 py-0.5 rounded text-xs font-bold">{v.tamanho}</span>}
                       {v.cor && <span className="text-texto-fraco text-xs">{v.cor}</span>}
                       {!v.tamanho && !v.cor && <span className="text-texto text-xs">{v.nome}</span>}
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={v.estoque}
-                      onChange={(e) => atualizarEstoqueVariacao(i, parseInt(e.target.value) || 0)}
-                      className="w-16 bg-white border border-borda rounded-lg px-2 py-1 text-sm text-center"
-                      placeholder="Est."
-                    />
-                    <button type="button" onClick={() => removerVariacao(i)} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-vermelho">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <label className="flex items-center gap-1.5 text-xs text-texto-fraco">
+                      Estoque
+                      <input
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={v.estoque}
+                        onChange={(e) => atualizarEstoqueVariacao(i, parseInt(e.target.value) || 0)}
+                        className="w-16 min-h-[40px] bg-white border border-borda rounded-lg px-2 text-sm text-center text-texto"
+                      />
+                    </label>
+                    <button type="button" onClick={() => removerVariacao(i)} aria-label={`Remover variação ${v.nome}`}
+                      className="w-10 h-10 shrink-0 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-escarlate">
+                      <Icon name="trash" size={16} />
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
               <input
                 value={novaTamanho}
+                aria-label="Tamanho da nova variação"
                 onChange={(e) => setNovaTamanho(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), adicionarVariacao())}
                 placeholder="Tamanho (PP, P, M...)"
-                className="flex-1 bg-white border border-borda rounded-lg px-3 py-2 text-sm"
+                className={inputClass}
               />
               <input
                 value={novaCor}
+                aria-label="Cor da nova variação"
                 onChange={(e) => setNovaCor(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), adicionarVariacao())}
                 placeholder="Cor (opcional)"
-                className="flex-1 bg-white border border-borda rounded-lg px-3 py-2 text-sm"
+                className={inputClass}
               />
-              <Button type="button" size="sm" onClick={adicionarVariacao}>+</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={adicionarVariacao}><Icon name="plus" size={16} /> Adicionar</Button>
             </div>
-            <p className="text-xs text-texto-fraco mt-1">Tamanhos são ordenados: PP, P, M, G, GG, XG</p>
+            <p className="text-xs text-texto-fraco mt-1">Os tamanhos ficam em ordem: PP, P, M, G, GG, XG.</p>
           </div>
 
           {/* Disponível */}
           <div className="flex items-center justify-between bg-fundo rounded-xl px-4 py-3">
-            <span className="text-sm font-medium">{disponivel ? 'Disponível' : 'Indisponível'}</span>
+            <span className="text-sm font-medium">{disponivel ? 'À venda na loja' : 'Fora da loja'}</span>
             <Toggle checked={disponivel} onChange={setDisponivel} />
           </div>
 
           <Button type="submit" className="w-full" disabled={uploading}>
-            {uploading ? 'Aguarde o upload...' : editando ? 'Salvar' : 'Criar'}
+            {uploading ? 'Aguarde o envio da foto...' : editando ? 'Salvar alterações' : 'Criar produto'}
           </Button>
         </form>
       </Modal>

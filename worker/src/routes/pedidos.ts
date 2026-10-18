@@ -3,33 +3,27 @@ import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { visitorActiveCheck } from '../middleware/visitorActiveCheck';
 import { podeFazerFiado } from '../lib/fiado';
+import { resolverClienteDoPedido } from '../lib/cliente';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 import type { Produto } from '../db/queries';
-import type { Context, Next } from 'hono';
-
-async function checkVisitanteSeLogado(c: Context<AppType>, next: Next) {
-  const header = c.req.header('Authorization');
-  if (!header?.startsWith('Bearer ')) return next();
-  return userAuthMiddleware(c, async () => {
-    await visitorActiveCheck(c, next);
-  });
-}
 
 const pedidos = new Hono<AppType>();
 
-// Público: criar pedido (bloqueia se visitante expirou)
-pedidos.post('/', checkVisitanteSeLogado, async (c) => {
-  const { nome_guerra, itens, metodo, whatsapp, visitante, esquadrao_origem } = await c.req.json<{
-    nome_guerra: string;
+// Auth: criar pedido (o checkout da cantina exige login; bloqueia visitante expirado/pausado)
+pedidos.post('/', userAuthMiddleware, visitorActiveCheck, async (c) => {
+  // nome_guerra/whatsapp/visitante do body são ignorados: o dono é o usuário do token
+  const { itens, metodo } = await c.req.json<{
+    nome_guerra?: string;
     itens: { produto_id: string; quantidade: number }[];
     metodo: 'pix' | 'fiado' | 'dinheiro';
-    whatsapp?: string;
-    visitante?: boolean;
-    esquadrao_origem?: string;
   }>();
 
-  if (!nome_guerra || !itens?.length || !metodo) {
-    return c.json({ error: 'nome_guerra, itens e metodo são obrigatórios' }, 400);
+  if (!itens?.length || !metodo) {
+    return c.json({ error: 'itens e metodo são obrigatórios' }, 400);
+  }
+  if (!['pix', 'fiado', 'dinheiro'].includes(metodo)) {
+    return c.json({ error: 'Método de pagamento inválido' }, 400);
   }
 
   if (itens.some(i => !Number.isInteger(i.quantidade) || i.quantidade < 1)) {
@@ -40,27 +34,10 @@ pedidos.post('/', checkVisitanteSeLogado, async (c) => {
   const fiadoCheck = await podeFazerFiado(c, metodo);
   if (!fiadoCheck.ok) return c.json({ error: fiadoCheck.erro }, 403);
 
-  // Buscar ou criar cliente
-  let cliente = await c.env.DB.prepare(
-    'SELECT id, ativo FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(nome_guerra).first<{ id: string; ativo: number }>();
-
-  if (cliente && !cliente.ativo) {
-    return c.json({ error: 'Militar bloqueado. Procure o responsável da cantina para regularizar sua situação.' }, 403);
-  }
-
-  if (!cliente) {
-    const { results } = await c.env.DB.prepare(
-      'INSERT INTO clientes (nome_guerra, whatsapp, visitante, esquadrao_origem) VALUES (?, ?, ?, ?) RETURNING id'
-    ).bind(nome_guerra, whatsapp || null, visitante ? 1 : 0, esquadrao_origem || null).all<{ id: string }>();
-    cliente = { ...results[0], ativo: 1 };
-  } else if (whatsapp) {
-    await c.env.DB.prepare('UPDATE clientes SET whatsapp = ? WHERE id = ?').bind(whatsapp, cliente.id).run();
-  }
-
-  if (cliente && visitante) {
-    await c.env.DB.prepare('UPDATE clientes SET visitante = 1, esquadrao_origem = ? WHERE id = ?').bind(esquadrao_origem || null, cliente.id).run();
-  }
+  // Buscar ou criar cliente (sempre o do usuário logado)
+  const resolvido = await resolverClienteDoPedido(c, {}, 'Militar bloqueado. Procure o responsável da cantina para regularizar sua situação.');
+  if (!resolvido.ok) return c.json({ error: resolvido.erro }, resolvido.status);
+  const cliente = resolvido.cliente;
 
   // Buscar produtos e calcular total
   const produtoIds = itens.map(i => i.produto_id);
@@ -225,7 +202,8 @@ pedidos.put('/:id/pagar', authMiddleware, async (c) => {
   ).bind(id).all();
 
   if (!results.length) return c.json({ error: 'Pedido não encontrado ou já pago' }, 404);
-  const pedidoPago = results[0];
+  const pedidoPago = results[0] as { id: string; cliente_id: string; total: number; status: string };
+  await audit(c, 'pagar_pedido', 'pedidos', id, null, { total: pedidoPago.total, cliente_id: pedidoPago.cliente_id });
 
   // NOTIFICAÇÃO AUTOMÁTICA
   try {
@@ -248,10 +226,17 @@ pedidos.put('/:id/pagar', authMiddleware, async (c) => {
 // Admin: excluir pedido
 pedidos.delete('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
-  await c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(id).run();
-  const result = await c.env.DB.prepare('DELETE FROM pedidos WHERE id = ?').bind(id).run();
+  const antes = await c.env.DB.prepare(
+    'SELECT p.id, p.cliente_id, cl.nome_guerra, p.total, p.status, p.metodo_pagamento, p.created_at FROM pedidos p LEFT JOIN clientes cl ON cl.id = p.cliente_id WHERE p.id = ?'
+  ).bind(id).first();
+  if (!antes) return c.json({ error: 'Pedido não encontrado' }, 404);
 
-  if (!result.meta.changes) return c.json({ error: 'Pedido não encontrado' }, 404);
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM itens_pedido WHERE pedido_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM pedidos WHERE id = ?').bind(id),
+  ]);
+
+  await audit(c, 'excluir_pedido', 'pedidos', id, antes, null);
   return c.json({ ok: true });
 });
 

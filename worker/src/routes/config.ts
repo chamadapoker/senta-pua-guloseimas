@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { audit } from '../lib/audit';
 import type { AppType } from '../index';
 
 const config = new Hono<AppType>();
@@ -38,16 +39,31 @@ function sanitizarCidadePix(valor: string): string {
 config.put('/', authMiddleware, async (c) => {
   const body = await c.req.json<Record<string, string>>();
 
+  // Valores atuais, para registrar só o que mudou (antes/depois)
+  const { results: atuais } = await c.env.DB.prepare(
+    'SELECT chave, valor FROM configuracoes'
+  ).all<{ chave: string; valor: string }>();
+  const mapaAtual = new Map(atuais.map(r => [r.chave, r.valor]));
+
+  const antes: Record<string, string | null> = {};
+  const depois: Record<string, string> = {};
+
   const batch = Object.entries(body).map(([chave, valor]) => {
     let v = valor;
     if (/^pix_.*_nome$/.test(chave)) v = sanitizarNomePix(valor);
     else if (/^pix_.*_cidade$/.test(chave)) v = sanitizarCidadePix(valor);
+    const anterior = mapaAtual.get(chave) ?? null;
+    if (anterior !== v) { antes[chave] = anterior; depois[chave] = v; }
     return c.env.DB.prepare(
       'INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor = ?'
     ).bind(chave, v, v);
   });
 
   if (batch.length) await c.env.DB.batch(batch);
+  const alteradas = Object.keys(depois);
+  if (alteradas.length) {
+    await audit(c, 'alterar_config', 'configuracoes', alteradas.join(','), antes, depois);
+  }
   return c.json({ ok: true });
 });
 

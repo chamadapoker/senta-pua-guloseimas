@@ -46,3 +46,34 @@ table tbody tr:hover            { background-color: #eef1f5; }
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out forwards;
 }
+
+/* Flâmula: item ativo da navegação com a ponta em "rabo de andorinha",
+   a mesma forma da ponta da faixa do brasão */
+.flamula {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%);
+}
+.flamula-sm {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 50%, 100% 100%, 0 100%);
+}
+/* Flâmula vertical (barra mobile): ponta para baixo */
+.flamula-v {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 5px), 0 100%);
+}
+
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 10px); }
+
+/* Barras fixas de página (carrinho, fechar pedido) ficam logo acima da barra de navegação
+   mobile, que tem 60px + área segura; no desktop a barra não existe */
+.acima-nav { bottom: calc(66px + max(env(safe-area-inset-bottom), 10px)); }
+@media (min-width: 1024px) { .acima-nav { bottom: 0; } }
+
+/* Rolagem discreta dentro do menu escuro */
+.scroll-noite::-webkit-scrollbar-track { background: transparent; }
+.scroll-noite::-webkit-scrollbar-thumb { background: #222f75; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

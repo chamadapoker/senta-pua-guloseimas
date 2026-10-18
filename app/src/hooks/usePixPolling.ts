@@ -6,6 +6,8 @@ export function usePixPolling(pedidoId: string | undefined) {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [pago, setPago] = useState(false);
   const [erro, setErro] = useState(false);
+  // Parou de consultar por tempo (~10 min) sem confirmação
+  const [expirado, setExpirado] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export function usePixPolling(pedidoId: string | undefined) {
         }
         // Erro de rede transitório: continua tentando.
       }
-      if (tentativas >= MAX_TENTATIVAS) parar();
+      if (tentativas >= MAX_TENTATIVAS) { setExpirado(true); parar(); }
     };
 
     poll();
@@ -39,5 +41,5 @@ export function usePixPolling(pedidoId: string | undefined) {
     return parar;
   }, [pedidoId]);
 
-  return { pedido, pago, erro };
+  return { pedido, pago, erro, expirado };
 }

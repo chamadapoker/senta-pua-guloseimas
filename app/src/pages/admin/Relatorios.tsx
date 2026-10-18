@@ -2,8 +2,15 @@ import { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Loading } from '../../components/ui/Loading';
+import { Icon } from '../../components/ui/Icon';
+import { inputClass } from '../../components/ui/Field';
 import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
+import { dataLocal } from '../../services/periodo';
+import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -16,153 +23,188 @@ interface Relatorio {
   devedores: { nome_guerra: string; total_devido: number; pedidos: number }[];
 }
 
+const brl = (v: number) => (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const METODO: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', fiado: 'Fiado' };
+const STATUS: Record<string, string> = { pago: 'Pago', fiado: 'Fiado', pendente: 'Pendente' };
+
+function Secao({ titulo, descricao, children }: { titulo: string; descricao?: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white rounded-2xl border border-borda shadow-sm overflow-hidden min-w-0">
+      <div className="px-5 pt-5 pb-3">
+        <h2 className="text-base font-semibold text-noite">{titulo}</h2>
+        {descricao && <p className="text-xs text-texto-fraco mt-0.5">{descricao}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function Relatorios() {
-  const now = new Date();
-  const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [de, setDe] = useState(`${mesAtual}-01`);
-  const [ate, setAte] = useState(now.toISOString().split('T')[0]);
+  const hoje = dataLocal(new Date());
+  const [de, setDe] = useState(`${hoje.slice(0, 7)}-01`);
+  const [ate, setAte] = useState(hoje);
+  const { showToast } = useToast();
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
 
   const gerar = async () => {
     setLoading(true);
+    setErro('');
     try {
       const data = await api.get<Relatorio>(`/api/admin/relatorio?de=${de}&ate=${ate}`);
       setRelatorio(data);
-    } catch { alert('Erro ao gerar relatório'); }
+    } catch (e: any) {
+      const msg = e?.message || 'Erro ao gerar relatório';
+      setErro(msg);
+      showToast(msg, 'error');
+    }
     finally { setLoading(false); }
   };
 
   const chartData = relatorio?.por_dia.map(d => ({
-    data: new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    data: new Date(d.data + 'T12:00:00Z').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }),
     total: d.total,
     pedidos: d.pedidos,
   })) || [];
 
+  const fmtData = (d: string) => d.split('-').reverse().join('/');
+  const invertido = !!(de && ate && de > ate);
+
   return (
     <AppLayout>
-      <PageHeader title="RELATÓRIOS" />
+      <PageHeader title="Relatório de vendas" subtitle="Vendas, recebimentos e dívidas da cantina em um período." />
 
-      <div className="bg-white rounded-xl border border-borda shadow-sm p-5 mb-6">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium text-texto-fraco mb-1">De</label>
-            <input type="date" value={de} onChange={e => setDe(e.target.value)}
-              className="bg-white border border-borda rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-texto-fraco mb-1">Até</label>
-            <input type="date" value={ate} onChange={e => setAte(e.target.value)}
-              className="bg-white border border-borda rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <Button onClick={gerar} disabled={loading}>{loading ? 'Gerando...' : 'Gerar Relatório'}</Button>
+      <form
+        onSubmit={(e) => { e.preventDefault(); gerar(); }}
+        className="bg-white rounded-2xl border border-borda shadow-sm p-4 sm:p-5 mb-6 grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:items-end"
+      >
+        <div className="min-w-0">
+          <label htmlFor="rel-de" className="block text-sm font-medium mb-1.5">De</label>
+          <input id="rel-de" type="date" value={de} max={ate || undefined} onChange={e => setDe(e.target.value)} className={`${inputClass} min-h-[44px]`} />
         </div>
-      </div>
+        <div className="min-w-0">
+          <label htmlFor="rel-ate" className="block text-sm font-medium mb-1.5">Até</label>
+          <input id="rel-ate" type="date" value={ate} min={de || undefined} onChange={e => setAte(e.target.value)} className={`${inputClass} min-h-[44px]`} />
+        </div>
+        <Button type="submit" className="col-span-2 sm:col-span-1" disabled={loading || invertido}>
+          <Icon name="chart" size={16} /> {loading ? 'Gerando...' : 'Gerar relatório'}
+        </Button>
+        {invertido && <p className="col-span-2 text-xs text-escarlate sm:basis-full">A data inicial é depois da final.</p>}
+      </form>
 
-      {relatorio && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Resumo */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Total Vendido" value={`R$ ${relatorio.resumo.total_vendido.toFixed(2)}`} />
-            <StatCard label="Recebido" value={`R$ ${relatorio.resumo.total_recebido.toFixed(2)}`} color="text-verde" />
-            <StatCard label="Pendente/Fiado" value={`R$ ${relatorio.resumo.total_pendente.toFixed(2)}`} color="text-vermelho" />
-            <StatCard label="Pedidos" value={String(relatorio.resumo.total_pedidos)} color="text-azul" />
+      {loading && !relatorio ? (
+        <Loading label="Gerando relatório..." />
+      ) : erro && !relatorio ? (
+        <Card className="text-center py-8">
+          <p className="text-[15px] font-medium text-texto">Não foi possível gerar o relatório.</p>
+          <p className="text-sm text-texto-fraco mt-1">{erro}</p>
+          <Button variant="primary" size="sm" className="mt-4" onClick={gerar}>
+            <Icon name="refresh" size={16} /> Tentar de novo
+          </Button>
+        </Card>
+      ) : !relatorio ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="chart" size={26} />}
+            message="Escolha o período e gere o relatório"
+            hint="Por padrão, o período é do primeiro dia do mês até hoje."
+          />
+        </Card>
+      ) : (
+        <div className={`space-y-6 ${loading ? 'opacity-60' : ''}`}>
+          <p className="text-sm text-texto-fraco">
+            Período de <strong className="text-texto">{fmtData(relatorio.periodo?.de || de)}</strong> a <strong className="text-texto">{fmtData(relatorio.periodo?.ate || ate)}</strong>
+          </p>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <StatCard label="Total vendido" value={brl(relatorio.resumo.total_vendido)} color="text-noite" icon={<Icon name="cart" size={22} />} />
+            <StatCard label="Recebido" value={brl(relatorio.resumo.total_recebido)} color="text-verde" icon={<Icon name="check" size={22} />} />
+            <StatCard label="Pendente ou fiado" value={brl(relatorio.resumo.total_pendente)} color={relatorio.resumo.total_pendente > 0 ? 'text-escarlate' : 'text-verde'} icon={<Icon name="clock" size={22} />} />
+            <StatCard label="Pedidos" value={String(relatorio.resumo.total_pedidos)} color="text-azul" icon={<Icon name="bag" size={22} />} />
           </div>
 
-          {/* Gráfico vendas por dia */}
           {chartData.length > 0 && (
-            <div className="bg-white rounded-xl p-5 border border-borda shadow-sm">
-              <h2 className="text-sm font-medium text-texto-fraco uppercase tracking-wider mb-4">Vendas por Dia</h2>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={chartData} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e5eb" vertical={false} />
-                  <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-                  <Tooltip
-                    formatter={(v: number, name: string) => [`R$ ${v.toFixed(2)}`, name === 'total' ? 'Vendas' : 'Pedidos']}
-                    contentStyle={{ background: '#1d3fa0', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', padding: '8px 14px' }}
-                    labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="total" fill="#1d3fa0" radius={[8, 8, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <Secao titulo="Vendas por dia" descricao="Total vendido em cada dia do período.">
+              <div className="px-2 sm:px-4 pb-4">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e5eb" vertical={false} />
+                    <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} width={48} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(v: number, name: string) => [name === 'total' ? brl(v) : String(v), name === 'total' ? 'Vendas' : 'Pedidos']}
+                      contentStyle={{ background: '#0d1640', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', padding: '8px 14px' }}
+                      labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}
+                      itemStyle={{ color: '#fff' }}
+                      cursor={{ fill: 'rgba(29,63,160,0.06)' }}
+                    />
+                    <Bar dataKey="total" fill="#1d3fa0" radius={[8, 8, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Secao>
           )}
 
-          {/* Top Produtos */}
-          {relatorio.top_produtos.length > 0 && (
-            <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-              <div className="bg-azul px-5 py-3">
-                <h2 className="text-sm font-medium text-white uppercase tracking-wider">Top Produtos</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-borda">
-                      <th className="px-4 py-2 text-left text-xs text-texto-fraco">#</th>
-                      <th className="px-4 py-2 text-left text-xs text-texto-fraco">Produto</th>
-                      <th className="px-4 py-2 text-right text-xs text-texto-fraco">Qtd</th>
-                      <th className="px-4 py-2 text-right text-xs text-texto-fraco">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relatorio.top_produtos.map((p, i) => (
-                      <tr key={p.nome_produto} className="border-b border-borda/50 hover:bg-fundo">
-                        <td className="px-4 py-2 text-texto-fraco">{i + 1}</td>
-                        <td className="px-4 py-2 font-medium">{p.nome_produto}</td>
-                        <td className="px-4 py-2 text-right">{p.qtd_vendida}</td>
-                        <td className="px-4 py-2 text-right font-bold text-azul">R$ {p.total_vendido.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Secao titulo="Produtos mais vendidos" descricao="Ordenados pelo valor vendido.">
+              {relatorio.top_produtos.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-texto-fraco">Nenhum produto vendido no período.</p>
+              ) : (
+                <ol className="divide-y divide-borda border-t border-borda">
+                  {relatorio.top_produtos.map((p, i) => (
+                    <li key={p.nome_produto} className="flex items-center gap-3 px-5 py-3">
+                      <span className="w-6 text-sm text-texto-fraco tabular-nums shrink-0">{i + 1}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium text-texto truncate">{p.nome_produto}</span>
+                        <span className="block text-xs text-texto-fraco">{p.qtd_vendida} unidade{p.qtd_vendida === 1 ? '' : 's'}</span>
+                      </span>
+                      <span className="font-display text-xl leading-none tracking-wide text-dourado shrink-0">{brl(p.total_vendido)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Secao>
 
-          {/* Por método */}
-          {relatorio.por_metodo.length > 0 && (
-            <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-              <div className="bg-azul px-5 py-3">
-                <h2 className="text-sm font-medium text-white uppercase tracking-wider">Por Método / Status</h2>
-              </div>
-              <div className="p-4 space-y-2">
-                {relatorio.por_metodo.map((m, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-fundo">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium capitalize">{m.metodo_pagamento}</span>
-                      <Badge variant={m.status === 'pago' ? 'success' : m.status === 'fiado' ? 'danger' : 'warning'}>{m.status}</Badge>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold">R$ {m.valor.toFixed(2)}</span>
-                      <span className="text-xs text-texto-fraco ml-2">({m.qtd}x)</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            <Secao titulo="Por forma de pagamento" descricao="Quanto entrou em cada forma e situação.">
+              {relatorio.por_metodo.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-texto-fraco">Sem pedidos no período.</p>
+              ) : (
+                <ul className="divide-y divide-borda border-t border-borda">
+                  {relatorio.por_metodo.map((m, i) => (
+                    <li key={i} className="flex items-center justify-between gap-3 px-5 py-3">
+                      <span className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <span className="text-sm font-medium">{METODO[m.metodo_pagamento] ?? m.metodo_pagamento}</span>
+                        <Badge variant={m.status === 'pago' ? 'success' : m.status === 'fiado' ? 'danger' : 'warning'}>{STATUS[m.status] ?? m.status}</Badge>
+                      </span>
+                      <span className="text-right shrink-0">
+                        <span className="block text-sm font-semibold tabular-nums">{brl(m.valor)}</span>
+                        <span className="block text-xs text-texto-fraco">{m.qtd} pedido{m.qtd === 1 ? '' : 's'}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Secao>
+          </div>
 
-          {/* Devedores no período */}
-          {relatorio.devedores.length > 0 && (
-            <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-              <div className="bg-vermelho px-5 py-3">
-                <h2 className="text-sm font-medium text-white uppercase tracking-wider">Devedores no Período</h2>
-              </div>
-              <div className="p-4 space-y-1">
+          <Secao titulo="Devedores no período" descricao="Militares com pedidos não pagos dentro do período.">
+            {relatorio.devedores.length === 0 ? (
+              <p className="px-5 pb-5 text-sm text-texto-fraco">Ninguém ficou devendo neste período.</p>
+            ) : (
+              <ul className="divide-y divide-borda border-t border-borda">
                 {relatorio.devedores.map(d => (
-                  <div key={d.nome_guerra} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-fundo">
-                    <span className="font-medium">{d.nome_guerra}</span>
-                    <div>
-                      <span className="text-vermelho font-bold font-display">R$ {d.total_devido.toFixed(2)}</span>
-                      <span className="text-xs text-texto-fraco ml-2">({d.pedidos} pedido{d.pedidos > 1 ? 's' : ''})</span>
-                    </div>
-                  </div>
+                  <li key={d.nome_guerra} className="flex items-center justify-between gap-3 px-5 py-3">
+                    <span className="min-w-0">
+                      <span className="block font-medium truncate">{d.nome_guerra}</span>
+                      <span className="block text-xs text-texto-fraco">{d.pedidos} pedido{d.pedidos > 1 ? 's' : ''}</span>
+                    </span>
+                    <span className="font-display text-xl leading-none tracking-wide text-escarlate shrink-0">{brl(d.total_devido)}</span>
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
+              </ul>
+            )}
+          </Secao>
         </div>
       )}
     </AppLayout>

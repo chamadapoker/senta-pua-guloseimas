@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { inputClass } from '../../components/ui/Field';
+import { Field, inputClass } from '../../components/ui/Field';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { Menu } from '../../components/ui/Menu';
+import { Loading } from '../../components/ui/Loading';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -22,11 +25,21 @@ interface Admin {
   last_login: string | null;
 }
 
+// Datas do banco vêm em UTC sem "Z"
+function formatarAcesso(x: string | null): string {
+  if (!x) return 'Nunca acessou';
+  const d = new Date(x.replace(' ', 'T') + (x.endsWith('Z') ? '' : 'Z'));
+  if (isNaN(d.getTime())) return x;
+  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export function Admins() {
   const { admin: currentAdmin } = useAuth();
   const confirm = useConfirm();
   const { showToast } = useToast();
   const [admins, setAdmins] = useState<Admin[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarga, setErroCarga] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState<Admin | null>(null);
   const [nome, setNome] = useState('');
@@ -38,8 +51,16 @@ export function Admins() {
 
   const isSuperAdmin = currentAdmin?.role === 'super_admin';
 
-  const carregar = () => api.get<Admin[]>('/api/admins').then(setAdmins);
+  const carregar = () => {
+    setErroCarga(false);
+    return api.get<Admin[]>('/api/admins')
+      .then(setAdmins)
+      .catch(() => setErroCarga(true))
+      .finally(() => setCarregando(false));
+  };
   useEffect(() => { carregar(); }, []);
+
+  const fecharModal = useCallback(() => setModalAberto(false), []);
 
   const abrirCriar = () => {
     setEditando(null);
@@ -63,10 +84,11 @@ export function Admins() {
         if (senha) body.senha = senha;
         await api.put(`/api/admins/${editando.id}`, body);
       } else {
-        if (!senha) { setErro('Senha obrigatória'); return; }
+        if (!senha) { setErro('Informe uma senha'); return; }
         await api.post('/api/admins', { nome, email, senha, role });
       }
       setModalAberto(false);
+      showToast(editando ? 'Administrador atualizado' : 'Administrador criado', 'success');
       carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao salvar');
@@ -76,105 +98,164 @@ export function Admins() {
   };
 
   const toggleAtivo = async (a: Admin) => {
-    await api.put(`/api/admins/${a.id}`, { ativo: !a.ativo });
-    carregar();
+    const desativar = !!a.ativo;
+    const ok = await confirm({
+      title: desativar ? 'Desativar administrador' : 'Ativar administrador',
+      message: desativar
+        ? `Desativar "${a.nome}"? Ele perde o acesso ao painel até ser reativado.`
+        : `Reativar o acesso de "${a.nome}" ao painel?`,
+      confirmText: desativar ? 'Desativar' : 'Ativar',
+      danger: desativar,
+    });
+    if (!ok) return;
+    try {
+      await api.put(`/api/admins/${a.id}`, { ativo: !a.ativo });
+      showToast(desativar ? 'Administrador desativado' : 'Administrador ativado', 'success');
+      carregar();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Erro ao alterar status', 'error');
+    }
   };
 
   const excluir = async (a: Admin) => {
-    if (!(await confirm({ message: `Remover "${a.nome}"? Ação irreversível.`, confirmText: 'Excluir', danger: true }))) return;
+    if (!(await confirm({ title: 'Excluir administrador', message: `Remover "${a.nome}"? Esta ação não pode ser desfeita.`, confirmText: 'Excluir', danger: true }))) return;
     try {
       await api.delete(`/api/admins/${a.id}`);
+      showToast('Administrador removido', 'success');
       carregar();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Erro', 'error');
+      showToast(e instanceof Error ? e.message : 'Erro ao excluir', 'error');
     }
   };
+
+  const menuDe = (a: Admin) => isSuperAdmin ? (
+    <Menu label={`Ações de ${a.nome}`} items={[
+      { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(a) },
+      { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
+      a.id !== currentAdmin?.id && { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
+    ]} />
+  ) : null;
+
+  const papel = (a: Admin) => (
+    <span className="inline-flex items-center gap-2 flex-wrap">
+      <Badge variant={a.role === 'super_admin' ? 'success' : 'neutral'}>
+        {a.role === 'super_admin' ? 'Super admin' : 'Admin'}
+      </Badge>
+      {!a.ativo && <Badge variant="danger">Inativo</Badge>}
+    </span>
+  );
 
   return (
     <AppLayout>
       <BackButton to="/admin" className="mb-3" />
-      <PageHeader title="ADMINISTRADORES" right={isSuperAdmin && <Button size="sm" onClick={abrirCriar}>+ Novo Admin</Button>} />
+      <PageHeader
+        title="Administradores"
+        subtitle="Quem tem acesso ao painel e com qual papel."
+        right={isSuperAdmin && <Button size="sm" onClick={abrirCriar}><Icon name="plus" size={16} /> Novo administrador</Button>}
+      />
 
       {!isSuperAdmin && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-900">
-          Apenas super admins podem gerenciar administradores.
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-900">
+          <Icon name="info" size={18} className="shrink-0 mt-0.5" />
+          Apenas super admins podem criar, editar ou remover administradores.
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-borda overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
-          <thead>
-            <tr className="bg-azul">
-              <th className="px-3 py-2 text-left text-white font-medium">Nome</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Email</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Papel</th>
-              <th className="px-3 py-2 text-left text-white font-medium">Último acesso</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {admins.map(a => (
-              <tr key={a.id} className={a.ativo ? '' : 'opacity-50'}>
-                <td className="px-3 py-2">{a.nome}</td>
-                <td className="px-3 py-2 text-texto-fraco">{a.email}</td>
-                <td className="px-3 py-2">
-                  <Badge variant={a.role === 'super_admin' ? 'success' : 'neutral'}>
-                    {a.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                  </Badge>
-                  {!a.ativo && <span className="ml-2 text-xs text-vermelho">INATIVO</span>}
-                </td>
-                <td className="px-3 py-2 text-xs text-texto-fraco">
-                  {a.last_login ? new Date(a.last_login + 'Z').toLocaleString('pt-BR') : 'nunca'}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {isSuperAdmin && (
-                    <div className="flex justify-end">
-                      <Menu items={[
-                        { label: 'Editar', icon: 'pencil', onClick: () => abrirEditar(a) },
-                        { label: a.ativo ? 'Desativar' : 'Ativar', icon: a.ativo ? 'x' : 'check', onClick: () => toggleAtivo(a) },
-                        a.id !== currentAdmin?.id && { label: 'Excluir', icon: 'trash', danger: true, onClick: () => excluir(a) },
-                      ]} />
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {admins.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-6 text-texto-fraco">Nenhum admin cadastrado</td></tr>
-            )}
-          </tbody>
-        </table>
+      {carregando ? (
+        <Loading />
+      ) : erroCarga ? (
+        <div className="bg-white rounded-2xl border border-borda">
+          <EmptyState
+            icon={<Icon name="warning" size={24} />}
+            message="Não foi possível carregar os administradores"
+            hint="Verifique a conexão e tente outra vez."
+            action={<Button variant="ghost" size="sm" onClick={() => { setCarregando(true); carregar(); }}><Icon name="refresh" size={16} /> Tentar de novo</Button>}
+          />
         </div>
-      </div>
+      ) : admins.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-borda">
+          <EmptyState
+            icon={<Icon name="users" size={24} />}
+            message="Nenhum administrador cadastrado"
+            hint={isSuperAdmin ? 'Crie o primeiro acesso ao painel.' : undefined}
+            action={isSuperAdmin ? <Button size="sm" onClick={abrirCriar}><Icon name="plus" size={16} /> Novo administrador</Button> : undefined}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Mobile: cartões */}
+          <ul className="md:hidden space-y-2">
+            {admins.map(a => (
+              <li key={a.id} className={`bg-white rounded-2xl border border-borda shadow-sm p-4 ${a.ativo ? '' : 'opacity-70'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-noite truncate">{a.nome}</div>
+                    <div className="text-sm text-texto-fraco truncate">{a.email}</div>
+                  </div>
+                  <div className="shrink-0 -mr-1">{menuDe(a)}</div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                  {papel(a)}
+                  <span className="text-xs text-texto-fraco">Último acesso: {formatarAcesso(a.last_login)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
 
-      <Modal open={modalAberto} onClose={() => setModalAberto(false)} title={editando ? 'Editar Admin' : 'Novo Admin'}>
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl border border-borda shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-fundo-elevado border-b border-borda text-texto-fraco">
+                  <th className="px-4 py-3 text-left font-medium">Nome</th>
+                  <th className="px-4 py-3 text-left font-medium">E-mail</th>
+                  <th className="px-4 py-3 text-left font-medium">Papel</th>
+                  <th className="px-4 py-3 text-left font-medium">Último acesso</th>
+                  <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-borda">
+                {admins.map(a => (
+                  <tr key={a.id} className={a.ativo ? '' : 'opacity-60'}>
+                    <td className="px-4 py-3 font-medium text-noite">{a.nome}</td>
+                    <td className="px-4 py-3 text-texto-fraco">{a.email}</td>
+                    <td className="px-4 py-3">{papel(a)}</td>
+                    <td className="px-4 py-3 text-texto-fraco whitespace-nowrap">{formatarAcesso(a.last_login)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end">{menuDe(a)}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      <Modal open={modalAberto} onClose={fecharModal} title={editando ? 'Editar administrador' : 'Novo administrador'}>
         <form onSubmit={salvar} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nome</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={!!editando} className="w-full bg-white border border-borda rounded-lg px-3 py-2 text-texto disabled:bg-fundo disabled:text-texto-fraco" required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {editando ? 'Nova senha (deixe vazio para manter)' : 'Senha'}
-            </label>
-            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} minLength={8} className={inputClass} placeholder="Mínimo 8 caracteres" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Papel</label>
-            <select value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className={inputClass}>
+          <Field label="Nome">
+            <input aria-label="Nome" value={nome} onChange={e => setNome(e.target.value)} className={inputClass} required />
+          </Field>
+          <Field label="E-mail" hint={editando ? 'O e-mail não pode ser alterado.' : undefined}>
+            <input aria-label="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={!!editando} className={`${inputClass} disabled:bg-fundo disabled:text-texto-fraco`} required />
+          </Field>
+          <Field label={editando ? 'Nova senha' : 'Senha'} hint={editando ? 'Deixe em branco para manter a senha atual. Mínimo de 8 caracteres.' : 'Mínimo de 8 caracteres.'}>
+            <input aria-label={editando ? 'Nova senha' : 'Senha'} type="password" autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} minLength={8} className={inputClass} />
+          </Field>
+          <Field label="Papel">
+            <select aria-label="Papel" value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className={inputClass}>
               <option value="admin">Admin (uso normal)</option>
-              <option value="super_admin">Super Admin (gerencia outros admins)</option>
+              <option value="super_admin">Super admin (gerencia outros admins)</option>
             </select>
+          </Field>
+          {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">{erro}</p>}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="ghost" onClick={fecharModal}>Cancelar</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Salvando...' : editando ? 'Salvar' : 'Criar administrador'}
+            </Button>
           </div>
-          {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erro}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Salvando...' : editando ? 'Salvar' : 'Criar Admin'}
-          </Button>
         </form>
       </Modal>
     </AppLayout>

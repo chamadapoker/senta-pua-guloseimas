@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { Menu } from '../../components/ui/Menu';
+import { Modal } from '../../components/ui/Modal';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Field, inputClass } from '../../components/ui/Field';
+import { Toggle } from '../../components/ui/Toggle';
+import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
+import { dataLocal } from '../../services/periodo';
 import { Loading } from '../../components/ui/Loading';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
@@ -25,13 +32,48 @@ const CATEGORIA_LABEL: Record<Categoria, string> = {
 type FiltroStatus = 'todos' | 'ativos' | 'desativados' | 'visitantes' | 'expirados';
 type FiltroCategoria = 'todas' | 'oficial' | 'graduado' | 'praca';
 
+const FILTROS_STATUS: { id: FiltroStatus; label: string }[] = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'ativos', label: 'Ativos' },
+  { id: 'desativados', label: 'Desativados' },
+  { id: 'visitantes', label: 'Visitantes' },
+  { id: 'expirados', label: 'Visitantes expirados' },
+];
+
+const FILTROS_CATEGORIA: { id: FiltroCategoria; label: string }[] = [
+  { id: 'todas', label: 'Todas as categorias' },
+  { id: 'oficial', label: 'Oficiais' },
+  { id: 'graduado', label: 'Graduados' },
+  { id: 'praca', label: 'Praças' },
+];
+
 type EditForm = { trigrama: string; email: string; saram: string; whatsapp: string; esquadrao_origem: string; data_nascimento: string };
+
+const chipClass = (ativo: boolean) =>
+  `min-h-[40px] px-3.5 rounded-full text-sm font-medium border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-azul/40 ${
+    ativo ? 'bg-noite text-white border-noite' : 'bg-white text-texto-fraco border-borda hover:text-texto hover:border-borda-forte'
+  }`;
+
+// Situação do acesso de visitante (prazo/pausa)
+function situacaoVisitante(u: Usuario): { texto: string; classe: string } | null {
+  if (u.acesso_pausado === 1) return { texto: 'Acesso pausado', classe: 'bg-red-50 text-vermelho border-red-200' };
+  if (!u.expira_em) return null;
+  const alvo = new Date(u.expira_em + 'T00:00:00');
+  const dias = Math.ceil((alvo.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (dias < 0) return { texto: `Expirou há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`, classe: 'bg-red-50 text-vermelho border-red-200' };
+  if (dias === 0) return { texto: 'Expira hoje', classe: 'bg-amber-50 text-amber-700 border-amber-200' };
+  return {
+    texto: `${dias} ${dias === 1 ? 'dia restante' : 'dias restantes'}`,
+    classe: dias <= 5 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-verde-escuro border-green-200',
+  };
+}
 
 export function Usuarios() {
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroCarga, setErroCarga] = useState('');
   const [searchParams] = useSearchParams();
   const admin = useAuth(s => s.admin);
   const isSuperAdmin = admin?.role === 'super_admin';
@@ -45,33 +87,43 @@ export function Usuarios() {
 
   const [senhaModal, setSenhaModal] = useState<Usuario | null>(null);
   const [novaSenha, setNovaSenha] = useState('');
+  const [senhaErro, setSenhaErro] = useState('');
   const [editModal, setEditModal] = useState<Usuario | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({
     trigrama: '', email: '', saram: '', whatsapp: '', esquadrao_origem: '', data_nascimento: '',
   });
   const [editErro, setEditErro] = useState('');
   const [novoModal, setNovoModal] = useState(false);
+  const [novoErro, setNovoErro] = useState('');
   const [novoForm, setNovoForm] = useState({
-    trigrama: '', 
-    email: '', 
-    saram: '', 
-    whatsapp: '', 
-    categoria: 'oficial' as Categoria, 
+    trigrama: '',
+    email: '',
+    saram: '',
+    whatsapp: '',
+    categoria: 'oficial' as Categoria,
     senha: '',
-    is_visitante: false, 
-    esquadrao_origem: '', 
+    is_visitante: false,
+    esquadrao_origem: '',
     expira_em: '',
     data_nascimento: ''
   });
   const [acaoLoading, setAcaoLoading] = useState<number | null>(null);
-  const [msg, setMsg] = useState('');
-  const [erro, setErro] = useState('');
+
+  // Callbacks estáveis: o Modal refaz o foco quando onClose muda
+  const fecharSenha = useCallback(() => setSenhaModal(null), []);
+  const fecharEditar = useCallback(() => setEditModal(null), []);
+  const fecharNovo = useCallback(() => setNovoModal(false), []);
+
+  const falha = (e: unknown, padrao: string) => showToast(e instanceof Error ? e.message : padrao, 'error');
 
   const carregar = async () => {
     setLoading(true);
+    setErroCarga('');
     try {
       const data = await api.get<Usuario[]>('/api/usuarios/admin/lista');
       setUsuarios(data);
+    } catch (e) {
+      setErroCarga(e instanceof Error ? e.message : 'Não foi possível carregar os usuários');
     } finally {
       setLoading(false);
     }
@@ -80,13 +132,13 @@ export function Usuarios() {
   useEffect(() => { carregar(); }, []);
 
   const filtrados = useMemo(() => {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = dataLocal(new Date());
     return usuarios.filter(u => {
       if (busca) {
         const q = busca.toLowerCase();
         if (!u.trigrama.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
       }
-      // Filtro status (vindo do sidebar)
+      // Filtro status (vindo do sidebar ou dos chips)
       if (filtroStatus === 'ativos' && u.ativo !== 1) return false;
       if (filtroStatus === 'desativados' && u.ativo !== 0) return false;
       if (filtroStatus === 'visitantes' && u.is_visitante !== 1) return false;
@@ -103,14 +155,13 @@ export function Usuarios() {
   }, [usuarios, filtroStatus, filtroCategoria, busca]);
 
   const salvarVisitante = async (u: Usuario, patch: { expira_em?: string; acesso_pausado?: number }) => {
-    setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/visitante`, patch);
       showToast(`${u.trigrama}: atualizado`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar');
+      falha(e, 'Erro ao salvar');
     } finally {
       setAcaoLoading(null);
     }
@@ -118,14 +169,13 @@ export function Usuarios() {
 
   const toggleFiado = async (u: Usuario) => {
     const novo = u.permite_fiado === 1 ? 0 : 1;
-    setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/fiado`, { permite_fiado: novo });
-      setMsg(`${u.trigrama}: fiado ${novo === 1 ? 'liberado' : 'bloqueado'}`);
+      showToast(`${u.trigrama}: fiado ${novo === 1 ? 'liberado' : 'bloqueado'}`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar');
+      falha(e, 'Erro ao salvar');
     } finally {
       setAcaoLoading(null);
     }
@@ -133,28 +183,26 @@ export function Usuarios() {
 
   const toggleRecepcionista = async (u: Usuario) => {
     const novo = u.is_recepcionista === 1 ? 0 : 1;
-    setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/recepcionista`, { is_recepcionista: novo });
-      setMsg(`${u.trigrama}: recepcionista ${novo === 1 ? 'habilitado' : 'desabilitado'}`);
+      showToast(`${u.trigrama}: recepcionista ${novo === 1 ? 'habilitado' : 'desabilitado'}`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao salvar');
+      falha(e, 'Erro ao salvar');
     } finally {
       setAcaoLoading(null);
     }
   };
 
   const trocarCategoria = async (u: Usuario, cat: Categoria) => {
-    setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/categoria`, { categoria: cat });
-      setMsg(`${u.trigrama}: categoria alterada`);
+      showToast(`${u.trigrama}: categoria alterada`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao alterar categoria');
+      falha(e, 'Erro ao alterar categoria');
     } finally {
       setAcaoLoading(null);
     }
@@ -163,23 +211,23 @@ export function Usuarios() {
   const abrirResetSenha = (u: Usuario) => {
     setSenhaModal(u);
     setNovaSenha('');
-    setErro('');
+    setSenhaErro('');
   };
 
   const confirmarResetSenha = async () => {
     if (!senhaModal || novaSenha.length < 6) {
-      setErro('Senha deve ter no mínimo 6 caracteres');
+      setSenhaErro('A senha precisa ter no mínimo 6 caracteres');
       return;
     }
     setAcaoLoading(senhaModal.id);
-    setErro(''); setMsg('');
+    setSenhaErro('');
     try {
       await api.put(`/api/usuarios/admin/${senhaModal.id}/senha`, { nova_senha: novaSenha });
-      setMsg(`Senha de ${senhaModal.trigrama} resetada`);
+      showToast(`Senha de ${senhaModal.trigrama} redefinida`, 'success');
       setSenhaModal(null);
       setNovaSenha('');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao resetar senha');
+      setSenhaErro(e instanceof Error ? e.message : 'Erro ao redefinir senha');
     } finally {
       setAcaoLoading(null);
     }
@@ -200,16 +248,16 @@ export function Usuarios() {
 
   const salvarEditar = async () => {
     if (!editModal) return;
-    setEditErro(''); setMsg(''); setErro('');
+    setEditErro('');
 
     const tri = editForm.trigrama.trim().toUpperCase();
-    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(tri)) { setEditErro('Trigrama deve ter exatamente 3 letras'); return; }
+    if (!/^[A-ZÀ-ÚÖ]{3}$/.test(tri)) { setEditErro('O trigrama deve ter exatamente 3 letras'); return; }
     const em = editForm.email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setEditErro('Email inválido'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setEditErro('E-mail inválido'); return; }
     const sa = editForm.saram.trim();
-    if (!/^\d+$/.test(sa)) { setEditErro('SARAM deve conter apenas números'); return; }
+    if (!/^\d+$/.test(sa)) { setEditErro('O SARAM deve conter apenas números'); return; }
     const wp = editForm.whatsapp.trim();
-    if (!wp) { setEditErro('WhatsApp obrigatório'); return; }
+    if (!wp) { setEditErro('Informe o WhatsApp'); return; }
 
     const payload: Record<string, string | null> = {
       trigrama: tri,
@@ -225,7 +273,7 @@ export function Usuarios() {
     setAcaoLoading(editModal.id);
     try {
       await api.put(`/api/usuarios/admin/${editModal.id}`, payload);
-      setMsg(`${tri}: dados atualizados`);
+      showToast(`${tri}: dados atualizados`, 'success');
       setEditModal(null);
       await carregar();
     } catch (e) {
@@ -236,17 +284,16 @@ export function Usuarios() {
   };
 
   const excluirUsuario = async (u: Usuario) => {
-    const aviso = `EXCLUIR usuário ${u.trigrama}?\n\nEsta ação é IRREVERSÍVEL e remove:\n- Conta do usuário\n- Cliente vinculado\n- Pedidos da cantina e itens\n- Pedidos da loja, parcelas e itens\n- Assinaturas e pagamentos do café\n- Foto de perfil`;
+    const aviso = `Excluir o usuário ${u.trigrama}? Esta ação não pode ser desfeita e remove:\n- Conta do usuário\n- Cliente vinculado\n- Pedidos da cantina e itens\n- Pedidos da loja, parcelas e itens\n- Assinaturas e pagamentos do café\n- Foto de perfil`;
     if (!(await confirm({ title: 'Excluir conta', message: aviso, confirmText: 'Excluir definitivamente', danger: true }))) return;
 
-    setErro(''); setMsg('');
     setAcaoLoading(u.id);
     try {
       await api.delete(`/api/usuarios/admin/${u.id}`);
-      setMsg(`${u.trigrama}: usuário excluído`);
+      showToast(`${u.trigrama}: usuário excluído`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao excluir usuário');
+      falha(e, 'Erro ao excluir usuário');
     } finally {
       setAcaoLoading(null);
     }
@@ -254,26 +301,25 @@ export function Usuarios() {
 
   const toggleAtivo = async (u: Usuario) => {
     const acao = u.ativo === 1 ? 'desativar' : 'ativar';
-    if (!(await confirm({ message: `Confirma ${acao} conta de ${u.trigrama}?`, confirmText: u.ativo === 1 ? 'Desativar' : 'Ativar' }))) return;
-    setErro(''); setMsg('');
+    if (!(await confirm({ message: `Confirma ${acao} a conta de ${u.trigrama}?`, confirmText: u.ativo === 1 ? 'Desativar' : 'Ativar' }))) return;
     setAcaoLoading(u.id);
     try {
       await api.put(`/api/usuarios/admin/${u.id}/${acao}`, {});
-      setMsg(`${u.trigrama}: conta ${u.ativo === 1 ? 'desativada' : 'reativada'}`);
+      showToast(`${u.trigrama}: conta ${u.ativo === 1 ? 'desativada' : 'reativada'}`, 'success');
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : `Erro ao ${acao}`);
+      falha(e, `Erro ao ${acao}`);
     } finally {
       setAcaoLoading(null);
     }
   };
 
   const salvarNovo = async () => {
-    setErro(''); setMsg('');
+    setNovoErro('');
     const { trigrama, email, saram, whatsapp, categoria, senha, is_visitante, esquadrao_origem, expira_em } = novoForm;
 
     if (!trigrama || !email || !saram || !whatsapp || !categoria || !senha) {
-      setErro('Preencha todos os campos obrigatórios');
+      setNovoErro('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -285,7 +331,7 @@ export function Usuarios() {
         expira_em: expira_em || null,
         esquadrao_origem: esquadrao_origem || null,
       });
-      setMsg(`Usuário ${trigrama} criado com sucesso`);
+      showToast(`Usuário ${trigrama} criado`, 'success');
       setNovoModal(false);
       setNovoForm({
         trigrama: '', email: '', saram: '', whatsapp: '', categoria: 'oficial', senha: '',
@@ -293,479 +339,474 @@ export function Usuarios() {
       });
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao criar usuário');
+      setNovoErro(e instanceof Error ? e.message : 'Erro ao criar usuário');
     } finally {
       setAcaoLoading(null);
     }
   };
 
+  const filtrosAtivos = filtroStatus !== 'todos' || filtroCategoria !== 'todas' || !!busca;
+  const linkStatus = (f: FiltroStatus) => (f === 'todos' ? '/admin/usuarios' : `/admin/usuarios?f=${f}`);
+
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-2xl text-azul tracking-wider">
-          {filtroStatus === 'visitantes' ? 'USUÁRIOS — VISITANTES' :
-            filtroStatus === 'expirados' ? 'USUÁRIOS — EXPIRADOS' :
-            filtroStatus === 'ativos' ? 'USUÁRIOS — ATIVOS' :
-            filtroStatus === 'desativados' ? 'USUÁRIOS — DESATIVADOS' :
-            'USUÁRIOS'}
-        </h1>
-        <Button size="sm" onClick={() => setNovoModal(true)}>+ Novo Usuário</Button>
-      </div>
+      <PageHeader
+        title="Usuários"
+        subtitle="Contas dos militares e visitantes: categoria, fiado, acesso e dados de cadastro."
+        right={
+          <Button size="sm" onClick={() => { setNovoErro(''); setNovoModal(true); }}>
+            <Icon name="plus" size={16} /> Novo usuário
+          </Button>
+        }
+      />
 
-      {/* Busca */}
-      <div className="mb-4">
-        <input
-          type="text"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por trigrama ou email..."
-          className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-        />
-      </div>
-
-      {/* Indicador de filtro status (vindo do sidebar) */}
-      {filtroStatus !== 'todos' && (
-        <div className="mb-4 flex items-center gap-2 text-xs">
-          <span className="text-texto-fraco">Filtro:</span>
-          <span className="bg-azul text-white px-2 py-0.5 rounded-full font-medium">
-            {filtroStatus === 'ativos' ? 'Ativos' :
-              filtroStatus === 'desativados' ? 'Desativados' :
-              filtroStatus === 'visitantes' ? 'Visitantes' :
-              'Visitantes expirados'}
-          </span>
-          <Link to="/admin/usuarios" className="text-texto-fraco hover:text-azul underline">Limpar</Link>
+      {/* Busca + filtros */}
+      <div className="space-y-3 mb-5">
+        <div>
+          <label htmlFor="busca-usuarios" className="sr-only">Buscar usuários</label>
+          <input
+            id="busca-usuarios"
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por trigrama ou e-mail"
+            className={`${inputClass} min-h-[44px]`}
+          />
         </div>
-      )}
-
-      {/* Filtro categoria (in-page) */}
-      <div className="flex gap-1 flex-wrap mb-5">
-        {([
-          { id: 'todas', label: 'Todas categorias' },
-          { id: 'oficial', label: 'Oficiais' },
-          { id: 'graduado', label: 'Graduados' },
-          { id: 'praca', label: 'Praças' },
-        ] as const).map(f => (
-          <button
-            key={f.id}
-            onClick={() => setFiltroCategoria(f.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filtroCategoria === f.id ? 'bg-azul text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar por situação">
+          {FILTROS_STATUS.map(f => (
+            <Link key={f.id} to={linkStatus(f.id)} className={`${chipClass(filtroStatus === f.id)} inline-flex items-center`} aria-current={filtroStatus === f.id ? 'true' : undefined}>
+              {f.label}
+            </Link>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar por categoria">
+          {FILTROS_CATEGORIA.map(f => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFiltroCategoria(f.id)}
+              aria-pressed={filtroCategoria === f.id}
+              className={chipClass(filtroCategoria === f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {!loading && !erroCarga && (
+          <p className="text-sm text-texto-fraco">
+            {filtrados.length} de {usuarios.length} {usuarios.length === 1 ? 'usuário' : 'usuários'}
+          </p>
+        )}
       </div>
-
-      {msg && <p className="text-verde text-sm bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3">{msg}</p>}
-      {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3">{erro}</p>}
 
       {loading ? (
         <Loading />
+      ) : erroCarga ? (
+        <div className="bg-white rounded-2xl border border-borda">
+          <EmptyState
+            icon={<Icon name="warning" size={24} />}
+            message="Não foi possível carregar os usuários"
+            hint={erroCarga}
+            action={<Button variant="ghost" size="sm" onClick={carregar}><Icon name="refresh" size={16} /> Tentar de novo</Button>}
+          />
+        </div>
       ) : filtrados.length === 0 ? (
-        <div className="bg-white rounded-xl border border-borda p-10 text-center text-texto-fraco">
-          {usuarios.length === 0 ? 'Nenhum usuário cadastrado ainda.' : 'Nenhum usuário encontrado com esses filtros.'}
+        <div className="bg-white rounded-2xl border border-borda">
+          {usuarios.length === 0 ? (
+            <EmptyState
+              icon={<Icon name="users" size={24} />}
+              message="Nenhum usuário cadastrado ainda"
+              hint="Os militares se cadastram pelo app. Você também pode criar uma conta aqui."
+              action={<Button size="sm" onClick={() => { setNovoErro(''); setNovoModal(true); }}><Icon name="plus" size={16} /> Novo usuário</Button>}
+            />
+          ) : (
+            <EmptyState
+              icon={<Icon name="users" size={24} />}
+              message="Nenhum usuário encontrado"
+              hint="Ajuste a busca ou os filtros para ver mais resultados."
+              action={filtrosAtivos ? (
+                <Link to="/admin/usuarios" onClick={() => { setBusca(''); setFiltroCategoria('todas'); }} className="inline-flex items-center min-h-[40px] px-3.5 rounded-xl text-sm font-medium bg-white border border-borda hover:bg-fundo-elevado">
+                  Limpar filtros
+                </Link>
+              ) : undefined}
+            />
+          )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtrados.map(u => (
-            <div
-              key={u.id}
-              className={`bg-white rounded-xl border border-borda p-4 ${u.ativo === 0 ? 'opacity-60' : ''}`}
-            >
-              {/* Linha 1: identificacao */}
-              <div className="flex items-center gap-3 mb-3">
-                {resolveImg(u.foto_url) ? (
-                  <img src={resolveImg(u.foto_url)!} alt={u.trigrama} className="w-11 h-11 rounded-full object-cover border border-borda" />
-                ) : (
-                  <div className="w-11 h-11 rounded-full bg-azul/10 flex items-center justify-center font-display text-azul text-sm">
-                    {u.trigrama}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {filtrados.map(u => {
+            const ocupado = acaoLoading === u.id;
+            const situacao = u.is_visitante === 1 ? situacaoVisitante(u) : null;
+            const foto = resolveImg(u.foto_url);
+            return (
+              <article
+                key={u.id}
+                className={`bg-white rounded-2xl border border-borda shadow-sm p-4 min-w-0 flex flex-col ${u.ativo === 0 ? 'opacity-70' : ''}`}
+              >
+                {/* Identificação + menu */}
+                <div className="flex items-start gap-3">
+                  {foto ? (
+                    <img src={foto} alt="" className="w-12 h-12 rounded-full object-cover border border-borda shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-noite/5 border border-borda flex items-center justify-center font-display text-noite text-base shrink-0" aria-hidden="true">
+                      {u.trigrama}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-display text-noite text-2xl leading-none tracking-wide">{u.trigrama}</span>
+                      {u.is_visitante === 1 && (
+                        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">Visitante</span>
+                      )}
+                      {u.ativo === 0 && (
+                        <span className="text-xs text-vermelho bg-red-50 border border-red-200 px-2 py-0.5 rounded-full font-medium">Desativada</span>
+                      )}
+                    </div>
+                    <div className="text-sm text-texto-fraco truncate mt-1">{u.email}</div>
+                    <div className="text-xs text-texto-fraco mt-0.5">
+                      {CATEGORIA_LABEL[u.categoria as Categoria]}
+                      {u.sala_cafe && <> · Cantina {u.sala_cafe === 'oficiais' ? 'dos oficiais' : 'dos graduados'}</>}
+                    </div>
                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-display text-azul text-lg tracking-widest">{u.trigrama}</span>
-                    <span className="text-xs text-texto-fraco">{CATEGORIA_LABEL[u.categoria as Categoria]}</span>
-                    {u.sala_cafe && (
-                      <span className="text-[10px] text-azul bg-azul/10 px-1.5 py-0.5 rounded">
-                        Cantina {u.sala_cafe === 'oficiais' ? 'Oficiais' : 'Graduados'}
-                      </span>
-                    )}
-                    {u.is_visitante === 1 && (
-                      <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-medium">VISITANTE</span>
-                    )}
-                    {u.ativo === 0 && (
-                      <span className="text-[10px] text-vermelho bg-red-50 px-1.5 py-0.5 rounded font-medium">DESATIVADA</span>
-                    )}
+                  <div className="shrink-0 -mr-1">
+                    <Menu label={`Ações de ${u.trigrama}`} items={[
+                      { label: 'Editar dados', icon: 'pencil', disabled: ocupado, onClick: () => abrirEditar(u) },
+                      { label: 'Redefinir senha', icon: 'refresh', disabled: ocupado, onClick: () => abrirResetSenha(u) },
+                      { label: u.ativo === 1 ? 'Desativar conta' : 'Reativar conta', icon: u.ativo === 1 ? 'x' : 'check', disabled: ocupado, onClick: () => toggleAtivo(u) },
+                      isSuperAdmin && { label: 'Excluir conta', icon: 'trash', danger: true, disabled: ocupado, onClick: () => excluirUsuario(u) },
+                    ]} />
                   </div>
-                  <div className="text-xs text-texto-fraco truncate">{u.email}</div>
                 </div>
-              </div>
 
-              {/* Bloco visitante */}
-              {u.is_visitante === 1 && (
-                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="text-amber-800 font-semibold">VISITANTE</span>
-                    {u.esquadrao_origem && <span className="text-texto-fraco">— {u.esquadrao_origem}</span>}
-                    {u.expira_em && (() => {
-                      const hoje = new Date();
-                      const alvo = new Date(u.expira_em + 'T00:00:00');
-                      const dias = Math.ceil((alvo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <span className={`ml-auto px-2 py-0.5 rounded-full font-medium ${
-                          u.acesso_pausado === 1 ? 'bg-red-100 text-vermelho' :
-                          dias < 0 ? 'bg-red-100 text-vermelho' :
-                          dias <= 5 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-verde-escuro'
-                        }`}>
-                          {u.acesso_pausado === 1 ? 'Pausado' :
-                            dias < 0 ? `Expirou há ${-dias}d` :
-                            dias === 0 ? 'Expira hoje' : `${dias}d restantes`}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <div className="flex gap-2 flex-wrap items-center">
-                    <label className="text-xs text-texto-fraco">Expira em:</label>
-                    <input
-                      type="date"
-                      defaultValue={u.expira_em || ''}
-                      onBlur={(e) => {
-                        if (e.target.value && e.target.value !== u.expira_em) {
-                          salvarVisitante(u, { expira_em: e.target.value });
-                        }
-                      }}
-                      className="bg-white border border-borda rounded-lg px-2 py-1 text-xs"
-                    />
-                    <label className="flex items-center gap-1 text-xs text-texto-fraco cursor-pointer ml-auto">
+                {/* Visitante: prazo e pausa */}
+                {u.is_visitante === 1 && (
+                  <div className="mt-3 p-3 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap text-sm">
+                      <span className="text-amber-800 font-medium">Acesso de visitante</span>
+                      {u.esquadrao_origem && <span className="text-texto-fraco">· {u.esquadrao_origem}</span>}
+                      {situacao && (
+                        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full border font-medium ${situacao.classe}`}>{situacao.texto}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-3 flex-wrap items-center">
+                      <label htmlFor={`expira-${u.id}`} className="text-sm text-texto-fraco">Expira em</label>
                       <input
-                        type="checkbox"
-                        checked={u.acesso_pausado === 1}
-                        onChange={(e) => salvarVisitante(u, { acesso_pausado: e.target.checked ? 1 : 0 })}
-                        className="accent-vermelho"
+                        id={`expira-${u.id}`}
+                        type="date"
+                        defaultValue={u.expira_em || ''}
+                        onBlur={(e) => {
+                          if (e.target.value && e.target.value !== u.expira_em) {
+                            salvarVisitante(u, { expira_em: e.target.value });
+                          }
+                        }}
+                        className="bg-white border border-borda rounded-lg px-2.5 min-h-[40px] text-sm"
                       />
-                      Pausado
-                    </label>
+                      <label className="flex items-center gap-2 text-sm text-texto-fraco cursor-pointer ml-auto min-h-[40px]">
+                        <input
+                          type="checkbox"
+                          checked={u.acesso_pausado === 1}
+                          onChange={(e) => salvarVisitante(u, { acesso_pausado: e.target.checked ? 1 : 0 })}
+                          className="accent-vermelho w-4 h-4"
+                        />
+                        Pausar acesso
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Categoria */}
+                <div className="mt-3">
+                  <div className="text-xs text-texto-fraco mb-1.5" id={`cat-${u.id}`}>Categoria</div>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-fundo rounded-xl" role="group" aria-labelledby={`cat-${u.id}`}>
+                    {(['oficial', 'graduado', 'praca'] as Categoria[]).map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => trocarCategoria(u, cat)}
+                        disabled={ocupado || u.categoria === cat}
+                        aria-pressed={u.categoria === cat}
+                        className={`min-h-[40px] px-1 rounded-lg text-sm font-medium transition-colors truncate outline-none focus-visible:ring-2 focus-visible:ring-azul/40 disabled:cursor-default
+                          ${u.categoria === cat
+                            ? 'bg-white text-noite border border-borda shadow-sm'
+                            : 'text-texto-fraco hover:text-texto disabled:opacity-50'}
+                        `}
+                      >
+                        {CATEGORIA_LABEL[cat]}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
 
-              {/* Linha 2: categoria */}
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                {(['oficial', 'graduado', 'praca'] as Categoria[]).map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => trocarCategoria(u, cat)}
-                    disabled={acaoLoading === u.id || u.categoria === cat}
-                    className={`py-2 px-2 rounded-lg text-xs font-medium border transition-all disabled:opacity-60
-                      ${u.categoria === cat
-                        ? 'bg-azul text-white border-azul'
-                        : 'bg-white text-texto-fraco border-borda hover:border-azul/50'}
-                    `}
-                  >
-                    {CATEGORIA_LABEL[cat]}
-                  </button>
-                ))}
-              </div>
-
-              {/* Toggle Fiado */}
-              <div className="mb-3 flex items-center justify-between text-xs py-2 px-3 bg-fundo rounded-lg">
-                <span className="text-texto-fraco">
-                  Fiado: {u.permite_fiado === 1 ? (
-                    <span className="text-verde-escuro font-medium">Liberado</span>
-                  ) : (
-                    <span className="text-vermelho font-medium">Bloqueado</span>
-                  )}
-                </span>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={u.permite_fiado === 1}
-                    onChange={() => toggleFiado(u)}
-                    disabled={acaoLoading === u.id}
-                    className="sr-only peer"
-                  />
-                  <div className="relative w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-verde"></div>
-                </label>
-              </div>
-
-              {/* Toggle Recepcionista */}
-              <div className="mb-3 flex items-center justify-between text-xs py-2 px-3 bg-fundo rounded-lg">
-                <span className="text-texto-fraco">
-                  Recepcionista: {u.is_recepcionista === 1 ? (
-                    <span className="text-verde-escuro font-medium">Habilitado</span>
-                  ) : (
-                    <span className="text-vermelho font-medium">Desabilitado</span>
-                  )}
-                </span>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={u.is_recepcionista === 1}
-                    onChange={() => toggleRecepcionista(u)}
-                    disabled={acaoLoading === u.id}
-                    className="sr-only peer"
-                  />
-                  <div className="relative w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-verde"></div>
-                </label>
-              </div>
-
-              {/* Linha 3: acoes */}
-              <div className="flex gap-2 flex-wrap items-center">
-                <div className="ml-auto flex items-center gap-2">
-                  <Menu items={[
-                    { label: 'Gerenciar conta', icon: 'pencil', disabled: acaoLoading === u.id, onClick: () => abrirEditar(u) },
-                    { label: 'Resetar senha', icon: 'refresh', disabled: acaoLoading === u.id, onClick: () => abrirResetSenha(u) },
-                    { label: u.ativo === 1 ? 'Desativar' : 'Reativar', icon: u.ativo === 1 ? 'x' : 'check', disabled: acaoLoading === u.id, onClick: () => toggleAtivo(u) },
-                    isSuperAdmin && { label: 'Excluir', icon: 'trash', danger: true, disabled: acaoLoading === u.id, onClick: () => excluirUsuario(u) },
-                  ]} />
+                {/* Permissões */}
+                <div className="mt-3 divide-y divide-borda border border-borda rounded-xl">
+                  <label className="flex items-center justify-between gap-3 px-3 min-h-[48px] cursor-pointer">
+                    <span className="text-sm">
+                      Fiado{' '}
+                      <span className={u.permite_fiado === 1 ? 'text-verde-escuro font-medium' : 'text-texto-fraco'}>
+                        · {u.permite_fiado === 1 ? 'liberado' : 'bloqueado'}
+                      </span>
+                    </span>
+                    <Toggle checked={u.permite_fiado === 1} onChange={() => toggleFiado(u)} disabled={ocupado} />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 px-3 min-h-[48px] cursor-pointer">
+                    <span className="text-sm">
+                      Recepcionista{' '}
+                      <span className={u.is_recepcionista === 1 ? 'text-verde-escuro font-medium' : 'text-texto-fraco'}>
+                        · {u.is_recepcionista === 1 ? 'habilitado' : 'desabilitado'}
+                      </span>
+                    </span>
+                    <Toggle checked={u.is_recepcionista === 1} onChange={() => toggleRecepcionista(u)} disabled={ocupado} />
+                  </label>
                 </div>
-                {u.cliente_id ? (
-                  <Link to={`/admin/clientes/${u.cliente_id}`} className="ml-auto self-center rounded-xl font-medium transition-all duration-200 active:scale-[0.97] bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100 px-2.5 py-1 text-xs">
-                    Ver extrato financeiro →
-                  </Link>
-                ) : (
-                  <span className="ml-auto text-xs text-texto-fraco self-center">Sem histórico</span>
-                )}
-              </div>
-            </div>
-          ))}
+
+                {/* Rodapé */}
+                <div className="mt-3 pt-3 border-t border-borda flex items-center justify-between gap-2 flex-wrap">
+                  {u.cliente_id ? (
+                    <Link
+                      to={`/admin/clientes/${u.cliente_id}`}
+                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-xl text-sm font-medium bg-blue-50 text-azul border border-blue-200 hover:bg-blue-100"
+                    >
+                      <Icon name="document" size={16} /> Ver extrato financeiro
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-texto-fraco">Sem histórico financeiro</span>
+                  )}
+                  {ocupado && <span className="text-xs text-texto-fraco" role="status">Salvando...</span>}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
-      {/* Modal reset senha */}
-      {senhaModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSenhaModal(null)}>
-          <div className="bg-white rounded-2xl p-5 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-xl text-azul tracking-wider mb-4">Nova senha para {senhaModal.trigrama}</h3>
-            <input
-              type="text"
-              value={novaSenha}
-              onChange={(e) => setNovaSenha(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
-              className="w-full bg-white border border-borda rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-              autoFocus
-            />
-            {erro && <p className="text-vermelho text-xs mb-3">{erro}</p>}
-            <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setSenhaModal(null)}>Cancelar</Button>
-              <Button size="sm" onClick={confirmarResetSenha} disabled={acaoLoading === senhaModal.id}>
-                {acaoLoading === senhaModal.id ? 'Salvando...' : 'Resetar'}
+      {/* Modal redefinir senha */}
+      <Modal open={!!senhaModal} onClose={fecharSenha} title={senhaModal ? `Nova senha para ${senhaModal.trigrama}` : 'Nova senha'}>
+        {senhaModal && (
+          <form onSubmit={(e) => { e.preventDefault(); confirmarResetSenha(); }} className="space-y-4">
+            <Field label="Nova senha" hint="Mínimo de 6 caracteres. Repasse ao militar por um canal seguro.">
+              <input
+                id="nova-senha"
+                type="text"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className={inputClass}
+                aria-label="Nova senha"
+              />
+            </Field>
+            {senhaErro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">{senhaErro}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="ghost" onClick={() => setSenhaModal(null)}>Cancelar</Button>
+              <Button type="submit" disabled={acaoLoading === senhaModal.id}>
+                {acaoLoading === senhaModal.id ? 'Salvando...' : 'Redefinir senha'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+      </Modal>
 
       {/* Modal editar dados */}
-      {editModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setEditModal(null)}>
-          <div className="bg-white rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-xl text-azul tracking-wider mb-4">Gerenciar {editModal.trigrama}</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Trigrama (3 letras)</label>
+      <Modal open={!!editModal} onClose={fecharEditar} title={editModal ? `Editar ${editModal.trigrama}` : 'Editar usuário'}>
+        {editModal && (
+          <form onSubmit={(e) => { e.preventDefault(); salvarEditar(); }} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Trigrama" hint="Exatamente 3 letras">
                 <input
+                  aria-label="Trigrama"
                   type="text"
                   maxLength={3}
                   value={editForm.trigrama}
                   onChange={(e) => setEditForm(prev => ({ ...prev, trigrama: e.target.value.toUpperCase() }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  className={inputClass}
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">E-mail</label>
+              </Field>
+              <Field label="SARAM" hint="Apenas números">
                 <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">SARAM (apenas números)</label>
-                <input
+                  aria-label="SARAM"
                   type="text"
+                  inputMode="numeric"
                   value={editForm.saram}
                   onChange={(e) => setEditForm(prev => ({ ...prev, saram: e.target.value.replace(/\D/g, '') }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
+            </div>
 
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp</label>
+            <Field label="E-mail">
+              <input
+                aria-label="E-mail"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                className={inputClass}
+              />
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="WhatsApp">
                 <input
-                  type="text"
+                  aria-label="WhatsApp"
+                  type="tel"
                   value={editForm.whatsapp}
                   onChange={(e) => setEditForm(prev => ({ ...prev, whatsapp: e.target.value }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  className={inputClass}
                 />
-              </div>
-              {editModal.is_visitante === 1 && (
-                <div>
-                  <label className="block text-xs font-medium text-texto-fraco mb-1">Esquadrão de Origem</label>
-                  <input
-                    type="text"
-                    value={editForm.esquadrao_origem}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
-                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Data de Nascimento</label>
+              </Field>
+              <Field label="Data de nascimento">
                 <input
+                  aria-label="Data de nascimento"
                   type="date"
                   value={editForm.data_nascimento}
                   onChange={(e) => setEditForm(prev => ({ ...prev, data_nascimento: e.target.value }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30 focus:border-azul"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
             </div>
 
-            {editErro && <p className="text-vermelho text-xs mt-4">{editErro}</p>}
-            
-            <div className="flex gap-2 justify-end mt-6">
-              <Button variant="ghost" size="sm" onClick={() => setEditModal(null)}>Cancelar</Button>
-              <Button size="sm" onClick={salvarEditar} disabled={acaoLoading === editModal.id}>
-                {acaoLoading === editModal.id ? 'Salvando...' : 'Salvar Alterações'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal novo usuario */}
-      {novoModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNovoModal(false)}>
-          <div className="bg-white rounded-2xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-xl text-azul tracking-wider mb-4">Novo Usuário</h3>
-            
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Trigrama (3 letras)*</label>
+            {editModal.is_visitante === 1 && (
+              <Field label="Esquadrão de origem">
                 <input
+                  aria-label="Esquadrão de origem"
                   type="text"
-                  maxLength={3}
-                  value={novoForm.trigrama}
-                  onChange={(e) => setNovoForm(prev => ({ ...prev, trigrama: e.target.value.toUpperCase() }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
+                  value={editForm.esquadrao_origem}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
+                  className={inputClass}
                 />
-              </div>
+              </Field>
+            )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-texto-fraco mb-1">SARAM*</label>
-                  <input
-                    type="text"
-                    value={novoForm.saram}
-                    onChange={(e) => setNovoForm(prev => ({ ...prev, saram: e.target.value.replace(/\D/g, '') }))}
-                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-texto-fraco mb-1">WhatsApp*</label>
-                  <input
-                    type="text"
-                    value={novoForm.whatsapp}
-                    onChange={(e) => setNovoForm(prev => ({ ...prev, whatsapp: e.target.value }))}
-                    className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                  />
-                </div>
-              </div>
+            {editErro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">{editErro}</p>}
 
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">E-mail*</label>
-                <input
-                  type="email"
-                  value={novoForm.email}
-                  onChange={(e) => setNovoForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Data de Nascimento</label>
-                <input
-                  type="date"
-                  value={novoForm.data_nascimento}
-                  onChange={(e) => setNovoForm(prev => ({ ...prev, data_nascimento: e.target.value }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Senha inicial*</label>
-                <input
-                  type="password"
-                  value={novoForm.senha}
-                  onChange={(e) => setNovoForm(prev => ({ ...prev, senha: e.target.value }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-texto-fraco mb-1">Categoria*</label>
-                <select
-                  value={novoForm.categoria}
-                  onChange={(e) => setNovoForm(prev => ({ ...prev, categoria: e.target.value as Categoria }))}
-                  className="w-full bg-white border border-borda rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-azul/30"
-                >
-                  <option value="oficial">Oficial</option>
-                  <option value="graduado">Graduado/SO</option>
-                  <option value="praca">Praça</option>
-                </select>
-              </div>
-
-              <div className="pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={novoForm.is_visitante}
-                    onChange={(e) => setNovoForm(prev => ({ ...prev, is_visitante: e.target.checked }))}
-                    className="accent-azul"
-                  />
-                  <span className="text-sm font-medium text-texto">É visitante?</span>
-                </label>
-              </div>
-
-              {novoForm.is_visitante && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-fundo rounded-xl border border-borda">
-                  <div>
-                    <label className="block text-[10px] font-medium text-texto-fraco mb-1 uppercase">Esquadrão Origem</label>
-                    <input
-                      type="text"
-                      value={novoForm.esquadrao_origem}
-                      onChange={(e) => setNovoForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
-                      className="w-full bg-white border border-borda rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-texto-fraco mb-1 uppercase">Expira em</label>
-                    <input
-                      type="date"
-                      value={novoForm.expira_em}
-                      onChange={(e) => setNovoForm(prev => ({ ...prev, expira_em: e.target.value }))}
-                      className="w-full bg-white border border-borda rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-azul/30"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end mt-6">
-              <Button variant="ghost" size="sm" onClick={() => setNovoModal(false)}>Cancelar</Button>
-              <Button size="sm" onClick={salvarNovo} disabled={acaoLoading === 999999}>
-                {acaoLoading === 999999 ? 'Criando...' : 'Criar Usuário'}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button variant="ghost" onClick={() => setEditModal(null)}>Cancelar</Button>
+              <Button type="submit" disabled={acaoLoading === editModal.id}>
+                {acaoLoading === editModal.id ? 'Salvando...' : 'Salvar alterações'}
               </Button>
             </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal novo usuário */}
+      <Modal open={novoModal} onClose={fecharNovo} title="Novo usuário" size="lg">
+        <form onSubmit={(e) => { e.preventDefault(); salvarNovo(); }} className="space-y-4">
+          <p className="text-sm text-texto-fraco">Campos marcados com * são obrigatórios.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Trigrama *" hint="Exatamente 3 letras">
+              <input
+                aria-label="Trigrama"
+                type="text"
+                maxLength={3}
+                value={novoForm.trigrama}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, trigrama: e.target.value.toUpperCase() }))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Categoria *">
+              <select
+                aria-label="Categoria"
+                value={novoForm.categoria}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, categoria: e.target.value as Categoria }))}
+                className={inputClass}
+              >
+                <option value="oficial">Oficial</option>
+                <option value="graduado">Graduado/SO</option>
+                <option value="praca">Praça</option>
+              </select>
+            </Field>
+            <Field label="SARAM *">
+              <input
+                aria-label="SARAM"
+                type="text"
+                inputMode="numeric"
+                value={novoForm.saram}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, saram: e.target.value.replace(/\D/g, '') }))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="WhatsApp *">
+              <input
+                aria-label="WhatsApp"
+                type="tel"
+                value={novoForm.whatsapp}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="E-mail *" className="sm:col-span-2">
+              <input
+                aria-label="E-mail"
+                type="email"
+                value={novoForm.email}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Senha inicial *">
+              <input
+                aria-label="Senha inicial"
+                type="password"
+                autoComplete="new-password"
+                value={novoForm.senha}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, senha: e.target.value }))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Data de nascimento">
+              <input
+                aria-label="Data de nascimento"
+                type="date"
+                value={novoForm.data_nascimento}
+                onChange={(e) => setNovoForm(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                className={inputClass}
+              />
+            </Field>
           </div>
-        </div>
-      )}
+
+          <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
+            <input
+              type="checkbox"
+              checked={novoForm.is_visitante}
+              onChange={(e) => setNovoForm(prev => ({ ...prev, is_visitante: e.target.checked }))}
+              className="accent-azul w-4 h-4"
+            />
+            <span className="text-sm font-medium text-texto">É visitante de outro esquadrão</span>
+          </label>
+
+          {novoForm.is_visitante && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-fundo rounded-xl border border-borda">
+              <Field label="Esquadrão de origem">
+                <input
+                  aria-label="Esquadrão de origem"
+                  type="text"
+                  value={novoForm.esquadrao_origem}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, esquadrao_origem: e.target.value.toUpperCase() }))}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Acesso expira em">
+                <input
+                  aria-label="Acesso expira em"
+                  type="date"
+                  value={novoForm.expira_em}
+                  onChange={(e) => setNovoForm(prev => ({ ...prev, expira_em: e.target.value }))}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+          )}
+
+          {novoErro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">{novoErro}</p>}
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setNovoModal(false)}>Cancelar</Button>
+            <Button type="submit" disabled={acaoLoading === 999999}>
+              {acaoLoading === 999999 ? 'Criando...' : 'Criar usuário'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

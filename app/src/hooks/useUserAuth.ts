@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { useCart } from './useCart';
 import type { Usuario } from '../types';
 
 interface CadastroData {
@@ -29,7 +30,7 @@ interface UserAuthState {
   updateProfile: (dados: { whatsapp?: string; saram?: string; data_nascimento?: string | null }) => Promise<void>;
   updateFoto: (file: File) => Promise<void>;
   removeFoto: () => Promise<void>;
-  excluirConta: () => Promise<void>;
+  excluirConta: (senha: string) => Promise<void>;
 }
 
 export const useUserAuth = create<UserAuthState>((set, get) => ({
@@ -93,6 +94,7 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
   logout: () => {
     localStorage.removeItem('user_token');
     localStorage.removeItem('user_data');
+    useCart.getState().limpar();
     set({ token: null, user: null });
   },
 
@@ -144,9 +146,13 @@ export const useUserAuth = create<UserAuthState>((set, get) => ({
     if (current) set({ user: { ...current, foto_url: null } });
   },
 
-  excluirConta: async () => {
-    await api.delete('/api/usuarios/me');
+  // O servidor exige a senha e recusa (409) se houver débito em aberto;
+  // o erro sobe com a mensagem do servidor para a tela mostrar.
+  excluirConta: async (senha) => {
+    await api.delete('/api/usuarios/me', { senha });
     localStorage.removeItem('user_token');
+    localStorage.removeItem('user_data');
+    useCart.getState().limpar();
     set({ token: null, user: null });
   },
 }));

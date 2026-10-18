@@ -18,6 +18,17 @@ export default {
         'texto-fraco': '#6b7280',
         borda: '#cbd2de',
         'borda-forte': '#aeb7c9',
+        // Paleta do brasão do 1/10 GpAv (menu e navegação)
+        noite: '#0d1640',
+        'noite-2': '#17225c',
+        'noite-3': '#222f75',
+        faixa: '#3445d6',
+        escarlate: '#e0001b',
+        'noite-texto': '#c9cff0',
+        'noite-fraco': '#8a92c4',
+      },
+      boxShadow: {
+        flutua: '0 10px 30px -8px rgba(13, 22, 64, 0.45)',
       },
       fontFamily: {
         display: ['"Bebas Neue"', 'Impact', 'sans-serif'],

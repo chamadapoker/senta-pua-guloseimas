@@ -70,8 +70,9 @@ app.onError((err, c) => {
 // Cron handler: gera mensalidades e anuais automaticamente
 async function gerarCobrancasAutomaticas(env: Env) {
   const now = new Date();
-  // O cron roda diariamente (para aniversários). As cobranças só no dia 1.
-  if (now.getUTCDate() !== 1) return { mes: '', ano: '', total_criado: 0 };
+  // O cron roda diariamente às 00:00 de Brasília (03:00 UTC, mesma data). As cobranças saem no dia 1;
+  // os dias 2 a 5 recuperam um dia 1 que tenha falhado (quem já tem a cobrança do mês é pulado).
+  if (now.getUTCDate() > 5) return { mes: '', ano: '', total_criado: 0 };
   const ano = String(now.getUTCFullYear());
   const mes = `${ano}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
@@ -100,9 +101,11 @@ async function gerarCobrancasAutomaticas(env: Env) {
   const jaAno = new Set(existAno.map(e => e.assinante_id));
 
   const batch: D1PreparedStatement[] = [];
+  let criados = 0;
   for (const a of mensais) {
     if (!jaMes.has(a.id)) {
       batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
+      criados++;
       const frases = [
         "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
         "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
@@ -123,6 +126,7 @@ async function gerarCobrancasAutomaticas(env: Env) {
     for (const a of anuais) {
       if (!jaAno.has(a.id)) {
         batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, ano, a.valor));
+        criados++;
         // NOTIFICAÇÃO (anuidade)
         const frasesAnual = [
           "Anuidade do café lançada no seu extrato. Disciplina o ano inteiro mantém o radar limpo!",
@@ -140,12 +144,14 @@ async function gerarCobrancasAutomaticas(env: Env) {
     }
   }
   if (batch.length) await env.DB.batch(batch);
+  // Nos dias de recuperação só registra se de fato criou algo
+  if (now.getUTCDate() !== 1 && criados === 0) return { mes, ano, total_criado: 0 };
 
   await env.DB.prepare(
     `INSERT INTO audit_log (admin_email, acao, entidade, entidade_id, dados_depois) VALUES ('cron', 'gerar_cobrancas_auto', 'cafe_pagamentos', NULL, ?)`
-  ).bind(JSON.stringify({ mes, ano, mensais_criados: batch.length, data: now.toISOString() })).run();
+  ).bind(JSON.stringify({ mes, ano, cobrancas_criadas: criados, data: now.toISOString() })).run();
 
-  return { mes, ano, total_criado: batch.length };
+  return { mes, ano, total_criado: criados };
 }
 
 async function gerarRelatorioCobrancaRP(env: Env) {
@@ -194,21 +200,80 @@ async function verificarAniversariantes(env: Env) {
 
   if (aniversariantes.length === 0) return;
 
-  const batch: D1PreparedStatement[] = aniversariantes.map(a => 
-    env.DB.prepare("INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, 'FELIZ ANIVERSÁRIO!', ?)")
-      .bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Senta a Pua!")
+  // INSERT ... WHERE NOT EXISTS: se o cron rodar de novo no mesmo dia, ninguém recebe o parabéns duas vezes
+  const batch: D1PreparedStatement[] = aniversariantes.map(a =>
+    env.DB.prepare(
+      `INSERT INTO notificacoes (trigrama, titulo, mensagem)
+       SELECT ?, 'FELIZ ANIVERSÁRIO!', ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM notificacoes WHERE trigrama = ? AND titulo = 'FELIZ ANIVERSÁRIO!' AND date(created_at) = date('now')
+       )`
+    ).bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Senta a Pua!", a.trigrama)
   );
 
   await env.DB.batch(batch);
 }
 
+// Dia 10: avisa no app quem ainda tem mensalidade/anuidade do café pendente (uma vez por dia no máximo)
+async function lembrarMensalidadesPendentes(env: Env) {
+  const now = new Date();
+  if (now.getUTCDate() !== 10) return;
+
+  const { results } = await env.DB.prepare(`
+    SELECT cl.nome_guerra as trigrama, COUNT(*) as qtd, SUM(cp.valor) as total
+    FROM cafe_pagamentos cp
+    JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+    JOIN clientes cl ON cl.id = ca.cliente_id
+    WHERE cp.status = 'pendente' AND ca.ativo = 1
+    GROUP BY cl.id
+  `).all<{ trigrama: string; qtd: number; total: number }>();
+
+  if (results.length === 0) return;
+
+  const batch = results.map(r => {
+    const msg = `Você tem ${r.qtd} ${r.qtd === 1 ? 'mensalidade' : 'mensalidades'} do café em aberto, total de R$ ${r.total.toFixed(2).replace('.', ',')}. Pague pelo app com PIX e envie o comprovante.`;
+    return env.DB.prepare(
+      `INSERT INTO notificacoes (trigrama, titulo, mensagem)
+       SELECT ?, 'CAFÉ EM ABERTO', ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM notificacoes WHERE trigrama = ? AND titulo = 'CAFÉ EM ABERTO' AND date(created_at) = date('now')
+       )`
+    ).bind(r.trigrama, msg, r.trigrama);
+  });
+  await env.DB.batch(batch);
+
+  await env.DB.prepare(
+    `INSERT INTO audit_log (admin_email, acao, entidade, dados_depois) VALUES ('cron', 'lembrete_cafe_pendente', 'notificacoes', ?)`
+  ).bind(JSON.stringify({ militares: results.length, data: now.toISOString() })).run();
+}
+
+// Tentativas de login com mais de 1 dia não servem mais para o rate limit
+async function limparTentativasAntigas(env: Env) {
+  await env.DB.prepare("DELETE FROM rate_limit_attempts WHERE created_at < datetime('now', '-1 day')").run();
+}
+
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Cada rotina roda isolada: a falha de uma não impede as outras e fica registrada na auditoria
     ctx.waitUntil((async () => {
-      await gerarCobrancasAutomaticas(env);
-      await gerarRelatorioCobrancaRP(env);
-      await verificarAniversariantes(env);
+      const rotinas: [string, (env: Env) => Promise<unknown>][] = [
+        ['gerar_cobrancas_auto', gerarCobrancasAutomaticas],
+        ['fechamento_mensal_rp', gerarRelatorioCobrancaRP],
+        ['aniversariantes', verificarAniversariantes],
+        ['lembrete_cafe_pendente', lembrarMensalidadesPendentes],
+        ['limpeza_rate_limit', limparTentativasAntigas],
+      ];
+      for (const [nome, rotina] of rotinas) {
+        try {
+          await rotina(env);
+        } catch (e) {
+          console.error(`cron ${nome} falhou`, e);
+          await env.DB.prepare(
+            `INSERT INTO audit_log (admin_email, acao, entidade, dados_depois) VALUES ('cron', 'cron_falhou', ?, ?)`
+          ).bind(nome, JSON.stringify({ erro: String(e), data: new Date().toISOString() })).run().catch(() => {});
+        }
+      }
     })());
   },
 };

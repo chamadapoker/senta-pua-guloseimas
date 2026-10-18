@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Loading } from '../../components/ui/Loading';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Icon } from '../../components/ui/Icon';
+import { inputClass } from '../../components/ui/Field';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
+import { useAcao } from '../../hooks/useAcao';
 import type { Pedido } from '../../types';
 
 interface Resp {
@@ -16,54 +24,109 @@ interface Resp {
 
 const PAGE = 50;
 
+const STATUS_OPCOES = [
+  { id: '', label: 'Todos' },
+  { id: 'pendente', label: 'Pendentes' },
+  { id: 'fiado', label: 'Fiado' },
+  { id: 'pago', label: 'Pagos' },
+];
+
+const brl = (v: number) => (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataBR = (d: string) => new Date(d.replace(' ', 'T') + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+const STATUS_VALIDOS = ['', 'pendente', 'fiado', 'pago'];
+const dataValida = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
+
+interface Filtros {
+  status: string;
+  q: string;
+  de: string;
+  ate: string;
+  offset: number;
+}
+
 export function Pedidos() {
+  const [searchParams] = useSearchParams();
+  // Filtros iniciais vêm da URL (ex: /admin/pedidos?status=pendente vindo do dashboard)
+  const [filtros, setFiltros] = useState<Filtros>(() => {
+    const st = searchParams.get('status') || '';
+    return {
+      status: STATUS_VALIDOS.includes(st) ? st : '',
+      q: searchParams.get('q') || searchParams.get('busca') || '',
+      de: dataValida(searchParams.get('de')),
+      ate: dataValida(searchParams.get('ate')),
+      offset: 0,
+    };
+  });
   const [data, setData] = useState<Resp | null>(null);
-  const [filtroStatus, setFiltroStatus] = useState('');
-  const [q, setQ] = useState('');
-  const [de, setDe] = useState('');
-  const [ate, setAte] = useState('');
-  const [offset, setOffset] = useState(0);
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  // Rascunho dos campos do formulário (só vale ao clicar "Aplicar")
+  const [q, setQ] = useState(filtros.q);
+  const [de, setDe] = useState(filtros.de);
+  const [ate, setAte] = useState(filtros.ate);
+  // id -> total, para mostrar soma na confirmação do lote
+  const [selecionados, setSelecionados] = useState<Map<string, number>>(new Map());
+  const [recarregar, setRecarregar] = useState(0);
   const confirmar = useConfirm();
   const { showToast } = useToast();
+  const { busy, executar } = useAcao();
 
-  // Aceita overrides para evitar ler estado obsoleto logo após setState (ex: limpar filtros).
-  const carregar = (o?: { q?: string; de?: string; ate?: string; offset?: number }) => {
-    const off = o?.offset ?? offset;
-    const qVal = o?.q ?? q;
-    const deVal = o?.de ?? de;
-    const ateVal = o?.ate ?? ate;
-    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
-    if (filtroStatus) qs.set('status', filtroStatus);
-    if (qVal.trim()) qs.set('q', qVal.trim());
-    if (deVal) qs.set('de', deVal);
-    if (ateVal) qs.set('ate', ateVal);
-    api.get<Resp>(`/api/pedidos?${qs}`).then(setData);
-  };
+  useEffect(() => {
+    let ativo = true;
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(filtros.offset) });
+    if (filtros.status) qs.set('status', filtros.status);
+    if (filtros.q.trim()) qs.set('q', filtros.q.trim());
+    if (filtros.de) qs.set('de', filtros.de);
+    if (filtros.ate) qs.set('ate', filtros.ate);
+    setCarregando(true);
+    setErro('');
+    api.get<Resp>(`/api/pedidos?${qs}`)
+      .then(r => { if (ativo) setData(r); })
+      .catch((e: any) => { if (ativo) setErro(e?.message || 'Erro ao carregar pedidos'); })
+      .finally(() => { if (ativo) setCarregando(false); });
+    return () => { ativo = false; };
+  }, [filtros, recarregar]);
 
-  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [filtroStatus, offset]);
+  const carregar = () => setRecarregar(n => n + 1);
 
   const pedidos = data?.items || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE);
+  const offset = filtros.offset;
   const currentPage = Math.floor(offset / PAGE) + 1;
+  const setOffset = (o: number) => setFiltros(f => ({ ...f, offset: o }));
 
-  const trocarStatus = (s: string) => { setFiltroStatus(s); setOffset(0); };
-  const aplicarFiltros = () => { setOffset(0); carregar(); };
-  const limparFiltros = () => { setQ(''); setDe(''); setAte(''); setOffset(0); carregar({ q: '', de: '', ate: '', offset: 0 }); };
+  const trocarStatus = (s: string) => setFiltros(f => ({ ...f, status: s, offset: 0 }));
+  const aplicarFiltros = () => setFiltros(f => ({ ...f, q, de, ate, offset: 0 }));
+  const limparFiltros = () => { setQ(''); setDe(''); setAte(''); setFiltros(f => ({ ...f, q: '', de: '', ate: '', offset: 0 })); };
 
   const marcarPago = async (pedidoId: string) => {
-    await api.put(`/api/pedidos/${pedidoId}/pagar`, {});
-    carregar();
+    const ok = await executar(`pagar:${pedidoId}`, () => api.put(`/api/pedidos/${pedidoId}/pagar`, {}), { sucesso: 'Pedido marcado como pago' });
+    if (ok !== undefined) {
+      setSelecionados(prev => { const n = new Map(prev); n.delete(pedidoId); return n; });
+      carregar();
+    }
   };
 
   const marcarLotePago = async () => {
-    const ids = [...selecionados];
-    const res = await Promise.allSettled(ids.map(id => api.put(`/api/pedidos/${id}/pagar`, {})));
-    setSelecionados(new Set());
-    carregar();
-    const falhas = res.filter(r => r.status === 'rejected').length;
-    if (falhas > 0) showToast(`${falhas} de ${ids.length} pedido(s) não puderam ser marcados como pagos. Tente novamente.`, 'error');
+    const ids = [...selecionados.keys()];
+    if (ids.length === 0) return;
+    const soma = [...selecionados.values()].reduce((a, b) => a + b, 0);
+    const ok = await confirmar({
+      title: 'Marcar como pago',
+      message: `Marcar ${ids.length} pedido(s) como pago(s), totalizando ${brl(soma)}?`,
+      confirmText: 'Marcar pago',
+    });
+    if (!ok) return;
+    await executar('lote', async () => {
+      const res = await Promise.allSettled(ids.map(id => api.put(`/api/pedidos/${id}/pagar`, {})));
+      const falhas = res.filter(r => r.status === 'rejected').length;
+      setSelecionados(new Map());
+      carregar();
+      if (falhas > 0) showToast(`${falhas} de ${ids.length} pedido(s) não puderam ser marcados como pagos. Tente novamente.`, 'error');
+      else showToast(`${ids.length} pedido(s) marcado(s) como pago(s)`, 'success');
+    });
   };
 
   const excluirPedido = async (pedidoId: string) => {
@@ -76,9 +139,9 @@ export function Pedidos() {
     }
   };
 
-  const toggleSelecionado = (id: string) => {
-    const novo = new Set(selecionados);
-    if (novo.has(id)) novo.delete(id); else novo.add(id);
+  const toggleSelecionado = (p: Pedido) => {
+    const novo = new Map(selecionados);
+    if (novo.has(p.id)) novo.delete(p.id); else novo.set(p.id, p.total);
     setSelecionados(novo);
   };
 
@@ -88,121 +151,184 @@ export function Pedidos() {
     return <Badge variant="warning">Pendente</Badge>;
   };
 
+  const metodo = (m: Pedido['metodo_pagamento']) => (
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+      m === 'pix' ? 'bg-blue-50 text-azul' : m === 'dinheiro' ? 'bg-green-50 text-verde-escuro' : 'bg-amber-50 text-amber-700'
+    }`}>
+      {m === 'pix' ? 'Pix' : m === 'dinheiro' ? 'Dinheiro' : 'Fiado'}
+    </span>
+  );
+
+  const somaSelecionados = [...selecionados.values()].reduce((a, b) => a + b, 0);
+  const filtrosAtivos = !!(filtros.q || filtros.de || filtros.ate);
+
+  const acoes = (p: Pedido) => (
+    <>
+      {p.status !== 'pago' && (
+        <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)} disabled={busy(`pagar:${p.id}`) || busy('lote')}>
+          {busy(`pagar:${p.id}`) ? 'Salvando...' : 'Marcar como pago'}
+        </Button>
+      )}
+      <Button variant="chip-danger" size="xs" onClick={() => excluirPedido(p.id)}>Excluir</Button>
+    </>
+  );
+
+  const checkbox = (p: Pedido) => p.status !== 'pago' ? (
+    <input
+      type="checkbox"
+      checked={selecionados.has(p.id)}
+      onChange={() => toggleSelecionado(p)}
+      aria-label={`Selecionar pedido de ${p.nome_guerra}`}
+      className="w-5 h-5 accent-azul cursor-pointer"
+    />
+  ) : null;
+
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h1 className="font-display text-2xl text-azul tracking-wider">PEDIDOS</h1>
-        <div className="flex gap-1">
-          {['', 'pendente', 'fiado', 'pago'].map((s) => (
-            <button
-              key={s}
-              onClick={() => trocarStatus(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filtroStatus === s ? 'bg-vermelho text-white' : 'bg-white text-texto-fraco border border-borda hover:text-texto'
-              }`}
-            >
-              {s || 'Todos'}
-            </button>
-          ))}
-        </div>
+      <PageHeader title="Pedidos da cantina" subtitle="Acompanhe, filtre e dê baixa nos pedidos feitos na cantina." />
+
+      <div className="flex gap-1.5 flex-wrap mb-3" role="group" aria-label="Filtrar por status">
+        {STATUS_OPCOES.map((s) => (
+          <Button
+            key={s.id}
+            size="xs"
+            variant={filtros.status === s.id ? 'chip-primary' : 'chip'}
+            aria-pressed={filtros.status === s.id}
+            onClick={() => trocarStatus(s.id)}
+          >
+            {s.label}
+          </Button>
+        ))}
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); aplicarFiltros(); }} className="bg-white rounded-xl border border-borda p-3 mb-4 flex flex-wrap gap-2 items-end">
-        <div className="flex-1 min-w-[150px]">
-          <label className="block text-[10px] text-texto-fraco uppercase mb-1">Buscar trigrama</label>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Ex: HÖE" className="w-full bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+      <form onSubmit={e => { e.preventDefault(); aplicarFiltros(); }} className="bg-white rounded-2xl border border-borda shadow-sm p-3 sm:p-4 mb-4 grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:items-end">
+        <div className="col-span-2 sm:flex-1 sm:min-w-[180px]">
+          <label htmlFor="ped-q" className="block text-sm font-medium mb-1.5">Buscar trigrama</label>
+          <input id="ped-q" value={q} onChange={e => setQ(e.target.value)} placeholder="Ex.: HÖE" className={`${inputClass} min-h-[44px]`} />
         </div>
-        <div>
-          <label className="block text-[10px] text-texto-fraco uppercase mb-1">De</label>
-          <input type="date" value={de} onChange={e => setDe(e.target.value)} className="bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+        <div className="min-w-0">
+          <label htmlFor="ped-de" className="block text-sm font-medium mb-1.5">De</label>
+          <input id="ped-de" type="date" value={de} onChange={e => setDe(e.target.value)} className={`${inputClass} min-h-[44px]`} />
         </div>
-        <div>
-          <label className="block text-[10px] text-texto-fraco uppercase mb-1">Até</label>
-          <input type="date" value={ate} onChange={e => setAte(e.target.value)} className="bg-white border border-borda rounded-lg px-2 py-1.5 text-sm" />
+        <div className="min-w-0">
+          <label htmlFor="ped-ate" className="block text-sm font-medium mb-1.5">Até</label>
+          <input id="ped-ate" type="date" value={ate} onChange={e => setAte(e.target.value)} className={`${inputClass} min-h-[44px]`} />
         </div>
-        <button type="submit" className="px-4 py-1.5 rounded-lg bg-azul text-white text-sm font-medium">Aplicar</button>
-        <button type="button" onClick={limparFiltros} className="px-3 py-1.5 rounded-lg bg-fundo border border-borda text-sm">Limpar</button>
+        <div className="col-span-2 flex gap-2">
+          <Button type="submit" size="md" className="flex-1 sm:flex-none">Aplicar filtros</Button>
+          <Button type="button" size="md" variant="ghost" onClick={limparFiltros}>Limpar</Button>
+        </div>
       </form>
 
-      <div className="text-xs text-texto-fraco mb-2">
-        {total} pedido(s) · Página {currentPage}/{totalPages || 1}
-      </div>
-
       {selecionados.size > 0 && (
-        <div className="bg-azul rounded-xl p-3 mb-4 flex items-center justify-between border border-azul-claro/30">
-          <span className="text-white text-sm">{selecionados.size} selecionado(s)</span>
-          <Button size="sm" variant="danger" onClick={marcarLotePago}>Marcar como pago</Button>
+        <div className="bg-noite rounded-2xl p-3 sm:px-4 mb-4 flex items-center justify-between gap-3 flex-wrap sticky top-2 z-10">
+          <span className="text-white text-sm">
+            {selecionados.size} selecionado(s) · <strong className="font-display text-lg tracking-wide">{brl(somaSelecionados)}</strong>
+          </span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>
+            <Button size="sm" variant="success" onClick={marcarLotePago} disabled={busy('lote')}>
+              <Icon name="check" size={16} /> {busy('lote') ? 'Processando...' : 'Marcar como pago'}
+            </Button>
+          </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-azul">
-                <th className="px-3 py-3 w-8"></th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Data</th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider">Militar</th>
-                <th className="px-3 py-3 text-left text-xs text-white uppercase tracking-wider hidden sm:table-cell">Itens</th>
-                <th className="px-3 py-3 text-right text-xs text-white uppercase tracking-wider">Total</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider hidden md:table-cell">Método</th>
-                <th className="px-3 py-3 text-center text-xs text-white uppercase tracking-wider">Status</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidos.map((p) => (
-                <tr key={p.id} className="border-b border-borda/50 hover:bg-fundo transition-colors">
-                  <td className="px-3 py-3">
-                    {p.status !== 'pago' && (
-                      <input
-                        type="checkbox"
-                        checked={selecionados.has(p.id)}
-                        onChange={() => toggleSelecionado(p.id)}
-                        className="accent-vermelho"
-                      />
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">
-                    {new Date(p.created_at + 'Z').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-                  </td>
-                  <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
-                  <td className="px-3 py-3 text-xs text-texto-fraco max-w-[150px] truncate hidden sm:table-cell">
-                    {p.itens_resumo}
-                  </td>
-                  <td className="px-3 py-3 text-right font-bold text-dourado font-display tracking-wide">R$ {p.total.toFixed(2)}</td>
-                  <td className="px-3 py-3 text-center hidden md:table-cell">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                      p.metodo_pagamento === 'pix' ? 'bg-blue-50 text-azul' :
-                      p.metodo_pagamento === 'dinheiro' ? 'bg-green-50 text-verde-escuro' :
-                      'bg-amber-50 text-amber-700'
-                    }`}>
-                      {p.metodo_pagamento === 'pix' ? 'PIX' : p.metodo_pagamento === 'dinheiro' ? 'DINHEIRO' : 'FIADO'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
-                  <td className="px-3 py-3 flex items-center gap-2">
-                    {p.status !== 'pago' && (
-                      <Button variant="chip-success" size="xs" onClick={() => marcarPago(p.id)}>Pagar</Button>
-                    )}
-                    <Button variant="chip-danger" size="xs" onClick={() => excluirPedido(p.id)}>Excluir</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!erro && data && (
+        <div className="text-sm text-texto-fraco mb-2">
+          {total} pedido(s){totalPages > 1 && ` · página ${currentPage} de ${totalPages}`}
         </div>
-        {pedidos.length === 0 && (
-          <div className="text-center py-10 text-texto-fraco">Nenhum pedido</div>
-        )}
-      </div>
+      )}
+
+      {carregando && pedidos.length === 0 ? (
+        <Loading label="Carregando pedidos..." />
+      ) : erro ? (
+        <Card className="text-center py-8">
+          <p className="text-[15px] font-medium text-texto">Não foi possível carregar os pedidos.</p>
+          <p className="text-sm text-texto-fraco mt-1">{erro}</p>
+          <Button variant="primary" size="sm" className="mt-4" onClick={carregar}>
+            <Icon name="refresh" size={16} /> Tentar de novo
+          </Button>
+        </Card>
+      ) : pedidos.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="cart" size={26} />}
+            message="Nenhum pedido encontrado"
+            hint={filtrosAtivos || filtros.status ? 'Tente outro status ou limpe os filtros.' : 'Os pedidos feitos na cantina aparecem aqui.'}
+          />
+        </Card>
+      ) : (
+        <div className={carregando ? 'opacity-60 transition-opacity' : ''}>
+          {/* Mobile: cartões */}
+          <ul className="md:hidden space-y-2">
+            {pedidos.map((p) => (
+              <li key={p.id} className={`bg-white border rounded-2xl shadow-sm p-4 ${selecionados.has(p.id) ? 'border-azul' : 'border-borda'}`}>
+                <div className="flex items-start gap-3">
+                  {p.status !== 'pago' && <div className="pt-0.5">{checkbox(p)}</div>}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-texto truncate">{p.nome_guerra}</div>
+                        <div className="text-xs text-texto-fraco">{dataBR(p.created_at)}</div>
+                      </div>
+                      <span className="font-display text-2xl leading-none tracking-wide text-dourado shrink-0">{brl(p.total)}</span>
+                    </div>
+                    {p.itens_resumo && <p className="text-sm text-texto-fraco mt-2 break-words">{p.itens_resumo}</p>}
+                    <div className="flex items-center gap-1.5 mt-2">{statusBadge(p.status)}{metodo(p.metodo_pagamento)}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3 pt-3 border-t border-borda [&>button]:flex-1 [&>button]:min-h-[40px]">{acoes(p)}</div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-white rounded-2xl overflow-hidden border border-borda shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-fundo-elevado border-b border-borda text-texto-fraco">
+                  <th className="px-3 py-3 w-10"><span className="sr-only">Selecionar</span></th>
+                  <th className="px-3 py-3 text-left text-xs font-medium">Data</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium">Militar</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium">Itens</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium">Total</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium">Método</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium">Status</th>
+                  <th className="px-3 py-3"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {pedidos.map((p) => (
+                  <tr key={p.id} className={`border-b border-borda/60 last:border-0 hover:bg-fundo transition-colors ${selecionados.has(p.id) ? 'bg-blue-50/50' : ''}`}>
+                    <td className="px-3 py-3">{checkbox(p)}</td>
+                    <td className="px-3 py-3 text-xs text-texto-fraco whitespace-nowrap">{dataBR(p.created_at)}</td>
+                    <td className="px-3 py-3 font-medium text-texto">{p.nome_guerra}</td>
+                    <td className="px-3 py-3 text-xs text-texto-fraco max-w-[220px] truncate" title={p.itens_resumo}>{p.itens_resumo}</td>
+                    <td className="px-3 py-3 text-right font-display text-lg tracking-wide text-dourado whitespace-nowrap">{brl(p.total)}</td>
+                    <td className="px-3 py-3 text-center">{metodo(p.metodo_pagamento)}</td>
+                    <td className="px-3 py-3 text-center">{statusBadge(p.status)}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-end gap-1.5">{acoes(p)}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">← Anterior</button>
-          <span className="text-sm text-texto-fraco">{currentPage}/{totalPages}</span>
-          <button disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)} className="px-3 py-1.5 rounded-lg bg-white border border-borda text-sm disabled:opacity-40">Próxima →</button>
-        </div>
+        <nav className="flex items-center justify-center gap-2 mt-4" aria-label="Paginação">
+          <Button size="sm" variant="ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>
+            <Icon name="arrow-left" size={16} /> Anterior
+          </Button>
+          <span className="text-sm text-texto-fraco px-2">{currentPage} de {totalPages}</span>
+          <Button size="sm" variant="ghost" disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>
+            Próxima <Icon name="arrow-right" size={16} />
+          </Button>
+        </nav>
       )}
     </AppLayout>
   );

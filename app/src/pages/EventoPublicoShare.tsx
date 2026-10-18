@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Icon } from '../components/ui/Icon';
+import { dataLocal } from '../services/periodo';
+import { formatarDataBanco } from '../services/datas';
+import { useCopiar } from '../hooks/useCopiar';
 
 const BASE = import.meta.env.VITE_WORKER_URL || '';
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -18,7 +21,22 @@ interface EventoAberto {
 }
 
 function formatData(iso: string): string {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  return formatarDataBanco(iso, { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Moldura da página pública: fundo azul-noite com o brasão
+function Moldura({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-noite px-4 pt-6 pb-10">
+      <Link to="/" className="flex items-center justify-center gap-2.5 mb-5 outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-xl" aria-label="Senta Pua, ir para o início">
+        <img src="/brasao-192.png" alt="" width={40} height={40} className="w-10 h-10 object-contain" />
+        <span className="font-display text-2xl leading-none text-white tracking-[0.08em]">Senta Pua</span>
+      </Link>
+      <main className="max-w-md mx-auto bg-white rounded-2xl overflow-hidden shadow-flutua">{children}</main>
+    </div>
+  );
 }
 
 export function EventoPublicoShare() {
@@ -26,28 +44,32 @@ export function EventoPublicoShare() {
   const [evento, setEvento] = useState<EventoAberto | null>(null);
   const [erro, setErro] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const { copiar, modalCopiaManual } = useCopiar();
 
-  useEffect(() => {
+  const carregar = useCallback(() => {
+    setErro(false);
     fetch(`${BASE}/api/ximboca/publico/evento/${id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(setEvento)
       .catch(() => setErro(true));
   }, [id]);
 
+  useEffect(() => { carregar(); }, [carregar]);
+
   const url = typeof window !== 'undefined' ? window.location.href : '';
   const texto = evento ? `${evento.nome} — ${formatData(evento.data)}. Bora?` : '';
 
+  const copiarLink = async () => {
+    if (!(await copiar(url))) return;
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  };
   const compartilharNativo = async () => {
     if (navigator.share) {
       try { await navigator.share({ title: evento?.nome, text: texto, url }); } catch { /* cancelado */ }
     } else {
       copiarLink();
     }
-  };
-  const copiarLink = async () => {
-    await navigator.clipboard.writeText(url);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2500);
   };
 
   const share = {
@@ -58,110 +80,108 @@ export function EventoPublicoShare() {
 
   if (erro) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-fundo p-6 text-center">
-        <div>
-          <div className="font-display text-2xl text-azul tracking-wider mb-2">Evento não encontrado</div>
-          <Link to="/" className="text-azul hover:underline text-sm">Ir para o início</Link>
+      <Moldura>
+        <div className="p-6 text-center">
+          <h1 className="font-display text-3xl text-noite tracking-wide leading-none">Evento não encontrado</h1>
+          <p className="text-sm text-texto-fraco mt-2">O link pode estar errado ou o evento foi removido. Se a conexão caiu, tente de novo.</p>
+          <div className="flex flex-col gap-2 mt-5">
+            <button onClick={carregar} className="min-h-[44px] rounded-xl border border-borda font-medium hover:bg-fundo-elevado inline-flex items-center justify-center gap-2">
+              <Icon name="refresh" size={16} /> Tentar de novo
+            </button>
+            <Link to="/" className="min-h-[44px] inline-flex items-center justify-center text-sm text-azul underline underline-offset-2">Ir para o início</Link>
+          </div>
         </div>
-      </div>
+      </Moldura>
     );
   }
-  if (!evento) return <div className="min-h-screen flex items-center justify-center text-texto-fraco bg-fundo">Carregando...</div>;
+  if (!evento) {
+    return (
+      <Moldura>
+        <div role="status" className="p-10 flex flex-col items-center gap-3 text-texto-fraco">
+          <span className="w-8 h-8 rounded-full border-[3px] border-borda border-t-escarlate animate-spin" aria-hidden="true" />
+          <span className="text-sm">Carregando evento...</span>
+        </div>
+      </Moldura>
+    );
+  }
 
   const capa = resolveImg(evento.imagem_url);
-  const hojeBRT = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const hojeBRT = dataLocal(new Date());
   const prazoEncerrado = !!evento.inscricao_ate && hojeBRT > evento.inscricao_ate;
   const encerrado = evento.status !== 'aberto' || prazoEncerrado;
+  const dia = formatarDataBanco(evento.data, { day: '2-digit' });
+  const mes = formatarDataBanco(evento.data, { month: 'short' }).replace('.', '');
+  const linkCls = 'min-h-[44px] inline-flex items-center justify-center gap-2 px-3 rounded-xl border border-borda bg-white text-sm font-medium hover:bg-fundo-elevado outline-none focus-visible:ring-2 focus-visible:ring-azul/40';
 
   return (
-    <div className="min-h-screen bg-fundo">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-sm">
-        {/* Capa */}
-        {capa ? (
-          <div className="relative">
-            <img src={capa} alt={evento.nome} className="w-full object-cover max-h-72" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-5">
-              <h1 className="font-display text-3xl text-white tracking-wider leading-tight drop-shadow">{evento.nome}</h1>
-            </div>
+    <Moldura>
+      {capa && <img src={capa} alt="" className="w-full object-cover max-h-72" />}
+      <div className="h-1.5 bg-escarlate" aria-hidden="true" />
+
+      <div className="p-5 space-y-5">
+        <div className="flex items-start gap-4">
+          <div className="w-16 shrink-0 rounded-xl bg-noite text-white text-center py-2">
+            <div className="font-display text-4xl leading-none">{dia}</div>
+            <div className="text-xs font-semibold capitalize text-noite-texto mt-0.5">{mes}</div>
           </div>
-        ) : (
-          <div className="bg-azul p-6 text-center">
-            <img src="/logo.png" alt="" className="w-12 h-12 object-contain mx-auto mb-2" />
-            <h1 className="font-display text-3xl text-white tracking-wider">{evento.nome}</h1>
+          <div className="min-w-0">
+            <h1 className="font-display text-[2rem] leading-none text-noite tracking-wide">{evento.nome}</h1>
+            <p className="text-sm text-texto-fraco mt-1.5">{formatData(evento.data)}</p>
+          </div>
+        </div>
+
+        {evento.inscricao_ate && !prazoEncerrado && (
+          <p className="flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            <Icon name="clock" size={16} /> Inscrições até {formatData(evento.inscricao_ate)}
+          </p>
+        )}
+
+        {evento.descricao && <p className="text-[15px] text-texto leading-relaxed">{evento.descricao}</p>}
+
+        {evento.tipos.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-noite mb-2">Ingressos</h2>
+            <ul className="rounded-xl border border-borda divide-y divide-borda">
+              {evento.tipos.map(t => (
+                <li key={t.id} className="flex items-center justify-between px-4 py-3">
+                  <span className="font-medium">{t.nome}</span>
+                  <span className="font-display text-xl leading-none tracking-wide text-noite">{brl(t.valor)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
-        <div className="p-5 space-y-5">
-          <div className="flex items-center gap-2 text-sm text-texto-fraco">
-            <Icon name="clock" size={16} className="text-azul" />
-            <span className="capitalize font-medium text-texto">{formatData(evento.data)}</span>
-          </div>
-          {evento.inscricao_ate && !prazoEncerrado && (
-            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              <Icon name="alarm" size={14} /> Inscrições até {formatData(evento.inscricao_ate)}
-            </div>
-          )}
+        {encerrado ? (
+          <p className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-sm text-amber-800">
+            As inscrições deste evento estão encerradas.
+          </p>
+        ) : (
+          <Link to="/ximboca"
+            className="flex items-center justify-center w-full min-h-[52px] bg-escarlate text-white font-semibold text-base rounded-xl hover:bg-red-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-escarlate/40 focus-visible:ring-offset-2">
+            Quero participar
+          </Link>
+        )}
+        <p className="text-center text-sm text-texto-fraco -mt-2">
+          {evento.total_participantes} {evento.total_participantes === 1 ? 'pessoa já confirmou' : 'pessoas já confirmaram'}
+        </p>
 
-          {evento.descricao && <p className="text-sm text-texto leading-relaxed">{evento.descricao}</p>}
-
-          {/* Ingressos */}
-          {evento.tipos.length > 0 && (
-            <div>
-              <div className="text-xs font-bold text-texto-fraco uppercase tracking-wider mb-2">Ingressos</div>
-              <div className="space-y-2">
-                {evento.tipos.map(t => (
-                  <div key={t.id} className="flex items-center justify-between bg-fundo rounded-xl px-4 py-3 border border-borda">
-                    <span className="font-medium">{t.nome}</span>
-                    <span className="font-display text-lg text-azul">R$ {t.valor.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* CTA */}
-          {encerrado ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-sm text-amber-800">
-              As inscrições deste evento estão encerradas.
-            </div>
-          ) : (
-            <Link to="/ximboca"
-              className="block w-full text-center bg-azul text-white font-bold tracking-widest py-4 rounded-2xl shadow-lg shadow-azul/20 hover:bg-azul-claro transition-colors">
-              QUERO PARTICIPAR
-            </Link>
-          )}
-          <p className="text-center text-xs text-texto-fraco">{evento.total_participantes} pessoa(s) já confirmaram</p>
-
-          {/* Compartilhar */}
-          <div className="border-t border-borda pt-4">
-            <div className="text-xs font-bold text-texto-fraco uppercase tracking-wider mb-3 text-center">Compartilhar</div>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <button onClick={compartilharNativo} title="Compartilhar"
-                className="w-11 h-11 rounded-full bg-azul text-white flex items-center justify-center hover:bg-azul-claro transition-colors">
-                <Icon name="megaphone" size={18} />
-              </button>
-              <a href={share.whatsapp} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-                className="w-11 h-11 rounded-full bg-green-50 text-verde-escuro border border-green-200 flex items-center justify-center hover:bg-green-100 transition-colors">
-                <Icon name="device-phone" size={18} />
-              </a>
-              <a href={share.telegram} target="_blank" rel="noopener noreferrer" title="Telegram"
-                className="w-11 h-11 rounded-full bg-blue-50 text-azul border border-blue-200 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                <Icon name="paper-clip" size={18} />
-              </a>
-              <a href={share.facebook} target="_blank" rel="noopener noreferrer" title="Facebook"
-                className="w-11 h-11 rounded-full bg-blue-50 text-azul border border-blue-200 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                <Icon name="users" size={18} />
-              </a>
-              <button onClick={copiarLink} title="Copiar link"
-                className="w-11 h-11 rounded-full bg-fundo border border-borda text-texto-fraco flex items-center justify-center hover:bg-fundo-elevado transition-colors">
-                <Icon name={copiado ? 'check' : 'document'} size={18} />
-              </button>
-            </div>
-            {copiado && <p className="text-center text-xs text-verde mt-2">Link copiado!</p>}
+        <div className="border-t border-borda pt-4">
+          <h2 className="text-sm font-semibold text-noite mb-3">Chame a turma</h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={compartilharNativo} className="col-span-2 min-h-[44px] inline-flex items-center justify-center gap-2 px-3 rounded-xl bg-noite text-white text-sm font-medium hover:bg-noite-2 outline-none focus-visible:ring-2 focus-visible:ring-azul/40">
+              <Icon name="megaphone" size={16} /> Compartilhar
+            </button>
+            <a href={share.whatsapp} target="_blank" rel="noopener noreferrer" className={linkCls}>WhatsApp</a>
+            <a href={share.telegram} target="_blank" rel="noopener noreferrer" className={linkCls}>Telegram</a>
+            <a href={share.facebook} target="_blank" rel="noopener noreferrer" className={linkCls}>Facebook</a>
+            <button onClick={copiarLink} className={linkCls}>
+              <Icon name={copiado ? 'check' : 'document'} size={16} /> {copiado ? 'Link copiado' : 'Copiar link'}
+            </button>
           </div>
         </div>
       </div>
-    </div>
+      {modalCopiaManual}
+    </Moldura>
   );
 }
