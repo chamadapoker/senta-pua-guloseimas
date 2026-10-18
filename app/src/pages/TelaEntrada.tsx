@@ -17,7 +17,7 @@ interface TelaEntradaProps {
 }
 
 // Moldura das telas de entrada (login, cadastro, acesso expirado):
-// fundo azul-noite em tela cheia, brasão, nome do esquadrão e o cartão branco com a faixa escarlate.
+// fundo azul-noite em tela cheia, brasão, nome do esquadrão e o cartão branco com a faixa na cor de destaque.
 export function TelaEntrada({ titulo, subtitulo, children, rodape, largura = 'sm' }: TelaEntradaProps) {
   return (
     <div className="min-h-screen bg-noite flex flex-col items-center px-4 pt-10 pb-10 sm:pt-16">
@@ -28,7 +28,7 @@ export function TelaEntrada({ titulo, subtitulo, children, rodape, largura = 'sm
       </Link>
 
       <main className={`w-full ${largura === 'md' ? 'max-w-md' : 'max-w-sm'} bg-white rounded-2xl overflow-hidden shadow-flutua animate-fade-in`}>
-        <div className="h-1.5 bg-escarlate" aria-hidden="true" />
+        <div className="h-1.5 bg-destaque" aria-hidden="true" />
         <div className="p-5 sm:p-6">
           <h1 className="font-display text-[1.9rem] leading-none text-noite tracking-wide">{titulo}</h1>
           {subtitulo && <p className="text-sm text-texto-fraco mt-2">{subtitulo}</p>}
@@ -47,7 +47,7 @@ export function SecaoForm({ titulo, children }: { titulo: string; children: Reac
     <fieldset className="space-y-4 pt-5 first:pt-0 border-t border-borda first:border-t-0">
       <legend className="sr-only">{titulo}</legend>
       <p aria-hidden="true" className="text-[15px] font-semibold text-noite flex items-center gap-2">
-        <span className="flamula-sm inline-block w-4 h-2 bg-escarlate" />
+        <span className="flamula-sm inline-block w-4 h-2 bg-destaque" />
         {titulo}
       </p>
       {children}

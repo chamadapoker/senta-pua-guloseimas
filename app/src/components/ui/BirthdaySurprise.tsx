@@ -29,7 +29,7 @@ export function BirthdaySurprise({ titulo, texto, imagemUrl, onClose }: Birthday
       <Confetti width={windowSize.width} height={windowSize.height} recycle={false} numberOfPieces={300} gravity={0.15} />
       
       <div role="dialog" aria-modal="true" aria-labelledby="niver-titulo" className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-md w-full relative animate-scale-in max-h-[92vh] overflow-y-auto">
-        <div className="h-1.5 bg-escarlate" aria-hidden="true" />
+        <div className="h-1.5 bg-destaque" aria-hidden="true" />
         {imagemUrl && (
           <div className="h-56 sm:h-64 overflow-hidden relative">
             <img src={imagemUrl.startsWith('/api') ? `${import.meta.env.VITE_WORKER_URL}${imagemUrl}` : imagemUrl} alt="" className="w-full h-full object-cover" />
@@ -54,7 +54,7 @@ export function BirthdaySurprise({ titulo, texto, imagemUrl, onClose }: Birthday
           <button
             onClick={onClose}
             autoFocus
-            className="w-full min-h-[52px] bg-escarlate text-white rounded-2xl font-display text-2xl tracking-wider hover:bg-red-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-escarlate/40 focus-visible:ring-offset-2"
+            className="w-full min-h-[52px] bg-destaque text-destaque-texto rounded-2xl font-display text-2xl tracking-wider hover:brightness-90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-destaque/40 focus-visible:ring-offset-2"
           >
             {ESQUADRAO.frases.saudacao}
           </button>

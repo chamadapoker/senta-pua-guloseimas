@@ -99,7 +99,7 @@ export function EventoPublicoShare() {
     return (
       <Moldura>
         <div role="status" className="p-10 flex flex-col items-center gap-3 text-texto-fraco">
-          <span className="w-8 h-8 rounded-full border-[3px] border-borda border-t-escarlate animate-spin" aria-hidden="true" />
+          <span className="w-8 h-8 rounded-full border-[3px] border-borda border-t-destaque animate-spin" aria-hidden="true" />
           <span className="text-sm">Carregando evento...</span>
         </div>
       </Moldura>
@@ -117,7 +117,7 @@ export function EventoPublicoShare() {
   return (
     <Moldura>
       {capa && <img src={capa} alt="" className="w-full object-cover max-h-72" />}
-      <div className="h-1.5 bg-escarlate" aria-hidden="true" />
+      <div className="h-1.5 bg-destaque" aria-hidden="true" />
 
       <div className="p-5 space-y-5">
         <div className="flex items-start gap-4">
@@ -159,7 +159,7 @@ export function EventoPublicoShare() {
           </p>
         ) : (
           <Link to="/ximboca"
-            className="flex items-center justify-center w-full min-h-[52px] bg-escarlate text-white font-semibold text-base rounded-xl hover:bg-red-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-escarlate/40 focus-visible:ring-offset-2">
+            className="flex items-center justify-center w-full min-h-[52px] bg-destaque text-destaque-texto font-semibold text-base rounded-xl hover:brightness-90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-destaque/40 focus-visible:ring-offset-2">
             Quero participar
           </Link>
         )}

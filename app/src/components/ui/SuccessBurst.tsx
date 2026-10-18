@@ -5,7 +5,7 @@ import { ESQUADRAO } from '../../config/esquadrao';
 /**
  * Rajada de confete de sucesso — dispara uma vez e some sozinha.
  * Uso: renderize condicionalmente quando uma ação der certo (pedido, ingresso, pagamento).
- * Cores do brasão (azul-noite, faixa, escarlate) com um toque de dourado. Respeita redução de movimento.
+ * Cores do brasão (azul-noite, faixa, destaque) com um toque de dourado. Respeita redução de movimento.
  */
 export function SuccessBurst({ pieces = 180, duration = 3500 }: { pieces?: number; duration?: number }) {
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -31,7 +31,7 @@ export function SuccessBurst({ pieces = 180, duration = 3500 }: { pieces?: numbe
         recycle={false}
         numberOfPieces={pieces}
         gravity={0.2}
-        colors={[ESQUADRAO.cores.noite, ESQUADRAO.cores.faixa, ESQUADRAO.cores.escarlate, '#d4a843', '#ffffff']}
+        colors={[ESQUADRAO.cores.noite, ESQUADRAO.cores.faixa, ESQUADRAO.cores.destaque, '#d4a843', '#ffffff']}
       />
     </div>
   );

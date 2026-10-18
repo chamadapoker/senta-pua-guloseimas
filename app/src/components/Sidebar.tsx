@@ -250,8 +250,8 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
           ${flutuando ? 'lg:shadow-flutua' : ''}
         `}
       >
-        {/* Faixa escarlate no topo: a borda vermelha do brasão */}
-        <div className="h-1 bg-escarlate shrink-0" />
+        {/* Faixa na cor de destaque no topo: a borda do brasão */}
+        <div className="h-1 bg-destaque shrink-0" />
 
         <div className={`flex items-center h-16 shrink-0 ${mini ? 'justify-center px-0' : 'justify-between pl-4 pr-2'}`}>
           <Link to={isAdmin ? homeAdmin : '/'} className="flex items-center gap-3 min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/50">
@@ -301,7 +301,7 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
                   to={item.to}
                   title={mini ? item.label : undefined}
                   className={`${itemBase} relative ${mini ? 'justify-center px-0' : 'px-3'}
-                    ${ativo ? 'flamula bg-escarlate text-white' : itemInativo}`}
+                    ${ativo ? 'flamula bg-destaque text-destaque-texto' : itemInativo}`}
                 >
                   <span className="w-5 flex justify-center shrink-0">{item.icon}</span>
                   {!mini && <span className="flex-1 truncate">{item.label}</span>}
@@ -324,7 +324,7 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
                   title={mini ? item.label : undefined}
                   aria-expanded={mini ? undefined : aberto}
                   className={`${itemBase} relative ${mini ? 'justify-center px-0' : 'px-3'}
-                    ${naSecao ? (mini ? 'flamula bg-escarlate text-white' : 'text-white bg-noite-2') : itemInativo}`}
+                    ${naSecao ? (mini ? 'flamula bg-destaque text-destaque-texto' : 'text-white bg-noite-2') : itemInativo}`}
                 >
                   <span className="w-5 flex justify-center shrink-0">{item.icon}</span>
                   {mini && badge(badgeDoGrupo(item), 'absolute top-0.5 right-1')}
@@ -345,7 +345,7 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
                           key={child.to}
                           to={child.to}
                           className={`flex items-center gap-2 h-9 pl-3 pr-4 rounded-md text-[13px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/50
-                            ${ativo ? 'flamula-sm bg-escarlate text-white font-semibold' : 'text-noite-fraco hover:text-white hover:bg-noite-2'}`}
+                            ${ativo ? 'flamula-sm bg-destaque text-destaque-texto font-semibold' : 'text-noite-fraco hover:text-white hover:bg-noite-2'}`}
                         >
                           <span className="flex-1 truncate">{child.label}</span>
                           {badge(badgeDoItem(child.to))}

@@ -6,6 +6,7 @@
 import type { EsquadraoConfig } from '../../../app/esquadroes/tipo';
 import sentaPua from '../../../app/esquadroes/senta-pua.json';
 import exemplo from '../../../app/esquadroes/exemplo.json';
+import pantera from '../../../app/esquadroes/pantera.json';
 
 export type { EsquadraoConfig };
 
@@ -14,6 +15,7 @@ export const ESQUADRAO_PADRAO_ID = 'senta-pua';
 const ESQUADROES: Record<string, EsquadraoConfig> = {
   'senta-pua': sentaPua satisfies EsquadraoConfig,
   exemplo: exemplo satisfies EsquadraoConfig,
+  pantera: pantera satisfies EsquadraoConfig,
 };
 
 export const ESQUADRAO_PADRAO: EsquadraoConfig = ESQUADROES[ESQUADRAO_PADRAO_ID];

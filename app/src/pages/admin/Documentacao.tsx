@@ -145,7 +145,7 @@ export function Documentacao() {
 
         <article className="flex-1 min-w-0 bg-white rounded-2xl border border-borda p-5 sm:p-8 shadow-sm">
           <h2 className="font-display text-2xl sm:text-3xl text-noite tracking-wide leading-none">{secao.titulo}</h2>
-          <span className="flamula-sm block w-8 h-1 bg-escarlate mt-2" aria-hidden="true" />
+          <span className="flamula-sm block w-8 h-1 bg-destaque mt-2" aria-hidden="true" />
           {secao.intro && <p className="text-texto leading-relaxed mt-4">{secao.intro}</p>}
 
           <div className={`mt-6 grid grid-cols-1 gap-3 sm:gap-4 ${secao.colunas ? 'md:grid-cols-2' : ''}`}>

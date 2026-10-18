@@ -1,0 +1,78 @@
+{
+  "id": "pantera",
+  "nome": "Senta Pua",
+  "nome_completo": "5º/8º GAV",
+  "sigla_documentos": "5º/8º GAV",
+  "slogan": "Esquadrão Pantera — App RP 5º/8º GAV",
+  "cidade_pix_padrao": "SANTA MARIA",
+  "url_app": "https://app-pantera.pages.dev",
+  "rodape": "Desenvolvido pelo 3S TIN HÖEHR",
+  "cores": {
+    "noite": "#141418",
+    "noite-2": "#232329",
+    "noite-3": "#34343c",
+    "faixa": "#1f3196",
+    "escarlate": "#d7141a",
+    "destaque": "#f5c400",
+    "destaque-texto": "#141418",
+    "noite-texto": "#e9e9ee",
+    "noite-fraco": "#a4a4ae"
+  },
+  "cor_fundo_pwa": "#eef1f5",
+  "imagens": {
+    "brasao": "/esquadroes/pantera/brasao-96.png",
+    "brasao_grande": "/esquadroes/pantera/brasao-192.png",
+    "logo": "/esquadroes/pantera/brasao-512.png",
+    "og_image": "https://app-pantera.pages.dev/esquadroes/pantera/brasao-512.png"
+  },
+  "salas_cafe": {
+    "oficial": "Sala dos oficiais",
+    "graduado": "Sala dos graduados"
+  },
+  "salas_cafe_documentos": {
+    "oficial": "Sala dos Oficiais",
+    "graduado": "Sala dos Graduados"
+  },
+  "frases": {
+    "saudacao": "Pantera!",
+    "cobranca": "Favor regularizar. 5º/8º GAV - App RP.",
+    "fiado": [
+      "Uma Pantera sempre paga suas dívidas!",
+      "Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.",
+      "Dívida registrada, militar. Um Pantera sempre paga o que deve!",
+      "Anotado no fiado! Mas lembre-se: aqui não tem anistia.",
+      "Fiado feito. A conta não prescreve, militar!",
+      "Registrado! Um devedor honrado paga antes da próxima missão."
+    ],
+    "pix_pago": [
+      "Valeu, militar! Uma Pantera sempre honra suas dívidas!",
+      "Pagamento registrado! Você é exemplo pro esquadrão!",
+      "PIX confirmado! Moral lá em cima, militar!",
+      "Boa, militar! Rápido no gatilho e no PIX!",
+      "Recebido! O 5º/8º GAV agradece, guerreiro!"
+    ]
+  },
+  "areas": {
+    "cantina": true,
+    "loja": true,
+    "cafe": true,
+    "ximboca": true,
+    "inventario": true
+  },
+  "servidor": {
+    "mensalidade_cafe": [
+      "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
+      "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
+      "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
+      "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
+    ],
+    "anuidade_cafe": [
+      "Anuidade do café lançada no seu extrato. Disciplina o ano inteiro mantém o radar limpo!",
+      "Sua contribuição anual do café foi registrada. Café quente garantido, Pantera!",
+      "Anuidade do café no extrato. Missão de um ano, cumprida de uma vez. Mantenha o radar em dia."
+    ],
+    "aniversario_notificacao": "O Esquadrão Pantera te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Pantera!",
+    "aniversario_homenagem": "O 5º/8º GAV deseja a você muitas felicidades e sucesso!",
+    "lembrete_cafe_pendente": "Você tem {qtd} {cobrancas} do café em aberto (mensalidade/anuidade), total de R$ {total}. Pague pelo app com PIX e envie o comprovante."
+  }
+}

@@ -2,7 +2,7 @@
 // Roda em Node: usado por vite.config.ts e tailwind.config.ts.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { EsquadraoConfig } from './tipo';
+import type { EsquadraoCarregado, EsquadraoConfig } from './tipo';
 
 export const ESQUADRAO_PADRAO = 'senta-pua';
 
@@ -19,7 +19,7 @@ export function arquivoEsquadrao(id = idEsquadrao()): string {
   return path.resolve(__dirname, `${id}.json`);
 }
 
-export function carregarEsquadrao(id = idEsquadrao()): EsquadraoConfig {
+export function carregarEsquadrao(id = idEsquadrao()): EsquadraoCarregado {
   if (!/^[a-z0-9-]+$/i.test(id)) {
     throw new Error(`[esquadrao] VITE_ESQUADRAO inválido: "${id}". Use só letras, números e hífen.`);
   }
@@ -43,5 +43,14 @@ export function carregarEsquadrao(id = idEsquadrao()): EsquadraoConfig {
   if (faltando.length) {
     throw new Error(`[esquadrao] ${arquivo} sem os campos obrigatórios: ${faltando.join(', ')}`);
   }
-  return dados;
+  // Cores de destaque da marca: configs antigos não têm, então herdam o escarlate e texto branco
+  const { cores } = dados;
+  return {
+    ...dados,
+    cores: {
+      ...cores,
+      destaque: cores.destaque || cores.escarlate,
+      'destaque-texto': cores['destaque-texto'] || '#ffffff',
+    },
+  };
 }

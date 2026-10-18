@@ -14,4 +14,4 @@ declare const __APP_VERSION__: string;
 
 // Identidade do esquadrão injetada no build (vite define) a partir de
 // esquadroes/<VITE_ESQUADRAO>.json. Use via src/config/esquadrao.ts.
-declare const __ESQUADRAO__: import('../esquadroes/tipo').EsquadraoConfig;
+declare const __ESQUADRAO__: import('../esquadroes/tipo').EsquadraoCarregado;

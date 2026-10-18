@@ -43,7 +43,7 @@ export function HeroSentaPua({ linha, children }: { linha: ReactNode; children?:
         <img src={ESQUADRAO.imagens.brasao_grande} alt={ALT_BRASAO} width={96} height={96} className="w-[72px] h-[72px] sm:w-24 sm:h-24 object-contain shrink-0" />
         <div className="min-w-0">
           <p className="font-display text-[2.75rem] sm:text-6xl leading-[0.9] tracking-[0.04em]">{ESQUADRAO.nome}</p>
-          <span className="flamula-sm block w-12 h-1.5 bg-escarlate mt-2" aria-hidden="true" />
+          <span className="flamula-sm block w-12 h-1.5 bg-destaque mt-2" aria-hidden="true" />
           <p className="text-[15px] text-noite-texto mt-2.5 leading-snug">{linha}</p>
         </div>
       </div>

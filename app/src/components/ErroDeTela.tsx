@@ -52,7 +52,7 @@ export class ErroDeTela extends Component<{ children: ReactNode }, Estado> {
     return (
       <div className="min-h-screen bg-noite flex items-center justify-center p-6">
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-flutua overflow-hidden">
-          <div className="h-1.5 bg-escarlate" />
+          <div className="h-1.5 bg-destaque" />
           <div className="p-6 text-center">
             <img src={ESQUADRAO.imagens.brasao} alt="" className="h-14 w-auto mx-auto mb-4" />
             <h1 className="font-display text-2xl text-noite tracking-wide">

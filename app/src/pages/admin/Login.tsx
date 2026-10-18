@@ -30,12 +30,12 @@ export function Login() {
         <div className="flex flex-col items-center text-center mb-8">
           <img src={ESQUADRAO.imagens.brasao_grande} alt={ALT_BRASAO} width={96} height={96} className="w-24 h-24 object-contain" />
           <p className="font-display text-5xl text-white tracking-wider leading-none mt-5">{NOME_MAIUSCULO}</p>
-          <span className="flamula-sm block w-12 h-1.5 bg-escarlate mt-3" aria-hidden="true" />
+          <span className="flamula-sm block w-12 h-1.5 bg-destaque mt-3" aria-hidden="true" />
           <p className="text-sm text-white/70 mt-3">Área administrativa do {ESQUADRAO.nome_completo}</p>
         </div>
 
         <div className="bg-white rounded-2xl overflow-hidden">
-          <div className="h-1 bg-escarlate" aria-hidden="true" />
+          <div className="h-1 bg-destaque" aria-hidden="true" />
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <h1 className="font-display text-2xl text-noite tracking-wide leading-none">Entrar como admin</h1>

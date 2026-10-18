@@ -2,6 +2,13 @@
 // Usado pelo app (src/config/esquadrao.ts) e pelos configs de build (vite/tailwind).
 
 export type CorEsquadrao = 'noite' | 'noite-2' | 'noite-3' | 'faixa' | 'escarlate' | 'noite-texto' | 'noite-fraco';
+/**
+ * Cores de destaque da marca (opcionais no arquivo; o carregador completa):
+ * - `destaque`: cor da identidade (item ativo do menu, flâmulas, faixas dos cartões). Padrão: `escarlate`.
+ * - `destaque-texto`: cor do texto/ícone por cima do destaque. Padrão: "#ffffff".
+ * `escarlate` fica sendo só a cor de ALERTA (dívida, erro, botão danger, check-in barrado).
+ */
+export type CorDestaque = 'destaque' | 'destaque-texto';
 export type AreaEsquadrao = 'cantina' | 'loja' | 'cafe' | 'ximboca' | 'inventario';
 
 export interface EsquadraoConfig {
@@ -21,8 +28,8 @@ export interface EsquadraoConfig {
   url_app: string;
   /** Texto do rodapé. */
   rodape: string;
-  /** Paleta do brasão (menu e navegação). */
-  cores: Record<CorEsquadrao, string>;
+  /** Paleta do brasão (menu e navegação). `escarlate` = alerta; `destaque` = cor da marca. */
+  cores: Record<CorEsquadrao, string> & Partial<Record<CorDestaque, string>>;
   /** Cor de fundo da tela de abertura do PWA (manifest background_color). */
   cor_fundo_pwa: string;
   imagens: {
@@ -64,3 +71,8 @@ export interface EsquadraoConfig {
     lembrete_cafe_pendente: string;
   };
 }
+
+/** Config já carregado (carregar.ts): as cores de destaque sempre presentes. */
+export type EsquadraoCarregado = Omit<EsquadraoConfig, 'cores'> & {
+  cores: Record<CorEsquadrao | CorDestaque, string>;
+};

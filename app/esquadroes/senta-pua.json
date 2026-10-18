@@ -13,6 +13,8 @@
     "noite-3": "#222f75",
     "faixa": "#3445d6",
     "escarlate": "#e0001b",
+    "destaque": "#e0001b",
+    "destaque-texto": "#ffffff",
     "noite-texto": "#c9cff0",
     "noite-fraco": "#8a92c4"
   },

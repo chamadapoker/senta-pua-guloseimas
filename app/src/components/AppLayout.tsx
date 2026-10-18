@@ -184,8 +184,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </div>
-        {/* Fio escarlate sob o topo no mobile, como a borda do brasão */}
-        <div className="h-[3px] bg-escarlate lg:hidden" />
+        {/* Fio na cor de destaque sob o topo no mobile, como a borda do brasão */}
+        <div className="h-[3px] bg-destaque lg:hidden" />
       </header>
 
       <main id="conteudo" className={`transition-[padding] duration-300 ${sidebarPl} pb-28 lg:pb-0`}>

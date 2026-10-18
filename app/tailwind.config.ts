@@ -34,7 +34,10 @@ export default {
         'noite-2': cores['noite-2'],
         'noite-3': cores['noite-3'],
         faixa: cores.faixa,
+        // escarlate = cor de ALERTA (dívida, erro, danger); destaque = cor da MARCA (menu ativo, flâmulas, faixas)
         escarlate: cores.escarlate,
+        destaque: cores.destaque,
+        'destaque-texto': cores['destaque-texto'],
         'noite-texto': cores['noite-texto'],
         'noite-fraco': cores['noite-fraco'],
       },

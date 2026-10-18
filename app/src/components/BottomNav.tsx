@@ -51,7 +51,7 @@ export function BottomNav({ onAbrirMenu }: { onAbrirMenu: () => void }) {
               aria-current={ativo ? 'page' : undefined}
               className={`${celula} ${ativo ? 'text-white' : 'text-noite-fraco active:text-white'}`}
             >
-              {ativo && <span className="flamula-v absolute top-0 w-6 h-[7px] bg-escarlate" aria-hidden="true" />}
+              {ativo && <span className="flamula-v absolute top-0 w-6 h-[7px] bg-destaque" aria-hidden="true" />}
               <span className="relative">
                 <Icon name={item.icon as never} size={22} />
                 {n > 0 && (
