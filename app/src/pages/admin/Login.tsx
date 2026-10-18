@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { inputClass } from '../../components/ui/Field';
 import { useAuth, acessoRestritoCafeAgora, HOME_CAFE_GRADUADO } from '../../hooks/useAuth';
+import { ESQUADRAO, NOME_MAIUSCULO, ALT_BRASAO } from '../../config/esquadrao';
 
 // Porta de entrada do admin: tela cheia em azul-noite, sem o layout do app
 export function Login() {
@@ -27,10 +28,10 @@ export function Login() {
     <main className="min-h-[100dvh] bg-noite flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center text-center mb-8">
-          <img src="/brasao-192.png" alt="Brasão do 1/10 GpAv" width={96} height={96} className="w-24 h-24 object-contain" />
-          <p className="font-display text-5xl text-white tracking-wider leading-none mt-5">SENTA PUA</p>
+          <img src={ESQUADRAO.imagens.brasao_grande} alt={ALT_BRASAO} width={96} height={96} className="w-24 h-24 object-contain" />
+          <p className="font-display text-5xl text-white tracking-wider leading-none mt-5">{NOME_MAIUSCULO}</p>
           <span className="flamula-sm block w-12 h-1.5 bg-escarlate mt-3" aria-hidden="true" />
-          <p className="text-sm text-white/70 mt-3">Área administrativa do 1/10 GpAv</p>
+          <p className="text-sm text-white/70 mt-3">Área administrativa do {ESQUADRAO.nome_completo}</p>
         </div>
 
         <div className="bg-white rounded-2xl overflow-hidden">

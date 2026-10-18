@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon, type IconName } from '../ui/Icon';
+import { ESQUADRAO, ALT_BRASAO } from '../../config/esquadrao';
 
 const ATALHOS: { to: string; icon: IconName; titulo: string; texto: string }[] = [
   { to: '/catalogo/oficiais', icon: 'cutlery', titulo: 'Cantina dos Oficiais', texto: 'Lanches e bebidas da sala dos oficiais' },
@@ -34,14 +35,14 @@ export function AtalhosHome() {
   );
 }
 
-// Faixa de identidade do topo da página inicial: brasão, "Senta Pua" e uma linha
+// Faixa de identidade do topo da página inicial: brasão, nome do esquadrão e uma linha
 export function HeroSentaPua({ linha, children }: { linha: ReactNode; children?: ReactNode }) {
   return (
     <section className="relative overflow-hidden bg-noite text-white rounded-2xl px-5 py-6 sm:px-7 sm:py-8 mb-5">
       <div className="flex items-center gap-4 sm:gap-6">
-        <img src="/brasao-192.png" alt="Brasão do 1/10 GpAv" width={96} height={96} className="w-[72px] h-[72px] sm:w-24 sm:h-24 object-contain shrink-0" />
+        <img src={ESQUADRAO.imagens.brasao_grande} alt={ALT_BRASAO} width={96} height={96} className="w-[72px] h-[72px] sm:w-24 sm:h-24 object-contain shrink-0" />
         <div className="min-w-0">
-          <p className="font-display text-[2.75rem] sm:text-6xl leading-[0.9] tracking-[0.04em]">Senta Pua</p>
+          <p className="font-display text-[2.75rem] sm:text-6xl leading-[0.9] tracking-[0.04em]">{ESQUADRAO.nome}</p>
           <span className="flamula-sm block w-12 h-1.5 bg-escarlate mt-2" aria-hidden="true" />
           <p className="text-[15px] text-noite-texto mt-2.5 leading-snug">{linha}</p>
         </div>

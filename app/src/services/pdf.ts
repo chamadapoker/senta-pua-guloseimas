@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import type { Pedido } from '../types';
 import { api } from './api';
 import { parseDataBanco } from './datas';
+import { ESQUADRAO, NOME_MAIUSCULO } from '../config/esquadrao';
 
 let _configCache: Record<string, string> | null = null;
 async function getConfig(): Promise<Record<string, string>> {
@@ -22,7 +23,7 @@ async function getPixCafe(tipo: 'oficial' | 'graduado'): Promise<string> {
 }
 async function getCafeNome(tipo: string): Promise<string> {
   const c = await getConfig();
-  return tipo === 'oficial' ? (c.nome_cafe_oficiais || 'Sala dos Oficiais') : (c.nome_cafe_graduados || 'Sala do Lange');
+  return tipo === 'oficial' ? (c.nome_cafe_oficiais || ESQUADRAO.salas_cafe_documentos.oficial) : (c.nome_cafe_graduados || ESQUADRAO.salas_cafe_documentos.graduado);
 }
 
 interface DebitoUnificado {
@@ -52,11 +53,11 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);
-  doc.text('SENTA PUA', pageWidth / 2, 16, { align: 'center' });
+  doc.text(NOME_MAIUSCULO, pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setTextColor(212, 168, 67);
-  doc.text('1/10 GAV — App RP', pageWidth / 2, 24, { align: 'center' });
+  doc.text(`${ESQUADRAO.sigla_documentos} — App RP`, pageWidth / 2, 24, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setTextColor(200, 200, 200);
@@ -217,7 +218,7 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Documento gerado automaticamente pelo sistema Senta Pua.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text(`Documento gerado automaticamente pelo sistema ${ESQUADRAO.nome}.`, pageWidth / 2, footerY, { align: 'center' });
 
   doc.save(`extrato-unificado-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }
@@ -241,11 +242,11 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);
-  doc.text('SENTA PUA', pageWidth / 2, 16, { align: 'center' });
+  doc.text(NOME_MAIUSCULO, pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setTextColor(212, 168, 67); // dourado
-  doc.text('1/10 GAV — App RP', pageWidth / 2, 24, { align: 'center' });
+  doc.text(`${ESQUADRAO.sigla_documentos} — App RP`, pageWidth / 2, 24, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setTextColor(200, 200, 200);
@@ -324,7 +325,7 @@ export async function gerarExtratoPDF(nome: string, pedidos: Pedido[], total: nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('Documento gerado automaticamente pelo sistema Senta Pua.', pageWidth / 2, footerY, { align: 'center' });
+  doc.text(`Documento gerado automaticamente pelo sistema ${ESQUADRAO.nome}.`, pageWidth / 2, footerY, { align: 'center' });
   const pixChaveExtrato = await getPixChave();
   doc.text(`Chave PIX: ${pixChaveExtrato}`, pageWidth / 2, footerY + 5, { align: 'center' });
 
@@ -353,7 +354,7 @@ export async function gerarCobrancaCafePDF(nome: string, tipo: string, mesesPend
   doc.setFontSize(10);
   doc.setTextColor(...amber);
   const nomeSalaCafe = await getCafeNome(tipo);
-  doc.text(`1/10 GAV — ${nomeSalaCafe}`, pageWidth / 2, 24, { align: 'center' });
+  doc.text(`${ESQUADRAO.sigla_documentos} — ${nomeSalaCafe}`, pageWidth / 2, 24, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setTextColor(200, 200, 200);
@@ -428,7 +429,7 @@ export async function gerarCobrancaXimbocaPDF(nomeEvento: string, dataEvento: st
 
   doc.setFontSize(10);
   doc.setTextColor(212, 168, 67);
-  doc.text('1/10 GAV — App RP', pageWidth / 2, 24, { align: 'center' });
+  doc.text(`${ESQUADRAO.sigla_documentos} — App RP`, pageWidth / 2, 24, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setTextColor(200, 200, 200);

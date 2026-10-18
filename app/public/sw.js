@@ -1,6 +1,7 @@
 // O build (package.json) troca o marcador abaixo por um hash novo a cada deploy:
 // muda o nome do cache (limpa o antigo no activate) e o próprio sw.js (dispara a atualização).
-const CACHE_NAME = 'senta-pua-' + '__BUILD_HASH__';
+// No build, o vite.config.ts troca o marcador ESQUADRAO_ID (com sublinhados) pelo id do esquadrão.
+const CACHE_NAME = '__ESQUADRAO_ID__-' + '__BUILD_HASH__';
 const PRECACHE = ['/logo.png', '/sabre.png', '/manifest.json'];
 
 self.addEventListener('install', (e) => {

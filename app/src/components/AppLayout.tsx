@@ -7,6 +7,7 @@ import { useUserAuth } from '../hooks/useUserAuth';
 import { api } from '../services/api';
 import { Icon } from './ui/Icon';
 import { AvisoCadastro, pendenciasCadastro } from './AvisoCadastro';
+import { ESQUADRAO, NOME_MAIUSCULO } from '../config/esquadrao';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -99,10 +100,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className={`${larguraConteudo} mx-auto px-4 h-14 lg:h-16 flex items-center gap-3`}>
           {/* Mobile: brasão + seção */}
           <Link to={isAdmin ? (restritoCafe ? HOME_CAFE_GRADUADO : '/admin') : '/'} className="lg:hidden shrink-0" aria-label="Início">
-            <img src="/brasao-96.png" alt="" className="h-9 w-auto" />
+            <img src={ESQUADRAO.imagens.brasao} alt="" className="h-9 w-auto" />
           </Link>
           <div className="min-w-0 flex-1">
-            <div className="lg:hidden font-display text-lg leading-none tracking-wider">SENTA PUA</div>
+            <div className="lg:hidden font-display text-lg leading-none tracking-wider">{NOME_MAIUSCULO}</div>
             <div className="text-[12px] lg:text-sm text-noite-fraco lg:text-texto-fraco truncate mt-0.5 lg:mt-0">
               {secao || (isAdmin ? (restritoCafe ? 'Café dos graduados' : 'Painel do admin') : 'Cantina, loja e café do esquadrão')}
             </div>
@@ -195,7 +196,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       <footer className={`transition-[padding] duration-300 ${sidebarPl} text-center py-4 pb-28 lg:pb-6 text-xs text-texto-fraco space-y-1`}>
-        <div>Desenvolvido pelo 3S TIN HÖEHR</div>
+        <div>{ESQUADRAO.rodape}</div>
         <Link to="/privacidade" className="hover:text-azul hover:underline">Política de privacidade</Link>
       </footer>
 

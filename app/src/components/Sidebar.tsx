@@ -5,6 +5,7 @@ import { useUserAuth } from '../hooks/useUserAuth';
 import { useComprovantesPendentes } from '../hooks/useComprovantesPendentes';
 import { Icon } from './ui/Icon';
 import { nomeSalaCafe, useConfigCafe } from '../pages/admin/cafe/SalaCafe';
+import { ESQUADRAO, NOME_MAIUSCULO, ALT_BRASAO } from '../config/esquadrao';
 
 interface NavItem {
   to: string;
@@ -113,7 +114,7 @@ export function secaoDaRota(
   opts: { restritoCafe?: boolean; nomeSalaGraduados?: string } = {}
 ): string {
   const nav = isAdmin
-    ? (opts.restritoCafe ? navCafeGraduado(opts.nomeSalaGraduados || 'Sala dos graduados') : ADMIN_NAV)
+    ? (opts.restritoCafe ? navCafeGraduado(opts.nomeSalaGraduados || ESQUADRAO.salas_cafe.graduado) : ADMIN_NAV)
     : USER_NAV;
   let melhor = '';
   let tam = -1;
@@ -254,11 +255,11 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
 
         <div className={`flex items-center h-16 shrink-0 ${mini ? 'justify-center px-0' : 'justify-between pl-4 pr-2'}`}>
           <Link to={isAdmin ? homeAdmin : '/'} className="flex items-center gap-3 min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-            <img src="/brasao-96.png" alt="Brasão do 1/10 GpAv" className="h-10 w-auto shrink-0 drop-shadow" />
+            <img src={ESQUADRAO.imagens.brasao} alt={ALT_BRASAO} className="h-10 w-auto shrink-0 drop-shadow" />
             {!mini && (
               <span className="min-w-0">
-                <span className="block font-display text-white text-xl leading-none tracking-wider">SENTA PUA</span>
-                <span className="block text-[11px] text-noite-fraco mt-1 truncate">1/10 GpAv · {isAdmin ? (restritoCafe ? 'café dos graduados' : 'painel do admin') : 'cantina e loja'}</span>
+                <span className="block font-display text-white text-xl leading-none tracking-wider">{NOME_MAIUSCULO}</span>
+                <span className="block text-[11px] text-noite-fraco mt-1 truncate">{ESQUADRAO.nome_completo} · {isAdmin ? (restritoCafe ? 'café dos graduados' : 'painel do admin') : 'cantina e loja'}</span>
               </span>
             )}
           </Link>

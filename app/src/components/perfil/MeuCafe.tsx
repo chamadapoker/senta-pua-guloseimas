@@ -11,6 +11,7 @@ import { useCopiar } from '../../hooks/useCopiar';
 import { useUserAuth } from '../../hooks/useUserAuth';
 import type { MeuCafeStatus as CafeStatus, SalaCafeTipo } from '../../types';
 import { mesCurto, nomeSalaCafe, pixSalaCafe, rotuloReferencia, salaDaCategoria } from '../../pages/admin/cafe/SalaCafe';
+import { ESQUADRAO } from '../../config/esquadrao';
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -103,7 +104,7 @@ export function MeuCafe() {
 
   const copiarPix = async () => {
     if (!chave || totalPendente <= 0) return;
-    const payload = gerarPayloadPix(totalPendente, { chave, nome, cidade: config.pix_guloseimas_cidade || 'ANAPOLIS' });
+    const payload = gerarPayloadPix(totalPendente, { chave, nome, cidade: config.pix_guloseimas_cidade || ESQUADRAO.cidade_pix_padrao });
     if (!(await copiar(payload))) return;
     setCopiado(true);
     setTimeout(() => setCopiado(false), 3000);

@@ -1,4 +1,15 @@
 import type { Config } from 'tailwindcss';
+import { carregarEsquadrao } from './esquadroes/carregar';
+
+// Paleta do brasão vem do esquadrão escolhido no build (VITE_ESQUADRAO, padrão "senta-pua")
+const { cores } = carregarEsquadrao();
+
+/** "#0d1640" -> "13, 22, 64" (para rgba nas sombras) */
+const rgb = (hex: string) => {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+};
 
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -18,17 +29,17 @@ export default {
         'texto-fraco': '#6b7280',
         borda: '#cbd2de',
         'borda-forte': '#aeb7c9',
-        // Paleta do brasão do 1/10 GpAv (menu e navegação)
-        noite: '#0d1640',
-        'noite-2': '#17225c',
-        'noite-3': '#222f75',
-        faixa: '#3445d6',
-        escarlate: '#e0001b',
-        'noite-texto': '#c9cff0',
-        'noite-fraco': '#8a92c4',
+        // Paleta do brasão do esquadrão (menu e navegação): esquadroes/<id>.json -> cores
+        noite: cores.noite,
+        'noite-2': cores['noite-2'],
+        'noite-3': cores['noite-3'],
+        faixa: cores.faixa,
+        escarlate: cores.escarlate,
+        'noite-texto': cores['noite-texto'],
+        'noite-fraco': cores['noite-fraco'],
       },
       boxShadow: {
-        flutua: '0 10px 30px -8px rgba(13, 22, 64, 0.45)',
+        flutua: `0 10px 30px -8px rgba(${rgb(cores.noite)}, 0.45)`,
       },
       fontFamily: {
         display: ['"Bebas Neue"', 'Impact', 'sans-serif'],

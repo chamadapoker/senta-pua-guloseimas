@@ -1,6 +1,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Icon } from '../components/ui/Icon';
 import { TelaEntrada } from './TelaEntrada';
+import { ESQUADRAO } from '../config/esquadrao';
 
 export function CadastroEscolha() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export function CadastroEscolha() {
     {
       to: '/cadastro/militar',
       icon: 'user' as const,
-      titulo: 'Sou do 1/10 GpAv',
+      titulo: `Sou do ${ESQUADRAO.nome_completo}`,
       texto: 'Conta permanente para os militares do esquadrão.',
     },
     {

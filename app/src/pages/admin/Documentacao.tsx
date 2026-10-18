@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Icon, type IconName } from '../../components/ui/Icon';
+import { ESQUADRAO } from '../../config/esquadrao';
 
 type Topico = 'geral' | 'loja' | 'cafe' | 'ximboca' | 'usuarios' | 'financeiro' | 'seguranca' | 'automacoes';
 
@@ -10,8 +11,8 @@ interface Secao { id: Topico; label: string; icon: IconName; titulo: string; int
 
 const SECOES: Secao[] = [
   {
-    id: 'geral', label: 'Visão geral', icon: 'info', titulo: 'O sistema Senta Pua', colunas: true,
-    intro: <>Feito para a gestão do <strong>1/10 GpAv</strong>: cantina, loja, caixinha do café e ximbocas em uma única plataforma. Versão atual do app: <strong>v{__APP_VERSION__}</strong> (aparece também no rodapé do menu, ao lado do seu nome).</>,
+    id: 'geral', label: 'Visão geral', icon: 'info', titulo: `O sistema ${ESQUADRAO.nome}`, colunas: true,
+    intro: <>Feito para a gestão do <strong>{ESQUADRAO.nome_completo}</strong>: cantina, loja, caixinha do café e ximbocas em uma única plataforma. Versão atual do app: <strong>v{__APP_VERSION__}</strong> (aparece também no rodapé do menu, ao lado do seu nome).</>,
     blocos: [
       { titulo: 'Um só acesso', texto: 'Com um único login o militar compra na cantina, paga a loja, acompanha o café e participa da ximboca. Todo o saldo dele fica em um extrato só, o que facilita a cobrança pelo RP.' },
       { titulo: 'Menu lateral', texto: <>No computador, o menu azul-noite fica recolhido (só ícones) e abre sozinho ao passar o mouse. Para deixá-lo sempre aberto, use o botão de alfinete no topo do menu (<strong>Manter o menu aberto</strong>). A escolha fica guardada neste navegador.</> },

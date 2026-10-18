@@ -11,14 +11,10 @@ import { useCopiar } from '../hooks/useCopiar';
 import { api } from '../services/api';
 import { getConfig } from '../services/config';
 import { gerarPayloadPix } from '../services/pix';
+import { ESQUADRAO } from '../config/esquadrao';
 
-const FRASES_PAGOU = [
-  'Valeu, militar! Um Leão sempre honra suas dívidas!',
-  'Pagamento registrado! Você é exemplo pro esquadrão!',
-  'PIX confirmado! Moral lá em cima, militar!',
-  'Boa, militar! Rápido no gatilho e no PIX!',
-  'Recebido! O 1/10 GpAv agradece, guerreiro!',
-];
+// Frases temáticas do esquadrão (esquadroes/<id>.json -> frases.pix_pago)
+const FRASES_PAGOU = ESQUADRAO.frases.pix_pago;
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -43,7 +39,7 @@ export function PixPage() {
       setPixConfig({
         chave: c.pix_guloseimas_chave || '',
         nome: c.pix_guloseimas_nome || '',
-        cidade: c.pix_guloseimas_cidade || 'ANAPOLIS',
+        cidade: c.pix_guloseimas_cidade || ESQUADRAO.cidade_pix_padrao,
         whatsapp: c.pix_guloseimas_whatsapp || '',
       });
       setConfigStatus('ok');

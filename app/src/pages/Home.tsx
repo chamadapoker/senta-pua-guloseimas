@@ -3,6 +3,7 @@ import { AppLayout } from '../components/AppLayout';
 import { AtalhosHome, HeroSentaPua } from '../components/catalogo/AtalhosHome';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { Dashboard } from './Dashboard';
+import { ESQUADRAO } from '../config/esquadrao';
 
 export function Home() {
   const { user } = useUserAuth();
@@ -13,8 +14,8 @@ export function Home() {
   return (
     <AppLayout>
       <div className="animate-fade-in">
-        <h1 className="sr-only">Senta Pua, app do 1/10 GpAv</h1>
-        <HeroSentaPua linha="Cantinas, loja, café e ximboca do 1/10 GpAv. Peça, pague no PIX e acompanhe sua conta.">
+        <h1 className="sr-only">{ESQUADRAO.nome}, app do {ESQUADRAO.nome_completo}</h1>
+        <HeroSentaPua linha={`Cantinas, loja, café e ximboca do ${ESQUADRAO.nome_completo}. Peça, pague no PIX e acompanhe sua conta.`}>
           <div className="grid grid-cols-2 gap-2.5 max-w-sm">
             <Link
               to="/login"

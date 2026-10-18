@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ESQUADRAO } from '../config/esquadrao';
 
 // Campo das telas de entrada: 16px para o iPhone não dar zoom ao focar
 export const campoEntrada =
@@ -16,14 +17,14 @@ interface TelaEntradaProps {
 }
 
 // Moldura das telas de entrada (login, cadastro, acesso expirado):
-// fundo azul-noite em tela cheia, brasão, "Senta Pua" e o cartão branco com a faixa escarlate.
+// fundo azul-noite em tela cheia, brasão, nome do esquadrão e o cartão branco com a faixa escarlate.
 export function TelaEntrada({ titulo, subtitulo, children, rodape, largura = 'sm' }: TelaEntradaProps) {
   return (
     <div className="min-h-screen bg-noite flex flex-col items-center px-4 pt-10 pb-10 sm:pt-16">
-      <Link to="/" className="flex flex-col items-center gap-3 mb-7 outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-2xl" aria-label="Senta Pua, ir para o início">
-        <img src="/brasao-192.png" alt="" width={88} height={88} className="w-[88px] h-[88px] object-contain" />
-        <span className="font-display text-[2.6rem] leading-none text-white tracking-[0.08em]">Senta Pua</span>
-        <span className="text-sm text-noite-texto -mt-1">1/10 GpAv</span>
+      <Link to="/" className="flex flex-col items-center gap-3 mb-7 outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-2xl" aria-label={`${ESQUADRAO.nome}, ir para o início`}>
+        <img src={ESQUADRAO.imagens.brasao_grande} alt="" width={88} height={88} className="w-[88px] h-[88px] object-contain" />
+        <span className="font-display text-[2.6rem] leading-none text-white tracking-[0.08em]">{ESQUADRAO.nome}</span>
+        <span className="text-sm text-noite-texto -mt-1">{ESQUADRAO.nome_completo}</span>
       </Link>
 
       <main className={`w-full ${largura === 'md' ? 'max-w-md' : 'max-w-sm'} bg-white rounded-2xl overflow-hidden shadow-flutua animate-fade-in`}>

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { SuccessBurst } from '../components/ui/SuccessBurst';
 import { Card } from '../components/ui/Card';
 import { Icon, type IconName } from '../components/ui/Icon';
+import { ESQUADRAO } from '../config/esquadrao';
 
 const FRASES_PIX = [
   'Pagamento na hora, moral lá em cima!',
@@ -12,14 +13,8 @@ const FRASES_PIX = [
   'Rápido no gatilho e no PIX!',
 ];
 
-const FRASES_FIADO = [
-  'Um Leão sempre paga suas dívidas. Já um Centauro... não sabemos!',
-  'Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.',
-  'Dívida registrada, militar. Um Senta Pua sempre paga o que deve!',
-  'Anotado no fiado! Mas lembre-se: aqui não tem anistia.',
-  'Fiado feito. A conta não prescreve, militar!',
-  'Registrado! Um devedor honrado paga antes da próxima missão.',
-];
+// Frases temáticas do esquadrão (esquadroes/<id>.json -> frases.fiado)
+const FRASES_FIADO = ESQUADRAO.frases.fiado;
 
 const FRASES_DINHEIRO = [
   'Pagamento em dinheiro registrado! O responsável vai confirmar quando conferir.',

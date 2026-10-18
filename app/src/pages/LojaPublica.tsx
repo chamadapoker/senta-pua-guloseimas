@@ -13,6 +13,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { gerarPayloadPix } from '../services/pix';
 import { useCopiar } from '../hooks/useCopiar';
 import type { LojaCategoria } from '../types';
+import { ESQUADRAO } from '../config/esquadrao';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -106,7 +107,7 @@ export function LojaPublica() {
       setPixConfig({
         chave: c.pix_guloseimas_chave || '',
         nome: c.pix_guloseimas_nome || '',
-        cidade: c.pix_guloseimas_cidade || 'ANAPOLIS',
+        cidade: c.pix_guloseimas_cidade || ESQUADRAO.cidade_pix_padrao,
         whatsapp: c.pix_guloseimas_whatsapp || '',
       });
       setFreteConfig(parseFloat(c.loja_frete || '0') || 0);

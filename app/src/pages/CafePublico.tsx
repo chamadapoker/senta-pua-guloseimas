@@ -15,6 +15,7 @@ import { useUserAuth } from '../hooks/useUserAuth';
 import { useCopiar } from '../hooks/useCopiar';
 import type { MeuCafeStatus } from '../types';
 import { ehAnuidade, mesCurto, nomeSalaCafe, pixSalaCafe, rotuloReferencia } from './admin/cafe/SalaCafe';
+import { ESQUADRAO } from '../config/esquadrao';
 
 type Sala = 'oficial' | 'graduado' | null;
 
@@ -92,7 +93,7 @@ export function CafePublico() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ehMilitar]);
 
-  const cidadePix = config.pix_guloseimas_cidade || 'ANAPOLIS';
+  const cidadePix = config.pix_guloseimas_cidade || ESQUADRAO.cidade_pix_padrao;
 
   const avisoErroConfig = erroConfig && (
     <div role="alert" className="text-vermelho text-sm mb-4 bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center justify-between gap-3 flex-wrap">

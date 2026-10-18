@@ -4,6 +4,7 @@ import { Icon } from '../components/ui/Icon';
 import { dataLocal } from '../services/periodo';
 import { formatarDataBanco } from '../services/datas';
 import { useCopiar } from '../hooks/useCopiar';
+import { ESQUADRAO } from '../config/esquadrao';
 
 const BASE = import.meta.env.VITE_WORKER_URL || '';
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
@@ -30,9 +31,9 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 function Moldura({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-noite px-4 pt-6 pb-10">
-      <Link to="/" className="flex items-center justify-center gap-2.5 mb-5 outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-xl" aria-label="Senta Pua, ir para o início">
-        <img src="/brasao-192.png" alt="" width={40} height={40} className="w-10 h-10 object-contain" />
-        <span className="font-display text-2xl leading-none text-white tracking-[0.08em]">Senta Pua</span>
+      <Link to="/" className="flex items-center justify-center gap-2.5 mb-5 outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-xl" aria-label={`${ESQUADRAO.nome}, ir para o início`}>
+        <img src={ESQUADRAO.imagens.brasao_grande} alt="" width={40} height={40} className="w-10 h-10 object-contain" />
+        <span className="font-display text-2xl leading-none text-white tracking-[0.08em]">{ESQUADRAO.nome}</span>
       </Link>
       <main className="max-w-md mx-auto bg-white rounded-2xl overflow-hidden shadow-flutua">{children}</main>
     </div>

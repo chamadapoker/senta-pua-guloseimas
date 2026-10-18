@@ -11,6 +11,7 @@ import { clearConfigCache } from '../../services/config';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useToast } from '../../hooks/useToast';
 import { useAcessoAdmin, HOME_CAFE_GRADUADO } from '../../hooks/useAuth';
+import { ESQUADRAO } from '../../config/esquadrao';
 
 type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 
@@ -51,8 +52,8 @@ function Secao({ title, descricao, children }: { title: string; descricao?: stri
 // Valores padrão do café por sala e plano (fora do corpo de Configuracoes, pelo mesmo motivo acima)
 function ValoresPadraoCafe({ v, set }: { v: (k: string, f?: string) => string; set: (k: string, valor: string) => void }) {
   const salas = [
-    { id: 'oficial', nome: v('nome_cafe_oficiais', 'Sala dos oficiais') },
-    { id: 'graduado', nome: v('nome_cafe_graduados', 'Sala dos graduados') },
+    { id: 'oficial', nome: v('nome_cafe_oficiais', ESQUADRAO.salas_cafe.oficial) },
+    { id: 'graduado', nome: v('nome_cafe_graduados', ESQUADRAO.salas_cafe.graduado) },
   ];
   return (
     <Secao title="Café" descricao="Valor usado ao cadastrar um assinante sem informar o valor. O anual vale 12 meses a partir da adesão.">
@@ -92,7 +93,7 @@ function BlocoPix({ prefixo, titulo, descricao, comCidade, v, set }: {
         </Campo>
         {comCidade && (
           <Campo id={`${prefixo}_cidade`} label="Cidade" hint="Sem acento.">
-            <input id={`${prefixo}_cidade`} value={v(`${prefixo}_cidade`, 'ANAPOLIS')} onChange={e => set(`${prefixo}_cidade`, e.target.value)} className={inputClass} required />
+            <input id={`${prefixo}_cidade`} value={v(`${prefixo}_cidade`, ESQUADRAO.cidade_pix_padrao)} onChange={e => set(`${prefixo}_cidade`, e.target.value)} className={inputClass} required />
           </Campo>
         )}
         <Campo id={`${prefixo}_whatsapp`} label="WhatsApp para comprovantes" hint={DICA_WHATSAPP}>
@@ -115,7 +116,7 @@ const CHAVES_CAFE_GRADUADO = [
   'cafe_valor_graduado_anual',
 ] as const;
 
-const NOME_PADRAO_GRADUADOS = 'Sala dos graduados';
+const NOME_PADRAO_GRADUADOS = ESQUADRAO.salas_cafe.graduado;
 
 // Troca da própria senha (PUT /api/admins/me/senha). Fora do corpo das telas pelo mesmo motivo do foco.
 function TrocarMinhaSenha() {
@@ -391,10 +392,10 @@ function ConfiguracoesCompletas() {
                 <Secao title="Caixinha do café" descricao="Nome de cada sala do café.">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Campo id="nome_cafe_oficiais" label="Sala 1 (oficiais)">
-                      <input id="nome_cafe_oficiais" value={v('nome_cafe_oficiais', 'Sala dos Oficiais')} onChange={e => set('nome_cafe_oficiais', e.target.value)} className={inputClass} required />
+                      <input id="nome_cafe_oficiais" value={v('nome_cafe_oficiais', ESQUADRAO.salas_cafe_documentos.oficial)} onChange={e => set('nome_cafe_oficiais', e.target.value)} className={inputClass} required />
                     </Campo>
                     <Campo id="nome_cafe_graduados" label="Sala 2 (graduados)">
-                      <input id="nome_cafe_graduados" value={v('nome_cafe_graduados', 'Sala do Lange')} onChange={e => set('nome_cafe_graduados', e.target.value)} className={inputClass} required />
+                      <input id="nome_cafe_graduados" value={v('nome_cafe_graduados', ESQUADRAO.salas_cafe_documentos.graduado)} onChange={e => set('nome_cafe_graduados', e.target.value)} className={inputClass} required />
                     </Campo>
                   </div>
                 </Secao>

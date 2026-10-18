@@ -4,6 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../services/api';
 import { parseDataBanco, TZ_BR } from '../services/datas';
 import { Icon, type IconName } from '../components/ui/Icon';
+import { ESQUADRAO } from '../config/esquadrao';
 
 interface EventoCheckin { id: string; nome: string; data: string; imagem_url: string | null; total_pagos: number; entraram: number; }
 interface Resultado { estado: 'OK' | 'JA_ENTROU' | 'NAO_PAGO' | 'NAO_ENCONTRADO' | 'ERRO'; mensagem?: string; nome?: string; tipo_nome?: string | null; numero_ingresso?: number | null; checkin_at?: string; }
@@ -136,7 +137,7 @@ export function CheckinRecepcionista() {
       <div className="min-h-screen bg-noite text-white px-4 pt-6 pb-10">
         <div className="max-w-md mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <img src="/brasao-192.png" alt="" width={44} height={44} className="w-11 h-11 object-contain" />
+            <img src={ESQUADRAO.imagens.brasao_grande} alt="" width={44} height={44} className="w-11 h-11 object-contain" />
             <div>
               <h1 className="font-display text-3xl leading-none tracking-wide">Check-in</h1>
               <p className="text-sm text-noite-texto mt-0.5">Escolha o evento para ler os ingressos.</p>

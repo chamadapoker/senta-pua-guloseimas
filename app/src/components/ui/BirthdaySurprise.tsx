@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
+import { ESQUADRAO } from '../../config/esquadrao';
 
 interface BirthdaySurpriseProps {
   titulo: string;
@@ -55,7 +56,7 @@ export function BirthdaySurprise({ titulo, texto, imagemUrl, onClose }: Birthday
             autoFocus
             className="w-full min-h-[52px] bg-escarlate text-white rounded-2xl font-display text-2xl tracking-wider hover:bg-red-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-escarlate/40 focus-visible:ring-offset-2"
           >
-            Senta Pua!
+            {ESQUADRAO.frases.saudacao}
           </button>
         </div>
       </div>

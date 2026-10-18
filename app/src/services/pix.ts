@@ -1,3 +1,5 @@
+import { ESQUADRAO } from '../config/esquadrao';
+
 let PIX_KEY = '';
 let MERCHANT_NAME = '';
 let MERCHANT_CITY = '';
@@ -86,7 +88,7 @@ export function gerarPayloadPix(valor?: number, opcoes?: { chave?: string; nome?
 
   payload += tlv('58', 'BR');                    // Country Code
   payload += tlv('59', normalizarCampoPix(opcoes?.nome || MERCHANT_NAME, 25));   // Merchant Name
-  payload += tlv('60', (normalizarCampoPix(opcoes?.cidade || MERCHANT_CITY, 15) || 'ANAPOLIS')); // Merchant City (campo obrigatório)
+  payload += tlv('60', (normalizarCampoPix(opcoes?.cidade || MERCHANT_CITY, 15) || normalizarCampoPix(ESQUADRAO.cidade_pix_padrao, 15))); // Merchant City (campo obrigatório)
 
   // Additional Data Field com txid
   const txid = tlv('05', '***');

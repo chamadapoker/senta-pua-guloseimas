@@ -1,0 +1,60 @@
+{
+  "id": "senta-pua",
+  "nome": "Senta Pua",
+  "nome_completo": "1/10 GpAv",
+  "sigla_documentos": "1/10 GAV",
+  "slogan": "Da Pátria os Olhos — App RP 1/10 GAV",
+  "cidade_pix_padrao": "ANAPOLIS",
+  "url_app": "https://app-senta-pua.pages.dev",
+  "rodape": "Desenvolvido pelo 3S TIN HÖEHR",
+  "cores": {
+    "noite": "#0d1640",
+    "noite-2": "#17225c",
+    "noite-3": "#222f75",
+    "faixa": "#3445d6",
+    "escarlate": "#e0001b",
+    "noite-texto": "#c9cff0",
+    "noite-fraco": "#8a92c4"
+  },
+  "cor_fundo_pwa": "#eef1f5",
+  "imagens": {
+    "brasao": "/brasao-96.png",
+    "brasao_grande": "/brasao-192.png",
+    "logo": "/logo.png",
+    "og_image": "https://app-senta-pua.pages.dev/logo.png"
+  },
+  "salas_cafe": {
+    "oficial": "Sala dos oficiais",
+    "graduado": "Sala dos graduados"
+  },
+  "salas_cafe_documentos": {
+    "oficial": "Sala dos Oficiais",
+    "graduado": "Sala do Lange"
+  },
+  "frases": {
+    "saudacao": "Senta Pua!",
+    "cobranca": "Favor regularizar. 1/10 GAV - App RP.",
+    "fiado": [
+      "Um Leão sempre paga suas dívidas. Já um Centauro... não sabemos!",
+      "Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.",
+      "Dívida registrada, militar. Um Senta Pua sempre paga o que deve!",
+      "Anotado no fiado! Mas lembre-se: aqui não tem anistia.",
+      "Fiado feito. A conta não prescreve, militar!",
+      "Registrado! Um devedor honrado paga antes da próxima missão."
+    ],
+    "pix_pago": [
+      "Valeu, militar! Um Leão sempre honra suas dívidas!",
+      "Pagamento registrado! Você é exemplo pro esquadrão!",
+      "PIX confirmado! Moral lá em cima, militar!",
+      "Boa, militar! Rápido no gatilho e no PIX!",
+      "Recebido! O 1/10 GpAv agradece, guerreiro!"
+    ]
+  },
+  "areas": {
+    "cantina": true,
+    "loja": true,
+    "cafe": true,
+    "ximboca": true,
+    "inventario": true
+  }
+}

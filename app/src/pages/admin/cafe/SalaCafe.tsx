@@ -4,12 +4,13 @@ import { getConfig } from '../../../services/config';
 import { Icon } from '../../../components/ui/Icon';
 import { useAcessoAdmin } from '../../../hooks/useAuth';
 import type { SalaCafeTipo, PlanoCafe } from '../../../types';
+import { ESQUADRAO } from '../../../config/esquadrao';
 
 // ---------- Utilitários puros (usados também nas telas do militar) ----------
 
 export const NOME_SALA_PADRAO: Record<SalaCafeTipo, string> = {
-  oficial: 'Sala dos oficiais',
-  graduado: 'Sala dos graduados',
+  oficial: ESQUADRAO.salas_cafe.oficial,
+  graduado: ESQUADRAO.salas_cafe.graduado,
 };
 
 export function nomeSalaCafe(config: Record<string, string>, sala: SalaCafeTipo): string {

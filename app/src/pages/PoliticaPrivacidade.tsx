@@ -2,6 +2,7 @@ import { AppLayout } from '../components/AppLayout';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/ui/PageHeader';
 import { BackButton } from '../components/ui/BackButton';
+import { ESQUADRAO } from '../config/esquadrao';
 
 export function PoliticaPrivacidade() {
   return (
@@ -14,7 +15,7 @@ export function PoliticaPrivacidade() {
           <section>
             <h2 className="text-[17px] font-semibold text-noite mb-2">1. Quem somos</h2>
             <p>
-              O aplicativo <strong>Senta Pua</strong> é de uso interno do <strong>Esquadrão 1/10 GpAv</strong>, utilizado
+              O aplicativo <strong>{ESQUADRAO.nome}</strong> é de uso interno do <strong>Esquadrão {ESQUADRAO.nome_completo}</strong>, utilizado
               para gerenciar cantinas, loja, caixinha do café e ximbocas. Os dados coletados servem exclusivamente
               às atividades internas do esquadrão.
             </p>

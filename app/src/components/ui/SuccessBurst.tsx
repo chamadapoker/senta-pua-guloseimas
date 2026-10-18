@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
+import { ESQUADRAO } from '../../config/esquadrao';
 
 /**
  * Rajada de confete de sucesso — dispara uma vez e some sozinha.
@@ -30,7 +31,7 @@ export function SuccessBurst({ pieces = 180, duration = 3500 }: { pieces?: numbe
         recycle={false}
         numberOfPieces={pieces}
         gravity={0.2}
-        colors={['#0d1640', '#3445d6', '#e0001b', '#d4a843', '#ffffff']}
+        colors={[ESQUADRAO.cores.noite, ESQUADRAO.cores.faixa, ESQUADRAO.cores.escarlate, '#d4a843', '#ffffff']}
       />
     </div>
   );

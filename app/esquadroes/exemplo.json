@@ -1,0 +1,53 @@
+{
+  "id": "exemplo",
+  "nome": "Esquadrão Exemplo",
+  "nome_completo": "9/99 GpEx",
+  "sigla_documentos": "9/99 GEX",
+  "slogan": "Lema do Esquadrão Exemplo — App RP 9/99 GEX",
+  "cidade_pix_padrao": "BRASILIA",
+  "url_app": "https://app-exemplo.pages.dev",
+  "rodape": "Desenvolvido pela seção de TI do Esquadrão Exemplo",
+  "cores": {
+    "noite": "#0b3d2e",
+    "noite-2": "#14533f",
+    "noite-3": "#1d6b52",
+    "faixa": "#2f9e6e",
+    "escarlate": "#f2a900",
+    "noite-texto": "#cfeee0",
+    "noite-fraco": "#86b8a2"
+  },
+  "cor_fundo_pwa": "#eef1f5",
+  "imagens": {
+    "brasao": "/brasao-96.png",
+    "brasao_grande": "/brasao-192.png",
+    "logo": "/logo.png",
+    "og_image": "https://app-exemplo.pages.dev/logo.png"
+  },
+  "salas_cafe": {
+    "oficial": "Sala dos oficiais",
+    "graduado": "Sala dos graduados"
+  },
+  "salas_cafe_documentos": {
+    "oficial": "Sala dos Oficiais",
+    "graduado": "Sala dos Graduados"
+  },
+  "frases": {
+    "saudacao": "Avante, Exemplo!",
+    "cobranca": "Favor regularizar. 9/99 GEX - App RP.",
+    "fiado": [
+      "Fiado anotado! Lembre-se: a cantina não esquece... e o WhatsApp também não.",
+      "Fiado feito. A conta não prescreve, militar!"
+    ],
+    "pix_pago": [
+      "PIX confirmado! Moral lá em cima, militar!",
+      "Recebido! O 9/99 GpEx agradece!"
+    ]
+  },
+  "areas": {
+    "cantina": true,
+    "loja": true,
+    "cafe": true,
+    "ximboca": true,
+    "inventario": true
+  }
+}

@@ -57,13 +57,14 @@ import { useUserAuth } from './hooks/useUserAuth';
 import { api, EVENTO_ESCOPO_NEGADO } from './services/api';
 import { getConfig } from './services/config';
 import { setPixDefaults } from './services/pix';
+import { ESQUADRAO } from './config/esquadrao';
 
 // Load PIX config once on app start
 getConfig().then(c => {
   setPixDefaults(
     c.pix_guloseimas_chave || '',
     c.pix_guloseimas_nome || '',
-    c.pix_guloseimas_cidade || 'ANAPOLIS'
+    c.pix_guloseimas_cidade || ESQUADRAO.cidade_pix_padrao
   );
 }).catch(() => {});
 
