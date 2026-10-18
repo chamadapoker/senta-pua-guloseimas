@@ -1,395 +1,371 @@
-# Guia do Administrador — Senta Pua
+# Guia do administrador: referência por área
 
-> Documentação para quem gerencia o sistema. Se você for o próximo admin (por exemplo, substituindo a Larissa), comece por aqui.
+Documentação para quem gerencia o Senta Pua. Para a rotina do dia a dia (manhã, tarde, dia 1, dia 10, fim do mês), veja [`OPERACAO.md`](./OPERACAO.md). Dentro do sistema, o resumo fica em **Documentação**, com a versão atual do app (a versão também aparece no rodapé do menu).
 
-**URL do app:** https://app-senta-pua.pages.dev
-**URL do admin:** https://app-senta-pua.pages.dev/admin/login
+- **App:** https://app-senta-pua.pages.dev
+- **Painel do admin:** https://app-senta-pua.pages.dev/admin/login
+
+Todas as datas, períodos e gráficos seguem o horário de Brasília.
 
 ---
 
-## 1. Visão geral do sistema
+## 1. O que o sistema faz
 
-O Senta Pua é um app interno do **1/10 GpAv** que gerencia:
-
-| Sistema | O que faz |
+| Área | O que faz |
 |---|---|
-| **Guloseimas** | Cantinas (dos Oficiais e dos Graduados). Venda de lanches/bebidas com PIX ou Fiado. |
-| **Loja** | Loja de equipamentos militares, com variações (tamanho/cor) e parcelamento. |
-| **Café** | Caixinha mensal do café. Assinaturas mensais ou anuais. |
-| **Ximboca** | Eventos (ximbocas/churrascos) com rateio de despesas entre participantes. |
-| **Usuários** | Contas de militares e visitantes. |
+| **Cantina** | Cantina dos oficiais e dos graduados. Venda com PIX, dinheiro ou fiado. Exige login. |
+| **Loja** | Produtos com categorias, variações (tamanho/cor), parcelamento no PIX, retirada ou envio. |
+| **Café** | Caixinha do café de duas salas (oficiais e graduados), planos mensal e anual. |
+| **Ximboca** | Eventos com rateio, despesas, estoque próprio, divulgação e check-in. |
+| **Financeiro** | Comprovantes, cobranças, caixa consolidado e auditoria. |
+| **Pessoas** | Usuários do app, aniversariantes e administradores. |
+| **Inventário** | Material que a RP compra e não vende (brindes, quadros etc.) e fornecedores. |
 
-O sistema tem **dois tipos de login**:
+Há dois tipos de login:
 
-- **Admin** — acesso total ao painel. Acessa por `/admin/login` usando email + senha cadastrados nas secret variables do Worker.
-- **Usuário** — militar ou visitante cadastrado. Acessa por `/login` (email + senha própria).
-
----
-
-## 2. Menu lateral do admin
-
-Ao logar como admin, você verá o sidebar com as seguintes seções:
-
-- **Guloseimas** (submenu)
-- **Loja** (submenu)
-- **Café** (submenu)
-- **Ximboca** (submenu)
-- **Usuários** (submenu) — gerenciar contas
-- **Configurações** — configurações globais
-
-Cada seção é detalhada abaixo.
+- **Admin**: entra por `/admin/login` com e-mail e senha cadastrados em Administradores.
+- **Usuário**: militar ou visitante. Entra por `/login` com e-mail e senha próprios.
 
 ---
 
-## 3. Guloseimas
+## 2. Menu e navegação
 
-Sistema de venda nas cantinas (Oficiais e Graduados).
+- **Computador**: menu lateral azul-noite. Recolhido, mostra só ícones e abre ao passar o mouse. O botão de alfinete no topo ("Manter o menu aberto" / "Recolher automaticamente") fixa ou solta o menu; a escolha fica guardada no navegador.
+- **Celular**: barra de navegação flutuante embaixo, com atalhos da área atual (até 4) e o botão **Menu**, que abre o menu completo.
+- O contador vermelho em **Comprovantes** mostra quantos aguardam aprovação.
+- O rodapé do menu mostra quem está logado, o papel e a versão do app.
 
-### Dashboard (`/admin`)
-Mostra os números principais:
-- Vendido no mês
-- Recebido no mês
-- Total pendente
-- Vendas hoje
-- Top devedores (cards)
-- Gráfico dos últimos 7 dias
+Grupos do menu (acesso total): Cantina, Loja, Café, Ximboca, Financeiro, Pessoas, Inventário, Documentação e Configurações.
+
+---
+
+## 3. Painel (`/admin`)
+
+- **Precisa de atenção**: comprovantes aguardando, pedidos pendentes e militares com dívida, cada um com link para a tela certa.
+- **Visão geral**: seletor de **7, 30 ou 90 dias**.
+  - Cartões: vendido na cantina e na loja (com a variação em relação ao período anterior), dinheiro que entrou (inclui café) e dívida em aberto (com o quanto passa de 30 dias).
+  - Gráficos: vendas por dia (cantina e loja), idade da dívida (até 7, 8 a 30, 31 a 60, mais de 60 dias), horário de pico da cantina, formas de pagamento e mais vendidos.
+- **Devedores**: lista com link para o extrato e cobrança pelo WhatsApp.
+
+Os painéis da **Loja** (vendas por mês, 6 meses), do **Café** (mensalidades pagas e em aberto por mês, da sala selecionada) e da **Ximboca** (arrecadado e gasto dos 6 eventos mais recentes) também têm gráficos.
+
+Em todo gráfico, o botão **Tabela** mostra os mesmos números em lista; **Gráfico** volta.
+
+---
+
+## 4. Cantina
 
 ### Pedidos (`/admin/pedidos`)
-Lista todos os pedidos das cantinas. Pode filtrar por status e data. Permite:
-- Marcar como pago (quando recebe o comprovante fora do app)
-- Excluir pedido
+
+Filtros Todos, Pendentes, Fiado e Pagos. Permite marcar como pago (pagamento recebido fora do app) e excluir pedido.
 
 ### Produtos (`/admin/produtos`)
-Cadastro dos itens das cantinas. Campos:
-- Nome, emoji, preço, imagem (upload)
-- Categoria: **oficiais**, **graduados** ou **geral**
-- Estoque (opcional — null = ilimitado)
-- Quando estoque chega em 0, o produto é automaticamente marcado como indisponível
 
-### Militares (`/admin/clientes`)
-Lista todos os militares que já compraram (com ou sem conta de usuário). Mostra:
-- Total comprado / pago / saldo devedor
-- Badge **CONTA** se o militar tem conta de usuário
-- Badge **VISITANTE** se é de outro esquadrão
-- Botões **Bloquear / Desbloquear** (impede novas compras)
-- Botão **Excluir** (apaga TUDO do militar: pedidos, cafe, loja, ximboca — use com cuidado)
+Nome, emoji ou foto, preço de venda, **preço de custo** (opcional, usado na Lucratividade), ordem no catálogo, cantina (oficiais ou graduados), disponível e estoque (vazio = sem controle). Quando o estoque chega a zero, o produto fica indisponível. Cartões mostram esgotados e estoque baixo (até 5).
 
-Ao clicar num militar abre o **extrato completo** (`/admin/clientes/:id`):
-- Total pendente em todos os sistemas
-- Abas: Guloseimas, Loja, Café, Ximboca
-- Botão **Gerar PDF + WhatsApp** (cria PDF unificado e abre WhatsApp pra cobrar)
-- Link **"Gerenciar conta de usuário →"** que leva direto pro card da conta em `/admin/usuarios`
+### Contas dos militares (`/admin/clientes`)
+
+- **Filtro de período**: Este mês, Mês passado, Últimos 30 dias, Tudo, ou datas em **De** e **Até**. O período fica na URL (sobrevive a recarregar e acompanha ao abrir o extrato).
+- Cartões: quantidade de militares, quantos têm dívida e total em aberto no período.
+- Busca por trigrama ou SARAM, ordenação por nome ou maior saldo devedor, filtros Todos, Com dívida, Em dia e Bloqueados.
+- **Bloquear / Desbloquear**: impede novas compras na cantina.
+- **Excluir**: apaga o militar e todos os pedidos, pagamentos e dados dele. Sem volta.
+
+### Extrato do militar (`/admin/clientes/:id`)
+
+- Mesmo filtro de período; abas Cantina, Loja, Café e Ximboca, com o pendente de cada uma.
+- **Marcar como pago** em cada lançamento pendente.
+- **Gerar PDF e cobrar no WhatsApp**: gera o PDF só com os lançamentos do período escolhido e abre o WhatsApp com a mensagem.
+- **Gerenciar conta de usuário**: leva ao card do militar em Usuários do app.
 
 ### Relatórios (`/admin/relatorios`)
-Relatório financeiro com filtro por período. Mostra totais consolidados.
+
+Vendas da cantina em um período: total vendido, recebido, pendente ou fiado, número de pedidos.
+
+### Lucratividade (`/admin/lucratividade`)
+
+Receita, custo, lucro e margem por produto, só de pedidos pagos. Só calcula o lucro de produtos com preço de custo. Margem: verde a partir de 30%, âmbar entre 0 e 30%, vermelho negativa.
 
 ---
 
-## 4. Loja
-
-Venda de equipamentos militares.
-
-### Dashboard (`/admin/loja`)
-Números da loja: total vendido, pendente, etc.
-
-### Pedidos (`/admin/loja/pedidos`)
-Lista de pedidos da loja. Similar ao de Guloseimas, mas com informação de **parcelas**.
+## 5. Loja
 
 ### Produtos (`/admin/loja/produtos`)
-Cadastro de produtos da loja. Suporta:
-- **Variações**: tamanho e cor com estoque separado por variação
-- **Múltiplas imagens**
-- Configuração de parcelamento em `/admin/config`
+
+- **Categorias**: botão no topo. Criar, renomear, mudar a ordem (subir/descer) e excluir. Excluir uma categoria deixa os produtos dela sem categoria; nenhum produto é apagado.
+- Filtro por categoria na lista (Todas, cada categoria, Sem categoria).
+- Cada produto: categoria (ou criar uma nova na hora), variações com estoque próprio, várias imagens, preço de venda e de custo.
+- **Vitrine pública** (`/loja`): produtos agrupados por categoria, na ordem cadastrada, com filtro; os sem categoria aparecem em "Outros".
+
+### Pedidos (`/admin/loja/pedidos`)
+
+Pagamento e entrega de cada pedido. Entrega é **retirada** ou **envio** (com frete). Botões **Marcar pago** e, no envio, **Marcar enviado**. Pedidos parcelados mostram as parcelas; cada parcela é paga com o próprio comprovante (origem "Loja (parcela)").
 
 ---
 
-## 5. Café (Caixinha)
+## 6. Café
 
-Assinaturas mensais ou anuais do café das duas salas.
+### Como funciona
 
-> ⚠️ **Importante:** a página pública `/cafe` foi simplificada — hoje ela funciona apenas como um fluxo de pagamento com valor fixo para visitantes (ou militares do esquadrão que queiram pagar direto). A lista de quem pagou/deve NÃO fica mais pública.
+- **Duas salas**: oficiais e graduados. Cada sala tem assinantes, PIX, valores padrão, despesas e insumos próprios. O nome de cada sala é definido em Configurações.
+- **Seletor de sala** no topo de todas as telas do café (painel, assinantes, mensalidades, despesas, insumos). A sala vai na URL (`?sala=oficial` ou `?sala=graduado`) e é lembrada ao trocar de tela.
+- **A sala segue a categoria**: militar com conta entra na sala da categoria dele (oficial → oficiais; graduado/SO → graduados). Trocar a categoria em Usuários move a assinatura ativa para a outra sala. Sem conta no app, o admin escolhe a sala.
+- **Praça não participa**: não pode ser cadastrada como assinante; quem passa para praça tem a assinatura desativada.
+- **Planos**:
+  - **Mensal**: uma cobrança por mês, lançada no dia 1.
+  - **Anual**: a anuidade vale **12 meses a partir da adesão** (por exemplo, "Anuidade out/2026 a set/2027"). A lista mostra "Válido até", "Venceu em" ou "Anuidade em aberto". Quando a cobertura termina, o sistema lança a próxima anuidade sozinho.
+- **Valor padrão**: Configurações → Valores, por sala e plano. Ao cadastrar um assinante com o valor vazio, vale o padrão.
 
-### Dashboard (`/admin/cafe`)
-Resumo do café: assinantes, receita do mês, pendentes.
+### Painel (`/admin/cafe`)
 
-### Mensalidades (`/admin/cafe/mensalidades`)
-Controla quem pagou o mês atual. Ações:
-- **Gerar mensalidades do mês** — cria os registros de pagamento pendente para todos os assinantes ativos
-- **Marcar como pago** (quando recebe o comprovante)
-- Filtro por tipo (Oficiais/Graduados) e status
-
-### Estoque Insumos (`/admin/cafe/insumos`)
-Controle de insumos do café (filtros, açúcar, etc). Com estoque mínimo.
+Assinantes, recebido no mês, a receber (mensalidades e anuidades em aberto), insumos em alerta e o gráfico de mensalidades da sala.
 
 ### Assinantes (`/admin/cafe/assinantes`)
-Lista de quem assina a caixinha. Ações:
-- **Cadastrar novo assinante** — escolhe tipo (oficial/graduado), plano (mensal/anual) e valor
-- **Editar** valor, plano
-- **Desativar** (pra quem saiu)
 
-> **Como funciona o valor:**
-> - O valor cadastrado no `cafe_assinantes` é o que o militar paga por mês na sala dele.
-> - O valor que **visitantes** pagam é separado, editável em `/admin/config` → "Valores Café (Visitante)".
+- **Novo assinante**: trigrama (3 letras). O sistema procura a conta: se existir, mostra a sala definida pela categoria; se for praça, não deixa cadastrar. Plano e valor (vazio = padrão da sala). A primeira cobrança é criada na hora (mensal: mês atual; anual: 12 meses a partir do mês atual).
+- Ações: **Ver cobranças** (histórico e cobrança manual de um mês ou de uma anuidade), **Editar**, **Desativar / Ativar** e **Excluir** (apaga o assinante e os pagamentos dele).
+
+### Mensalidades (`/admin/cafe/mensalidades`)
+
+Lista da sala, com filtro por status e por mês de referência e totais pendente e pago. **Marcar pago** em cada linha. **Gerar mensalidades** lança um mês escolhido para os assinantes mensais da sala (anuidades não entram; quem já tem a cobrança é pulado).
+
+### Despesas (`/admin/cafe/despesas`)
+
+Despesas da sala selecionada: descrição, valor, data, categoria (café, açúcar, leite, filtro, copos e descartáveis, limpeza, equipamento, geral) e nota fiscal opcional. Cartões: entrou, saiu, saldo atual e saldo previsto (somando as mensalidades pendentes). A despesa não mexe no estoque de insumos.
+
+### Insumos (`/admin/cafe/insumos`)
+
+Estoque de cada item da sala (nome, unidade, estoque e mínimo). Quando chega ao mínimo, o item fica em alerta.
+
+### Tela do militar (`/cafe`)
+
+- Militar do esquadrão vê a sala dele, o plano, "anuidade válida até" (no anual), o total a pagar, o PIX da sala e o histórico. O comprovante é enviado pelo app.
+- Visitante escolhe a sala e paga o valor de visitante (Configurações → Valores).
+- Praça vê o aviso de que não participa.
+
+### Admin "Só o café dos graduados"
+
+Veja a seção 10.
 
 ---
 
-## 6. Ximboca
-
-Eventos (ximbocas) com rateio de despesas.
-
-### Dashboard (`/admin/ximboca`)
-Visão geral: total arrecadado, eventos abertos, gastos.
+## 7. Ximboca
 
 ### Eventos (`/admin/ximboca/eventos`)
-Lista de eventos (churrascos, confraternizações, etc). Permite:
-- Criar novo evento (nome, data, valor por pessoa)
-- Gerenciar evento → abre página dedicada:
-  - Adicionar participantes (com valor individual se for diferente)
-  - Registrar pagamentos
-  - Registrar despesas (comida, bebida, etc)
-  - Ver rateio final
+
+- **Novo evento**: nome, data, valor padrão por pessoa e, opcionalmente, valor com cerveja e com refri. Se preencher, o participante escolhe; se não, vale o padrão.
+- **PIX do responsável** (opcional, por evento): tipo da chave (CPF, e-mail, telefone ou aleatória), chave, nome do recebedor (sem acento, até 25 letras). Abaixo da chave aparece **"Vai no QR como …"**, exatamente como a chave entra no código PIX.
+
+### Página do evento (`/admin/ximboca/eventos/:id`)
+
+- Topo: pagos, arrecadado, gasto e saldo.
+- **Participantes**: adicionar, escolher o consumo, registrar pagamento.
+- **Despesas**: lançar gastos; **Do estoque** tira itens do estoque da ximboca e registra despesa de R$ 0.
+- **Organização**: tarefas com responsável e cautelas (material emprestado, com baixa na devolução; não entra no estoque).
+- **Divulgação**: página pública do evento (aberta, sem login), **QR code** para baixar ou imprimir, tipos de ingresso e check-in na portaria.
+- **Check-in**: feito por militares marcados como **recepcionista** em Usuários, pelo menu Check-in.
 
 ### Estoque (`/admin/ximboca/estoque`)
-Inventário de equipamentos/utensílios pra ximbocas (panelas, mesas, etc).
+
+Sobras de eventos (bebidas, carvão etc.) para usar nos próximos.
 
 ---
 
-## 7. Usuários (`/admin/usuarios`)
+## 8. Financeiro
 
-**Novo na versão atual.** Gerencia contas de login.
+### Comprovantes (`/admin/comprovantes`)
 
-### Filtros no sidebar (submenu)
-- **Todos** — todos os usuários cadastrados
-- **Ativos** — contas ativas
-- **Desativados** — contas desativadas (bloqueadas para login)
-- **Visitantes** — apenas militares de outros esquadrões
-- **Expirados** — visitantes com acesso pausado ou data vencida
+- Abas Aguardando, Aprovados e Rejeitados; busca por trigrama; filtro por origem.
+- Cada cartão tem a **cor da origem na borda** (cantina, loja, café, ximboca; a legenda fica acima da lista), miniatura do arquivo, valor e **tempo de espera** ("há 3 h"), que fica vermelho depois de 24 horas.
+- **Aprovar**: marca o pagamento como pago na área de origem e avisa o militar.
+- **Rejeitar**: exige o motivo. O militar recebe o aviso com o motivo e pode reenviar.
 
-### Filtros na página
-- Busca por trigrama ou email
-- Filtro de categoria (Oficiais / Graduados / Praças)
+### Cobranças (`/admin/cobrancas`)
 
-### Card de cada usuário mostra
-- Foto + trigrama + categoria + cantina do café
-- Email
-- Badges: **VISITANTE**, **DESATIVADA**
+Todos os devedores da cantina, loja, café e ximboca em uma lista, com quanto deve em cada área. Filtro de atraso (7, 15, 30 ou 60 dias ou mais). Mensagem editável com as variáveis `{NOME}`, `{TOTAL}`, `{DETALHE}` e `{DIAS}`. WhatsApp individual ou **Cobrar todos** (abre uma aba por devedor; o navegador pode pedir para liberar pop-ups). O cartão "Sem WhatsApp" indica quem precisa ser cobrado pessoalmente.
 
-### Ações disponíveis
+### Caixa consolidado (`/admin/caixa`)
 
-#### Todos os usuários:
-- **Trocar categoria** (Oficial / Graduado/SO / Praça) — recalcula automaticamente qual café ele paga
-- **Resetar senha** (modal pede nova senha mínima de 6 caracteres)
-- **Desativar conta** (bloqueia login) / **Reativar**
-- **Toggle Fiado** (liberar/bloquear fiado pra este usuário)
-- **Ver extrato financeiro** → leva pra `/admin/clientes/:id` com todos os pedidos
+Atalhos Hoje, Este mês e Tudo, ou período livre. Cartões entrou, saiu, saldo e a receber, mais o previsto (saldo mais o que falta receber). Tabelas de entradas por área e de saídas.
 
-#### Apenas para VISITANTES (aparece bloco laranja):
-- **Expira em:** data de expiração do acesso (editável)
-- **Pausado:** checkbox pra bloquear acesso imediatamente
-- Badge mostra: `Xd restantes`, `Expira hoje`, `Expirou há Xd`, ou `Pausado`
+### Auditoria (`/admin/auditoria`)
 
-### Sobre o Fiado
-- **Militares do esquadrão:** fiado liberado por padrão
-- **Visitantes:** fiado BLOQUEADO por padrão (precisam pagar à vista no PIX)
-- Admin pode liberar fiado pra um visitante específico clicando no toggle
+Histórico com antes e depois das ações sensíveis, paginado, com busca por e-mail, ação ou ID. Registra, entre outras:
 
-### Sobre o acesso do visitante
-- Tem **30 dias** de acesso contando da data do cadastro
-- Quando expira, o usuário ainda loga mas é redirecionado pra tela **"Acesso Expirado"** com botão de falar no WhatsApp com o admin
-- Admin pode **renovar** apenas alterando a data "Expira em" pra uma futura
-- Pode **pausar** imediatamente marcando o toggle (útil durante missões em que o militar não pode usar o sistema, por exemplo)
+- comprovantes aprovados e rejeitados; pagamentos marcados (cantina, loja, parcela, café, ximboca);
+- exclusões (pedidos, militares, usuários, assinantes, despesas, categorias da loja, conta excluída pelo próprio militar);
+- mudanças de PIX e de configurações (`alterar_config`);
+- senhas redefinidas de usuários e senha alterada de admin;
+- troca de categoria e movimentação de assinante do café entre salas; liberação de fiado;
+- criação, edição e exclusão de administradores;
+- rotinas automáticas (`gerar_cobrancas_auto`, `fechamento_mensal_rp`, `lembrete_cafe_pendente`) e falhas (`cron_falhou`).
 
 ---
 
-## 8. Configurações (`/admin/config`)
+## 9. Pessoas
 
-Todas as configurações globais do sistema. Seções:
+### Usuários do app (`/admin/usuarios`)
 
-### Nomes dos Catálogos
-- **Catálogo 1 (Oficiais)** e **Catálogo 2 (Graduados)** — nomes que aparecem no app. Default: "Cantina dos Oficiais" / "Cantina dos Graduados".
+- Busca por trigrama ou e-mail; filtros Todos, Ativos, Desativados, Visitantes e Visitantes expirados; filtro por categoria (oficiais, graduados, praças).
+- No card de cada usuário:
+  - **Categoria** (oficial, graduado/SO, praça). O café acompanha: a assinatura muda de sala ou, para praça, é desativada.
+  - **Fiado**: liberado ou bloqueado.
+  - **Recepcionista**: habilita o check-in da ximboca.
+  - **Ver extrato financeiro**.
+  - Menu: **Editar dados**, **Redefinir senha** (mínimo de 6 caracteres), **Desativar / Reativar conta** e, só para super admin, **Excluir conta** (apaga conta, cliente vinculado, pedidos, café e foto).
+- **Visitantes**: bloco "Acesso de visitante" com **Expira em** (editável) e **Pausar acesso**. O visitante recebe 30 dias a partir do cadastro e começa sem fiado. Vencido ou pausado, vai para a tela de acesso expirado e não compra.
 
-### Caixinha do Café - Salas
-- Nomes das salas do café.
+### O que o militar vê
 
-### PIX - Guloseimas / Loja
-Uma ÚNICA chave PIX usada pra Guloseimas, Loja e também pra receber contato de visitantes expirados.
-- **Chave PIX (e-mail)**
-- **Nome do recebedor** (máx 25 caracteres, SEM acento — padrão do PIX)
-- **Cidade** (8 caracteres)
-- **WhatsApp** do responsável (também é pra onde os visitantes com acesso expirado vão pra pedir renovação)
+- Aviso **Complete seu cadastro** quando falta SARAM (só militar do esquadrão), foto, data de aniversário ou WhatsApp. Botões **Completar agora** e **Lembrar depois** (o aviso some até o fim do dia).
+- Compra na cantina exige login. Fiado sem login é recusado, assim como fiado de quem está com o fiado bloqueado.
+- **Excluir minha conta** (Meu perfil) pede a senha e é recusado enquanto houver valor em aberto em qualquer área.
 
-### PIX - Café Oficiais
-Chave PIX separada pra recebimento da caixinha do café dos oficiais:
-- Chave / Nome / WhatsApp
+### Aniversariantes (`/admin/aniversariantes`)
 
-### PIX - Café Graduados
-Chave PIX separada pra caixinha dos graduados:
-- Chave / Nome / WhatsApp
+Personaliza a homenagem (título, mensagem e imagem) que cada militar vê no dia do aniversário. O parabéns no sino é enviado automaticamente.
 
-### Valores Café (Visitante) ← NOVO
-Quanto visitantes pagam pra usar o café. Dois campos:
-- **Oficiais** — R$ X,XX
-- **Graduados** — R$ X,XX
+### Administradores (`/admin/admins`)
 
-Esses valores NÃO afetam militares do esquadrão (eles pagam o que está cadastrado em `cafe_assinantes`).
+Só o super admin cria, edita e exclui administradores.
 
-### Loja - Parcelamento
-Número máximo de parcelas permitidas na loja (1x, 2x ou 3x).
+- **Acesso**: "Acesso total" ou "Só o café dos graduados".
+- **Papel** (acesso total): Admin (uso normal) ou Super admin (gerencia outros admins).
+- Senha com mínimo de 8 caracteres; ao editar, em branco mantém a atual.
+- **Desativar** corta o acesso na hora. Ninguém exclui a si mesmo.
+- A lista mostra o papel, o selo "Só café dos graduados", inativos e o último acesso.
 
 ---
 
-## 9. Cenários comuns
+## 10. Admin "Só o café dos graduados"
 
-### 🪖 Novo militar do esquadrão chegou
-1. Ele mesmo se cadastra em `/cadastro` → **Sim, sou do 1/10 GpAv**
-2. Preenche categoria (Oficial/Graduado/Praça) + email + senha + trigrama + SARAM + WhatsApp
-3. Pronto. Já aparece em `/admin/usuarios` e pode comprar.
+Acesso para o responsável pela caixinha dos graduados. O super admin cria em **Administradores → Novo administrador → Acesso: Só o café dos graduados**.
 
-### ✈️ Visitante chegou pra missão/evento
-1. Ele mesmo se cadastra em `/cadastro` → **Sou visitante de outro esquadrão**
-2. Preenche categoria + esquadrão de origem + demais dados
-3. Recebe **30 dias** de acesso automaticamente
-4. Em `/admin/usuarios` → filtro **Visitantes** você vê quem chegou
-5. Se precisar pausar ou estender, use o bloco laranja no card dele
+O que ele vê e pode fazer:
 
-### 💸 Militar esqueceu a senha
-1. `/admin/usuarios` → busca pelo trigrama ou email
-2. Clica **Resetar senha**
-3. Digita nova senha (mínimo 6 caracteres)
-4. Avisa o militar qual é a nova senha
+- O café da sala dos graduados completo: painel, assinantes, mensalidades, despesas e insumos (o seletor de sala some; fica só a faixa da sala dele).
+- Comprovantes: só os do café dos graduados, com aprovar e rejeitar.
+- Configurações do café: nome da sala dos graduados, chave PIX, nome do recebedor e WhatsApp dessa sala, valores padrão mensal e anual.
+- **Trocar minha senha** (nas configurações do café).
 
-### 🚫 Militar deu baixa
-1. `/admin/usuarios` → busca
-2. Clica **Desativar**
-3. A conta não consegue mais logar, mas o histórico financeiro fica preservado
-
-### 💰 Cobrar um devedor
-1. `/admin/clientes` → clica no militar
-2. Na tela de extrato, clica **Gerar PDF + WhatsApp**
-3. Gera PDF com todos os débitos e abre WhatsApp com texto pronto
-4. Anexa o PDF e envia
-
-### 🔄 Mudar valor da caixinha do café visitante
-1. `/admin/config` → seção **"Valores Café (Visitante)"**
-2. Altera os dois campos (Oficiais / Graduados)
-3. Clica **Salvar Tudo** no final da página
-
-### 🎟️ Liberar fiado pra um visitante recorrente
-1. `/admin/usuarios` → filtro **Visitantes**
-2. Encontra o militar
-3. No card dele, vai em **"Fiado:"** e ativa o toggle
+O bloqueio é feito **no servidor**, a cada requisição: qualquer outra tela, ação ou configuração é recusada, mesmo que ele digite o endereço. Assinantes, pagamentos, despesas e insumos da sala dos oficiais não aparecem para ele, e ele não consegue cadastrar um oficial (o militar com conta de oficial é recusado).
 
 ---
 
-## 10. Acessos técnicos
+## 11. Configurações (`/admin/config`)
+
+Abas (o botão **Salvar configurações** salva todas de uma vez):
+
+- **Nomes**: nome de cada cantina e de cada sala do café.
+- **PIX**: chave, nome do recebedor e WhatsApp para comprovantes de quatro destinos: cantina e loja (com cidade), café dos oficiais, café dos graduados e ximboca.
+- **Valores**: valor padrão do café por sala e plano (mensal e anual) e valor do café para visitantes (oficiais e graduados).
+- **Loja**: parcelas máximas no PIX (1x, 2x ou 3x) e frete de envio.
+
+### Chave PIX no QR
+
+O sistema converte a chave para o formato oficial na hora de gerar o código:
+
+- telefone: `+55DDDNÚMERO` (em Configurações, escreva já com `+55`; no evento da ximboca, escolha o tipo "Telefone");
+- CPF e CNPJ: só dígitos;
+- e-mail e chave aleatória: minúsculas.
+
+O nome do recebedor vai sem acento e com no máximo 25 letras. Se o banco responder "chave não encontrada" com a chave certa, a chave não está cadastrada no banco do titular.
+
+---
+
+## 12. Automações
+
+Rodam todo dia às **00:00 de Brasília** (cron do worker às 03:00 UTC). Cada rotina roda isolada: a falha de uma não impede as outras e fica registrada na Auditoria como `cron_falhou`.
+
+| Quando | O que faz |
+|---|---|
+| Dia 1 (recupera nos dias 2 a 5) | Mensalidades do café de todos os assinantes mensais ativos, com aviso no sino. Não duplica. |
+| Dias 1 a 5, quando vence | Renova a anuidade de quem é anual: 12 meses a partir do mês seguinte ao fim da anterior. |
+| Dia 1 | Fechamento do RP na Auditoria (`fechamento_mensal_rp`): devedores, valor total e maiores devedores. |
+| Todo dia | Parabéns aos aniversariantes, sem repetir no mesmo dia. |
+| Dia 10 | Aviso no app para quem tem mensalidade ou anuidade do café em aberto. |
+| Todo dia | Apaga tentativas de login com mais de um dia. |
+
+Avisos na hora: comprovante aprovado ou rejeitado, pagamento confirmado e compra no fiado.
+
+---
+
+## 13. Segurança
+
+- Toda rota do painel confere o administrador no banco a cada requisição: admin desativado perde o acesso na hora.
+- O login de usuário (militar ou visitante) nunca vale como admin.
+- Login do admin: 5 senhas erradas em 15 minutos bloqueiam por 15 minutos.
+- Senhas guardadas com hash (PBKDF2 com salt), nunca em texto puro.
+- A sessão do admin vale 8 horas.
+
+---
+
+## 14. Atualizações do app
+
+- Quando há versão nova, aparece **Nova versão disponível** com **Atualizar agora**. O app também procura atualização a cada 30 minutos e ao voltar para a aba.
+- Se uma tela falhar porque o sistema foi atualizado enquanto estava aberta, o app recarrega sozinho uma vez.
+- Se aparecer a tela de erro: **Recarregar**; se continuar, **Limpar e recarregar** (apaga o cache do app neste navegador e recarrega).
+
+---
+
+## 15. LGPD
+
+O sistema trata dados pessoais e segue a Lei Geral de Proteção de Dados (Lei 13.709/2018).
+
+**Dados coletados:** e-mail, trigrama, SARAM, WhatsApp, categoria, esquadrão de origem (visitantes), data de nascimento, foto de perfil (opcional) e histórico financeiro.
+
+**Direitos do titular:** ver e corrigir os dados em Meu perfil e excluir a conta (com a senha, sem valores em aberto).
+
+**Atribuições do admin:**
+
+- Não compartilhar dados de militares com terceiros.
+- Cobrança pelo WhatsApp é finalidade legítima.
+- Ao desligar um militar, decidir entre **desativar** (mantém o histórico) e **excluir** (apaga tudo, sem volta).
+- Pedido de exclusão: o militar exclui em Meu perfil, ou o super admin usa **Excluir conta** em Usuários do app.
+
+**Política de privacidade:** `/privacidade` (texto em `app/src/pages/PoliticaPrivacidade.tsx`).
+
+**Incidente de segurança:** comunicar a ANPD e os titulares afetados em até 72 horas e documentar o incidente e as ações tomadas.
+
+---
+
+## 16. Acessos técnicos
 
 ### Worker (backend)
-- **URL:** https://senta-pua-worker.chamadapoker.workers.dev
-- **Conta Cloudflare:** chamadapoker
-- Deploy: `npx wrangler deploy` dentro da pasta `worker/`
+
+- URL: https://senta-pua-worker.chamadapoker.workers.dev
+- Deploy: `npx wrangler deploy` na pasta `worker/`.
+- Cron: `0 3 * * *` (em `worker/wrangler.toml`).
 
 ### Pages (frontend)
-- **URL:** https://app-senta-pua.pages.dev
-- **Projeto:** app-senta-pua (mesma conta)
-- Deploy manual: `npx wrangler pages deploy dist --project-name=app-senta-pua --branch=main`
-- **Não tem integração Git automática** — precisa deployar manual após push no GitHub
 
-### Banco de Dados (D1)
-- **Nome:** senta-pua-db
-- Migrations em `worker/src/db/migrations/` (rodar com `npx wrangler d1 execute senta-pua-db --remote --file=...`)
+- URL: https://app-senta-pua.pages.dev (projeto `app-senta-pua`).
+- Build: `npm run build` na pasta `app/` (gera o `dist/` e marca a versão do service worker).
+- Deploy manual: `npx wrangler pages deploy dist --project-name=app-senta-pua --branch=main`. Não há deploy automático pelo Git.
+- A versão exibida no app vem do campo `version` de `app/package.json`.
 
-### Secrets do Worker (configurados no Cloudflare dashboard)
-- `JWT_SECRET` — chave pra assinar JWTs
-- `ADMIN_EMAIL` — email do admin (login em `/admin/login`)
-- `ADMIN_SENHA` — senha do admin
-- `FRONTEND_URL` — URL do frontend pra CORS
+### Banco (D1) e arquivos (R2)
 
-### Trocar credenciais do admin
-1. Dashboard Cloudflare → Workers → senta-pua-worker → Settings → Variables
-2. Atualiza `ADMIN_EMAIL` e/ou `ADMIN_SENHA` nos Secrets
-3. Redeploya o worker pra aplicar
+- Banco: `senta-pua-db`. Migrations em `worker/src/db/migrations/` (`npx wrangler d1 execute senta-pua-db --remote --file=...`).
+- Imagens e comprovantes: bucket R2 `senta-pua-images`.
 
----
+### Secrets do worker
 
-## 11. Problemas comuns
+- `JWT_SECRET`: assina os tokens.
+- `ADMIN_EMAIL` / `ADMIN_SENHA`: no login com esse e-mail, se ele ainda não existir em `admins`, o sistema cria um super admin com essa senha.
+- `FRONTEND_URL`: URL do frontend para CORS.
 
-### "Não aparece nada na página após atualização"
-- Faça **Ctrl+Shift+R** (hard reload) ou abra em aba anônima
-- O service worker do PWA pode ter cache antigo
+### Super admin esqueceu a senha
 
-### "Usuário diz que não consegue logar"
-1. Verifica se a conta está ativa em `/admin/usuarios`
-2. Se for visitante, verifica data de expiração
-3. Se necessário, reseta a senha
-
-### "Visitante não consegue finalizar compra"
-- Se ele tentou usar **Fiado**, é esperado — visitantes pagam à vista por padrão
-- Se quer liberar, ative o toggle "Fiado" no card dele em `/admin/usuarios`
-- Se é PIX e mesmo assim falhou, verifica se o acesso não expirou
-
-### "Preciso apagar um militar duplicado"
-- `/admin/clientes` → botão **Excluir** (apaga TUDO relacionado)
-- ⚠️ Ação irreversível — todos os pedidos, mensalidades de café, participações em ximboca serão apagados
+Outro super admin define uma nova em Administradores → Editar. Se não houver outro, troque `ADMIN_SENHA` (`npx wrangler secret put ADMIN_SENHA`), remova o registro desse e-mail na tabela `admins` e faça login de novo: o super admin é recriado.
 
 ---
 
-## 12. LGPD — Proteção de dados pessoais
+## 17. Arquitetura (para desenvolvedores)
 
-O sistema coleta dados pessoais e está sujeito à **Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018)**. Como responsável pelo sistema (controlador), o admin deve observar:
+- Frontend: React 19, TypeScript, Tailwind CSS, Zustand, Vite, PWA com service worker.
+- Backend: Hono em Cloudflare Workers.
+- Banco: Cloudflare D1 (SQLite). Arquivos: Cloudflare R2.
+- Autenticação: JWT (HS256); o admin é conferido no banco a cada requisição.
 
-### Dados coletados
-- **Identificação:** email, trigrama (nome de guerra), SARAM
-- **Contato:** WhatsApp
-- **Categoria militar:** Oficial / Graduado / Praça
-- **Esquadrão de origem** (apenas para visitantes)
-- **Foto de perfil** (opcional, fornecida pelo próprio usuário)
-- **Histórico financeiro:** pedidos, pagamentos, café
-
-### Finalidade do tratamento (base legal: legítimo interesse + consentimento)
-- Identificar o militar nas compras nas cantinas e loja
-- Enviar cobranças via WhatsApp quando há débito
-- Controlar mensalidades do café
-- Registrar participação em ximbocas
-
-### Direitos do titular (usuário)
-Segundo a LGPD, todo usuário pode:
-1. **Confirmar** que seus dados estão cadastrados → ele vê em `/perfil`
-2. **Acessar** seus dados → os dados aparecem no perfil dele
-3. **Corrigir** dados incompletos/errados → botão "Salvar Alterações" em `/perfil`
-4. **Excluir** seus dados → botão "Excluir minha conta" em `/perfil` (exclusão completa)
-5. **Revogar consentimento** a qualquer momento (equivale a excluir a conta)
-
-### Atribuições do admin
-- **Nunca compartilhe** dados de militares com terceiros sem autorização
-- Cobranças via WhatsApp são permitidas (finalidade legítima da cantina)
-- Ao desligar um militar, avalie se deve **desativar** (mantém histórico financeiro) ou **excluir** (apaga tudo)
-- Se um militar pedir exclusão, use o botão **Excluir** em `/admin/clientes` ou ele mesmo exclui em `/perfil`
-- O PIX e fotos são armazenados no Cloudflare (servidor na nuvem, criptografia HTTPS)
-- **Senhas não ficam em texto puro** — são hashadas com PBKDF2 + salt
-
-### Política de Privacidade
-Acessível em `/privacidade` (link no rodapé). Texto pronto para o app. Se precisar alterar termos, edite o arquivo `app/src/pages/PoliticaPrivacidade.tsx`.
-
-### Em caso de incidente de segurança
-Se houver vazamento de dados, o controlador (chefe da cantina / admin do sistema) deve:
-1. Comunicar à **ANPD** (Autoridade Nacional de Proteção de Dados) em até 72h
-2. Comunicar os titulares afetados
-3. Documentar o incidente e ações tomadas
-
----
-
-## 13. Arquitetura (pra devs)
-
-- **Frontend:** React 19 + TypeScript + TailwindCSS + Zustand
-- **Backend:** Hono (Cloudflare Workers)
-- **Banco:** Cloudflare D1 (SQLite serverless)
-- **Storage:** Cloudflare R2 (imagens de produtos, fotos de perfil)
-- **Auth:** JWT (HS256), tokens admin com 8h, tokens usuário com 30 dias
-- **Senhas:** PBKDF2 com salt aleatório, 100k iterações
-
-Código fonte: https://github.com/chamadapoker/senta-pua-guloseimas
-
-Pastas:
-- `app/` — frontend React (Vite)
-- `worker/` — backend Hono
-- `docs/` — documentação (este arquivo)
+Pastas: `app/` (frontend), `worker/` (backend), `docs/` (esta documentação).

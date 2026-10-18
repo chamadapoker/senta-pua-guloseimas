@@ -1,155 +1,138 @@
-# Guia de Operação — Admin
+# Guia de rotina do admin
 
-Como usar o painel no dia a dia.
+Como usar o painel no dia a dia. Para a descrição de cada tela, veja [`ADMIN.md`](./ADMIN.md). A mesma informação, resumida, fica dentro do sistema em **Documentação** (menu lateral), junto com a versão atual do app.
 
-## 1. Primeiro acesso
-
-Ao fazer o primeiro login com as credenciais `ADMIN_EMAIL` / `ADMIN_SENHA` configuradas no worker, o sistema cria automaticamente um `super_admin` no banco. Essa conta pode:
-- Criar outros admins
-- Editar e remover admins existentes
-- Resetar senhas
-- Ver e aprovar comprovantes
-
-Admins comuns têm acesso a tudo, exceto gerenciamento de outros admins.
-
-**Adicionar novos admins:** `/admin/admins` → botão "+ Novo Admin".
-
-## 2. Rotina diária
-
-### Manhã
-1. **`/admin/comprovantes`** — aprovar comprovantes pendentes que chegaram durante a noite. O badge vermelho na sidebar mostra o contador.
-2. **`/admin/pedidos?status=pendente`** — revisar pedidos da cantina abertos.
-
-### Tarde / Final do dia
-1. **`/admin/caixa`** — conferir entrou / saiu / saldo do dia (atalho "Hoje").
-2. **`/admin/cobrancas`** — se passou do prazo, filtrar "7+ dias" e clicar em "Cobrar todos" para enviar WhatsApp em lote.
-
-## 3. Fluxo de comprovante
-
-Quando o usuário anexa comprovante, ele entra na fila `/admin/comprovantes` com status `aguardando`:
-
-1. Clique no card do comprovante → abre o preview da foto/PDF
-2. **Aprovar**: o pedido vira `pago` automaticamente no sistema correspondente (cantina / loja / café / ximboca)
-3. **Rejeitar**: informe o motivo (ex: "Comprovante ilegível") — o usuário vê e pode reenviar
-
-Tudo fica gravado em `/admin/auditoria`.
-
-## 4. Gestão da Caixinha do Café
-
-### Adicionar assinante
-`/admin/cafe/assinantes` → **+ Novo Assinante**
-- `tipo`: oficial ou graduado
-- `plano`: mensal (R$ X/mês) ou anual (R$ Y/ano)
-- `valor`: valor da mensalidade ou anuidade
-
-### Lançar despesa
-`/admin/cafe/despesas` → **+ Nova Despesa**
-- Categoria: café (pó), açúcar, leite, filtro, copos, limpeza, equipamento ou geral
-- Valor sai do caixa da sala correspondente
-- Opcional: número da NF
-
-### Saldo real
-Cartões no topo da página de despesas mostram:
-- **Entrou** — total recebido dos assinantes (pago)
-- **Saiu** — total gasto em despesas
-- **Saldo atual** — entrou − saiu
-- **Previsto** — saldo + pendências ainda não pagas
-
-### Cobrança automática
-O cron roda **dia 1 de cada mês, 00h BRT** e gera automaticamente:
-- Mensalidade para todos assinantes do plano mensal
-- Em janeiro, cobrança anual para os assinantes do plano anual
-
-Não precisa clicar em nada. Se quiser verificar, veja `/admin/auditoria` → ação `gerar_cobrancas_auto`.
-
-## 5. Gestão da Loja
-
-### Cadastrar produto
-`/admin/loja/produtos` → **+ Novo**
-- Preço de venda
-- **Preço de custo** (opcional mas recomendado — entra no relatório de lucro)
-- Variações (ex: tamanho P/M/G, cor azul/preto)
-- Até 3 imagens por produto
-
-### Parcelamento
-Em `/admin/config → Loja`, define quantas parcelas no PIX são permitidas (até 3x).
-
-### Ver pedidos com parcelas
-`/admin/loja/pedidos` mostra cada pedido com suas parcelas individuais, cada uma pode ser aprovada separadamente (via comprovante do cliente).
-
-## 6. Ximboca (eventos)
-
-### Criar evento
-`/admin/ximboca/eventos` → **+ Novo Evento**
-- Nome, data, valor por pessoa
-- Valores alternativos para cerveja e refri (se houver)
-- **PIX do responsável** — pode ser diferente por evento (CPF, e-mail, telefone ou chave aleatória)
-
-### QR Code para os participantes
-Abre a página do evento e clica **"QR Code"** — baixa PNG ou imprime.
-O QR aponta para a página `/ximboca` onde os militares se inscrevem.
-
-### Consumir do estoque
-Tem estoque próprio em `/admin/ximboca/estoque` (ex: 50 unidades de picanha, 30 cervejas).
-Na página do evento, clique **"Do Estoque"** para debitar e registrar como despesa R$ 0 (custo já foi pago ao comprar o estoque).
-
-## 7. Cobranças
-
-Página `/admin/cobrancas` consolida **todos** os devedores em uma única lista (cantina + loja + café + ximboca).
-
-- **Filtro por atraso**: 7+, 15+, 30+, 60+ dias
-- **Breakdown**: vê quanto cada militar deve em cada sistema
-- **Mensagem editável**: use `{NOME}`, `{TOTAL}`, `{DETALHE}`, `{DIAS}` no template
-- **WhatsApp individual**: clica e abre o chat com mensagem pronta
-- **Cobrar todos**: abre todas as abas de WhatsApp em sequência (400ms entre cada para driblar pop-up blocker)
-
-## 8. Relatórios
-
-### Lucratividade (`/admin/lucratividade`)
-Filtra por período, mostra por produto:
-- Quantidade vendida
-- Receita (apenas pedidos pagos)
-- Lucro = receita − custo (só funciona se `preco_custo` estiver cadastrado)
-- Margem %
-
-Cores:
-- 🟢 Verde — margem ≥ 30%
-- 🟡 Amarelo — margem 0–30%
-- 🔴 Vermelho — margem negativa (prejuízo)
-
-### Caixa Consolidado (`/admin/caixa`)
-Visão única de todo o negócio. Ideal para prestação de contas mensal.
-- Atalhos: Hoje, Este mês, Tudo
-- 5 cards de totais: Entrou / Saiu / Saldo / Pendente / Previsto
-- Tabela de entradas por módulo
-- Tabela de saídas
-
-### Auditoria (`/admin/auditoria`)
-Log de ações sensíveis: aprovação/rejeição de comprovantes, criação/exclusão de admins, execução do cron.
-Paginado, com busca por e-mail do admin, ação ou ID da entidade.
-
-## 9. Segurança & Recuperação
-
-### Conta bloqueada por rate limit
-Se um admin tentou senha errada 5x em 15 min, fica bloqueado. Espere 15 min ou peça a um super_admin para resetar a senha em `/admin/admins`.
-
-### Super_admin esqueceu a senha
-Acesse o Cloudflare dashboard → D1 → senta-pua-db e execute:
-```sql
-UPDATE admins SET senha_hash = 'HASH_NOVO' WHERE email = 'email@aqui';
-```
-Onde `HASH_NOVO` é gerado pela função `hashPassword` (formato `saltHex:hashHex`).
-Alternativa mais simples: rode `wrangler secret put ADMIN_SENHA` com nova senha e delete o registro atual em `admins` — na próxima login o bootstrap cria novo super_admin.
-
-### Ver histórico do que foi alterado
-`/admin/auditoria` mostra dados **antes e depois** de cada ação importante.
-
-## 10. PWA e Updates
-
-Sempre que um novo deploy é feito, usuários que têm o app instalado vêem um toast azul **"Nova versão disponível"** com botão "Atualizar agora". O app recarrega e serve a nova versão.
-
-Se alguém quiser forçar: **Ctrl+Shift+R** no navegador limpa o cache do service worker.
+Todas as datas e horários do sistema seguem o horário de Brasília.
 
 ---
 
-Dúvidas técnicas, consulta o [`README.md`](../README.md).
+## Antes de começar
+
+### Primeiro acesso
+
+No primeiro login com o e-mail e a senha definidos nos secrets do worker (`ADMIN_EMAIL` / `ADMIN_SENHA`), o sistema cria esse administrador como **super admin**. O super admin cria os demais em **Pessoas → Administradores → Novo administrador**.
+
+No formulário de administrador:
+
+- **Acesso**: "Acesso total" (todo o painel) ou "Só o café dos graduados".
+- **Papel** (só para acesso total): "Admin (uso normal)" ou "Super admin (gerencia outros admins)". Quem tem acesso restrito ao café é sempre admin comum.
+- **Senha**: mínimo de 8 caracteres. Ao editar, deixe em branco para manter a atual.
+
+### Como o menu funciona
+
+- **Computador**: o menu azul-noite fica recolhido (só ícones) e abre ao passar o mouse. O botão de alfinete no topo do menu ("Manter o menu aberto") deixa ele fixo; a escolha fica guardada no navegador.
+- **Celular**: a barra flutuante embaixo mostra os atalhos da área em que você está. O botão **Menu** abre o menu completo.
+- O número vermelho em **Comprovantes** (menu e barra do celular) é a quantidade aguardando aprovação.
+
+---
+
+## Manhã
+
+1. **Painel** (`/admin`): veja o quadro **Precisa de atenção**. Ele lista comprovantes aguardando, pedidos pendentes e militares com dívida, cada um com link direto.
+2. **Financeiro → Comprovantes**: aprove o que chegou durante a noite.
+   - A cor na borda do cartão indica a origem: cantina, loja, café ou ximboca.
+   - O tempo de espera aparece no cartão e fica vermelho depois de 24 horas. Comece por esses.
+   - Toque na miniatura para ver o arquivo. **Aprovar** marca o pagamento como pago na área certa. **Rejeitar** pede o motivo, que o militar recebe no app.
+3. **Cantina → Pedidos**: filtre **Pendentes** e confira os pedidos ainda abertos.
+
+## Tarde ou fim do dia
+
+1. **Financeiro → Caixa consolidado**: atalho **Hoje** para conferir o que entrou, saiu, o saldo e o que falta receber.
+2. **Painel → Visão geral**: acompanhe vendas por dia, horário de pico e formas de pagamento. Troque entre 7, 30 e 90 dias; cada número compara com o período anterior. O botão **Tabela** em cada gráfico mostra os valores em lista.
+3. **Financeiro → Cobranças**: se houver atraso, filtre por "7 dias ou mais" (ou 15, 30, 60) e cobre pelo WhatsApp, individualmente ou com **Cobrar todos**.
+
+## Dia 1
+
+O sistema faz sozinho, à meia-noite:
+
+- Lança a **mensalidade do café** de todos os assinantes mensais ativos e avisa cada um no sino de notificações. Se a rotina falhar no dia 1, ela tenta de novo nos dias 2 a 5 sem duplicar.
+- **Renova as anuidades vencidas**: assinante anual cuja anuidade terminou recebe a próxima, de 12 meses.
+- Registra o **fechamento do RP** na Auditoria (ação `fechamento_mensal_rp`): quantidade de devedores, valor total e os maiores devedores.
+
+O que conferir:
+
+1. **Café → Mensalidades**: o mês novo deve estar lançado nas duas salas. Use o seletor de sala no topo. Se faltar alguém, **Gerar mensalidades** lança o mês escolhido (só plano mensal; quem já tem a cobrança é pulado).
+2. **Financeiro → Auditoria**: busque `gerar_cobrancas_auto` para ver quantas cobranças foram criadas. Se aparecer `cron_falhou`, alguma rotina deu erro (o campo entidade diz qual).
+3. **Cantina → Contas dos militares**: escolha **Mês passado** e gere as cobranças do mês que fechou (veja "Fim do mês").
+
+## Dia 10
+
+O sistema envia, sozinho, um aviso no app para quem ainda tem mensalidade ou anuidade do café em aberto, com o total. Depois desse dia, confira em **Café → Mensalidades** (filtro de pendentes) quem continua devendo e cobre pessoalmente ou pelo WhatsApp.
+
+## Fim do mês
+
+1. **Cantina → Contas dos militares**:
+   - Escolha o período: **Este mês**, **Mês passado**, **Últimos 30 dias**, **Tudo** ou datas em **De** e **Até**.
+   - Os cartões mostram militares, quantos têm dívida e o total em aberto no período. Filtre **Com dívida** e ordene por **Maior saldo devedor**.
+   - Abra o militar: o extrato já vem filtrado pelo mesmo período, com abas de cantina, loja, café e ximboca.
+   - **Gerar PDF e cobrar no WhatsApp** gera o PDF só com os lançamentos do período e abre a conversa com a mensagem pronta. Anexe o PDF e envie.
+2. **Café → Despesas** (cada sala): lance as compras do mês e confira entrou, saiu, saldo atual e saldo previsto.
+3. **Financeiro → Caixa consolidado**: atalho **Este mês** para a prestação de contas.
+4. **Cantina → Lucratividade**: receita, custo e margem por produto (só pedidos pagos e só produtos com preço de custo).
+
+---
+
+## Situações comuns
+
+### Militar pagou fora do app
+
+Abra o extrato dele (Contas dos militares) e use **Marcar como pago** no lançamento. Para o café, também dá para marcar em **Café → Mensalidades**.
+
+### Militar trocou de categoria
+
+Em **Pessoas → Usuários do app**, troque a categoria no card. A assinatura do café muda de sala junto. Se ele virou praça, a assinatura é desativada, porque praça não participa do café.
+
+### Novo assinante do café
+
+**Café → Assinantes → Novo assinante**. Digite o trigrama: se o militar tiver conta, a sala vem da categoria dele. Escolha o plano e deixe o valor vazio para usar o padrão da sala (Configurações → Valores). A primeira cobrança já é criada: no mensal, o mês atual; no anual, 12 meses a partir de agora. Na lista, o anual mostra "Válido até".
+
+### Evento de ximboca
+
+1. **Ximboca → Eventos → Novo evento**: nome, data, valor padrão e, se houver, valores com cerveja ou refri.
+2. PIX do responsável: escolha o tipo da chave e confira a linha **"Vai no QR como …"**.
+3. No evento, aba **Divulgação**: página pública e QR code para mandar no grupo; tipos de ingresso; check-in pelos recepcionistas.
+4. Use **Do estoque** para gastar o que sobrou de eventos anteriores (entra como despesa de R$ 0).
+
+### Pagamento PIX dá "chave não encontrada"
+
+- Confira o formato: telefone como `+55DDDNÚMERO`, CPF só dígitos, e-mail em minúsculas. Em **Configurações → PIX**, escreva o telefone já com `+55`.
+- Se a chave está certa e o erro continua, a chave não está cadastrada no banco do titular. O titular precisa cadastrá-la no banco dele.
+- O nome do recebedor vai dentro do código: sem acento e com no máximo 25 letras.
+
+### Militar não consegue comprar
+
+- Compra na cantina exige login.
+- Fiado sem login é recusado. Visitante não tem fiado, a menos que você ligue o **Fiado** no card dele.
+- Conta desativada, militar bloqueado em Contas dos militares, ou visitante vencido ou pausado não compram.
+
+### Militar quer excluir a conta
+
+Ele exclui em **Meu perfil**, com a senha. O sistema recusa enquanto houver valor em aberto em qualquer área. Se ele não conseguir, o super admin pode usar **Excluir conta** em Usuários do app (apaga tudo, sem volta).
+
+### Admin bloqueado no login
+
+Depois de 5 senhas erradas em 15 minutos, o login fica bloqueado por 15 minutos. Espere, ou peça ao super admin para definir uma nova senha em **Administradores → Editar**.
+
+### Tirar o acesso de um admin
+
+**Administradores → Desativar**. O acesso é cortado na hora, porque o sistema confere o admin a cada ação.
+
+### Apareceu "Nova versão disponível"
+
+Toque em **Atualizar agora**. Se uma tela falhar logo depois de uma atualização, o app recarrega sozinho. Se aparecer a tela de erro, use **Recarregar** e, se continuar, **Limpar e recarregar**.
+
+---
+
+## Responsável pelo café dos graduados
+
+Quem tem acesso "Só o café dos graduados" entra direto no painel do café dessa sala. O menu tem:
+
+- **Café**: Painel, Assinantes, Mensalidades, Despesas e Insumos, sempre da sala dos graduados.
+- **Comprovantes**: só os do café dos graduados.
+- **Configurações do café**: nome da sala, chave PIX, valores padrão (mensal e anual) e **Trocar minha senha**.
+
+A rotina é a mesma do café acima: no dia 1, conferir as mensalidades; aprovar os comprovantes; lançar as despesas; no fim do mês, conferir o saldo. Qualquer outra tela ou ação é recusada pelo servidor.
+
+---
+
+Dúvidas técnicas: [`README.md`](../README.md).
