@@ -3,7 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Icon } from '../../components/ui/Icon';
+import { Icon, type IconName } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
@@ -14,7 +14,7 @@ import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
 import { inputClass } from '../../components/ui/Field';
-import { formatarDataHoraBanco as dataHora } from '../../services/datas';
+import { formatarDataHoraBanco as dataHora, parseDataBanco } from '../../services/datas';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 
@@ -57,6 +57,28 @@ const ABAS = [
 ];
 
 const brl = (v: number) => (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Cor da borda lateral = de onde vem o pagamento. Dentro de uma aba todos têm o mesmo status,
+// então a origem é o que de fato ajuda a ler a fila de relance.
+const ORIGEM_ESTILO: Record<Comprovante['origem'], { cor: string; fundo: string; icone: IconName }> = {
+  cantina:      { cor: '#1d3fa0', fundo: '#e8edfb', icone: 'cutlery' },
+  loja:         { cor: '#0e7490', fundo: '#e3f4f8', icone: 'bag' },
+  loja_parcela: { cor: '#0e7490', fundo: '#e3f4f8', icone: 'bag' },
+  cafe:         { cor: '#8a4b14', fundo: '#f6ece2', icone: 'coffee' },
+  ximboca:      { cor: '#c2410c', fundo: '#fcebe2', icone: 'fire' },
+};
+
+// "há 20 min", "há 3 h", "há 2 dias" — e se passou de 24 h aguardando, merece destaque
+function tempoEspera(createdAt: string): { texto: string; atrasado: boolean } {
+  const min = Math.max(0, Math.round((Date.now() - parseDataBanco(createdAt).getTime()) / 60000));
+  if (min < 60) return { texto: min <= 1 ? 'agora há pouco' : `há ${min} min`, atrasado: false };
+  const h = Math.round(min / 60);
+  if (h < 24) return { texto: `há ${h} h`, atrasado: false };
+  const d = Math.round(h / 24);
+  return { texto: `há ${d} ${d === 1 ? 'dia' : 'dias'}`, atrasado: true };
+}
+
+const ehPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
 
 export function Comprovantes() {
   const [aba, setAba] = useState<'aguardando' | 'aprovado' | 'rejeitado'>('aguardando');
@@ -201,48 +223,138 @@ export function Comprovantes() {
           />
         </Card>
       ) : (
-        <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {data.items.map(c => (
-            <li key={c.id} className="bg-white rounded-2xl border border-borda shadow-sm p-4 flex flex-col">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-texto truncate">{c.trigrama}</div>
-                  <div className="text-xs text-texto-fraco">{dataHora(c.created_at)}</div>
+        <>
+        {/* Legenda das cores da borda */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3 text-xs text-texto-fraco" aria-label="Cores por origem">
+          {(['cantina', 'loja', 'cafe', 'ximboca'] as const).map(o => (
+            <span key={o} className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ORIGEM_ESTILO[o].cor }} aria-hidden="true" />
+              {ORIGEM_LABEL[o]}
+            </span>
+          ))}
+        </div>
+
+        <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {data.items.map(c => {
+            const est = ORIGEM_ESTILO[c.origem] ?? ORIGEM_ESTILO.cantina;
+            const espera = tempoEspera(c.created_at);
+            const ocupado = busy(`comp:${c.id}`);
+            return (
+              <li
+                key={c.id}
+                className="group relative bg-white rounded-2xl border border-borda shadow-sm hover:shadow-md hover:border-borda-forte transition-[box-shadow,border-color] overflow-hidden flex flex-col"
+              >
+                {/* Borda lateral na cor da origem, terminando em ponta de flâmula */}
+                <span
+                  className="absolute left-0 top-0 bottom-0 w-1.5"
+                  style={{ backgroundColor: est.cor, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 8px), 0 100%)' }}
+                  aria-hidden="true"
+                />
+
+                <div className="pl-5 pr-4 pt-4 pb-3 flex-1 flex flex-col">
+                  {/* Topo: origem + tempo / status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 h-7 pl-2 pr-2.5 rounded-full text-xs font-semibold"
+                      style={{ color: est.cor, backgroundColor: est.fundo }}
+                    >
+                      <Icon name={est.icone} size={14} />
+                      {ORIGEM_LABEL[c.origem] ?? c.origem}
+                    </span>
+                    {c.status === 'aguardando' ? (
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-medium ${espera.atrasado ? 'text-escarlate' : 'text-texto-fraco'}`}
+                        title={`Enviado em ${dataHora(c.created_at)}`}
+                      >
+                        <Icon name="clock" size={14} />
+                        {espera.texto}
+                      </span>
+                    ) : statusBadge(c.status)}
+                  </div>
+
+                  {/* Corpo: miniatura do comprovante + quem e quanto */}
+                  <div className="flex items-center gap-3.5 mt-3.5">
+                    <button
+                      onClick={() => abrir(c)}
+                      className="relative shrink-0 w-[72px] h-[88px] rounded-xl overflow-hidden bg-fundo border border-borda outline-none focus-visible:ring-2 focus-visible:ring-azul/40"
+                      aria-label={`Ver comprovante de ${c.trigrama}`}
+                    >
+                      {ehPdf(c.imagem_url) ? (
+                        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-texto-fraco">
+                          <Icon name="document" size={24} />
+                          <span className="text-[11px] font-semibold">PDF</span>
+                        </span>
+                      ) : (
+                        <img
+                          src={resolverImg(c.imagem_url)}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                      <span className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-noite/70 to-transparent flex items-end justify-center pb-0.5" aria-hidden="true">
+                        <Icon name="eye" size={13} className="text-white" />
+                      </span>
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="font-display text-[1.6rem] leading-none tracking-wide text-noite truncate">{c.trigrama}</div>
+                      <div className="mt-1.5">
+                        {c.valor ? (
+                          <span className="font-display text-[2rem] leading-none tracking-wide text-dourado">{brl(c.valor)}</span>
+                        ) : (
+                          <span className="text-sm text-texto-fraco">Valor não informado</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-texto-fraco mt-1.5 truncate">{dataHora(c.created_at)}</div>
+                    </div>
+                  </div>
+
+                  {c.observacao && (
+                    <p className="mt-3 text-sm text-texto bg-fundo-elevado rounded-xl rounded-tl-sm px-3 py-2 break-words">
+                      {c.observacao}
+                    </p>
+                  )}
+                  {c.status === 'rejeitado' && c.motivo_rejeicao && (
+                    <p className="mt-3 text-sm text-escarlate bg-red-50 rounded-xl px-3 py-2 break-words">
+                      <span className="font-semibold">Motivo:</span> {c.motivo_rejeicao}
+                    </p>
+                  )}
+
+                  <div className="mt-3 text-[11px] text-texto-fraco truncate" title={c.referencia_id}>
+                    Ref. <span className="font-mono">{c.referencia_id}</span>
+                  </div>
                 </div>
-                {statusBadge(c.status)}
-              </div>
 
-              <div className="font-display text-3xl leading-none tracking-wide text-dourado mt-3">
-                {c.valor ? brl(c.valor) : <span className="text-base font-sans text-texto-fraco tracking-normal">Valor não informado</span>}
-              </div>
-
-              <dl className="text-xs text-texto-fraco mt-3 space-y-0.5">
-                <div className="flex gap-1"><dt>Origem:</dt><dd className="text-texto">{ORIGEM_LABEL[c.origem] ?? c.origem}</dd></div>
-                <div className="flex gap-1 min-w-0"><dt className="shrink-0">Referência:</dt><dd className="font-mono truncate" title={c.referencia_id}>{c.referencia_id}</dd></div>
-              </dl>
-              {c.observacao && <p className="text-sm text-texto-fraco mt-2 italic break-words">"{c.observacao}"</p>}
-              {c.status === 'rejeitado' && c.motivo_rejeicao && (
-                <p className="text-sm text-escarlate mt-2 break-words">Motivo: {c.motivo_rejeicao}</p>
-              )}
-
-              <div className="mt-auto pt-3">
-                <Button size="sm" variant="ghost" className="w-full mt-3" onClick={() => abrir(c)}>
-                  <Icon name="eye" size={16} /> Ver comprovante
-                </Button>
-                {c.status === 'aguardando' && (
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Button size="sm" variant="chip-danger" onClick={() => abrir(c, true)} disabled={busy(`comp:${c.id}`)}>
+                {/* Rodapé: ações (aguardando) ou quem revisou */}
+                {c.status === 'aguardando' ? (
+                  <div className="grid grid-cols-[auto_1fr_1fr] gap-2 px-4 pb-4 pl-5">
+                    <Button size="sm" variant="ghost" onClick={() => abrir(c)} aria-label="Ver comprovante" title="Ver comprovante">
+                      <Icon name="eye" size={16} />
+                    </Button>
+                    <Button size="sm" variant="chip-danger" onClick={() => abrir(c, true)} disabled={ocupado}>
                       <Icon name="x" size={16} /> Rejeitar
                     </Button>
-                    <Button size="sm" variant="success" onClick={() => aprovar(c)} disabled={busy(`comp:${c.id}`)}>
-                      <Icon name="check" size={16} /> {busy(`comp:${c.id}`) ? 'Salvando...' : 'Aprovar'}
+                    <Button size="sm" variant="success" onClick={() => aprovar(c)} disabled={ocupado}>
+                      <Icon name="check" size={16} /> {ocupado ? 'Salvando...' : 'Aprovar'}
                     </Button>
                   </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 border-t border-borda px-4 pl-5 py-2.5 bg-fundo-elevado/60">
+                    <span className="text-xs text-texto-fraco truncate">
+                      {c.reviewed_by ? `Por ${c.reviewed_by}` : 'Revisado'}
+                      {c.reviewed_at && ` · ${dataHora(c.reviewed_at)}`}
+                    </span>
+                    <button onClick={() => abrir(c)} className="shrink-0 text-xs font-medium text-azul hover:underline min-h-[32px]">
+                      Ver
+                    </button>
+                  </div>
                 )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
+        </>
       )}
 
       {data && totalPages > 1 && (
