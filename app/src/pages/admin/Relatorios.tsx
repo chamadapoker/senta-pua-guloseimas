@@ -13,6 +13,8 @@ import { dataLocal } from '../../services/periodo';
 import { useToast } from '../../hooks/useToast';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { TooltipNoite } from '../../components/charts/ChartCard';
+import { COR_AREA, TINTA, brlCurto, eixoProps } from '../../components/charts/tema';
 
 interface Relatorio {
   periodo: { de: string; ate: string };
@@ -128,18 +130,12 @@ export function Relatorios() {
             <Secao titulo="Vendas por dia" descricao="Total vendido em cada dia do período.">
               <div className="px-2 sm:px-4 pb-4">
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={chartData} barCategoryGap="20%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e5eb" vertical={false} />
-                    <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} width={48} tickFormatter={v => `R$${v}`} />
-                    <Tooltip
-                      formatter={(v: number, name: string) => [name === 'total' ? brl(v) : String(v), name === 'total' ? 'Vendas' : 'Pedidos']}
-                      contentStyle={{ background: '#0d1640', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', padding: '8px 14px' }}
-                      labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}
-                      itemStyle={{ color: '#fff' }}
-                      cursor={{ fill: 'rgba(29,63,160,0.06)' }}
-                    />
-                    <Bar dataKey="total" fill="#1d3fa0" radius={[8, 8, 0, 0]} maxBarSize={40} />
+                  <BarChart data={chartData} barCategoryGap="20%" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke={TINTA.grade} vertical={false} />
+                    <XAxis dataKey="data" {...eixoProps} interval="preserveStartEnd" minTickGap={16} />
+                    <YAxis {...eixoProps} width={64} tickFormatter={brlCurto} />
+                    <Tooltip content={<TooltipNoite />} cursor={{ fill: 'rgba(13,22,64,0.05)' }} />
+                    <Bar dataKey="total" name="Vendas" fill={COR_AREA.cantina} radius={[4, 4, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

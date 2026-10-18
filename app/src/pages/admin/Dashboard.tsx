@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
-import { StatCard } from '../../components/admin/StatCard';
 import { api } from '../../services/api';
 import { Loading } from '../../components/ui/Loading';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -13,7 +12,7 @@ import { useToast } from '../../hooks/useToast';
 import { useComprovantesPendentes } from '../../hooks/useComprovantesPendentes';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import type { DashboardStats } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { PainelGeral } from '../../components/charts/PainelGeral';
 
 const brl = (v: number) => (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -53,11 +52,6 @@ export function Dashboard() {
     );
   }
   if (!stats) return <AppLayout><Loading label="Carregando painel..." /></AppLayout>;
-
-  const chartData = (stats.ultimos_7_dias ?? []).map((d) => ({
-    data: new Date(d.data + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', timeZone: 'America/Sao_Paulo' }),
-    total: d.total,
-  }));
 
   const devedores = stats.devedores ?? [];
 
@@ -101,14 +95,7 @@ export function Dashboard() {
 
   return (
     <AppLayout>
-      <PageHeader title="Painel" subtitle="Resumo das vendas do mês e do que precisa de atenção hoje." />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        <StatCard label="Vendido no mês" value={brl(stats.vendido_mes)} color="text-noite" icon={<Icon name="cart" size={22} />} />
-        <StatCard label="Recebido no mês" value={brl(stats.recebido_mes)} color="text-verde" icon={<Icon name="check" size={22} />} />
-        <StatCard label="Pendente (total)" value={brl(stats.pendente_total)} color={stats.pendente_total > 0 ? 'text-escarlate' : 'text-verde'} icon={<Icon name="clock" size={22} />} />
-        <StatCard label="Vendas hoje" value={String(stats.vendas_hoje)} color="text-azul" icon={<Icon name="bag" size={22} />} />
-      </div>
+      <PageHeader title="Painel" subtitle="O que precisa de atenção hoje e como estão as vendas." />
 
       <section className="mb-6" aria-labelledby="atencao-titulo">
         <h2 id="atencao-titulo" className="text-base font-semibold text-noite mb-3">Precisa de atenção</h2>
@@ -146,38 +133,10 @@ export function Dashboard() {
         )}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card size="lg" className="lg:col-span-3 min-w-0">
-          <h2 className="text-base font-semibold text-noite mb-1">Vendas dos últimos 7 dias</h2>
-          <p className="text-xs text-texto-fraco mb-4">Total vendido por dia.</p>
-          {chartData.length === 0 ? (
-            <p className="text-sm text-texto-fraco py-10 text-center">Ainda não há vendas nos últimos 7 dias.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e5eb" vertical={false} />
-                <XAxis dataKey="data" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={48}
-                  tickFormatter={(v) => `R$${v}`}
-                />
-                <Tooltip
-                  formatter={(v: number) => [brl(v), 'Vendas']}
-                  contentStyle={{ background: '#0d1640', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '13px', padding: '8px 14px' }}
-                  labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}
-                  itemStyle={{ color: '#fff' }}
-                  cursor={{ fill: 'rgba(29,63,160,0.06)' }}
-                />
-                <Bar dataKey="total" fill="#1d3fa0" radius={[8, 8, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
+      <PainelGeral />
 
-        <Card size="lg" className="lg:col-span-2 min-w-0 !p-0 overflow-hidden">
+      <div className="grid gap-6">
+        <Card size="lg" className="min-w-0 !p-0 overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3 flex-wrap">
             <div>
               <h2 className="text-base font-semibold text-noite">Devedores</h2>

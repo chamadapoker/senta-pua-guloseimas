@@ -10,6 +10,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Icon } from '../../../components/ui/Icon';
+import { GraficoXimbocaEventos } from '../../../components/charts/GraficosAreas';
 
 interface XimbocaStats {
   total_eventos: number;
@@ -87,6 +88,8 @@ export function XimbocaDashboard() {
         <StatCard label="Saldo" value={brl(stats.saldo)} color={stats.saldo >= 0 ? 'text-verde-escuro' : 'text-escarlate'} icon={<Icon name="vault" size={18} />} />
         <StatCard label="Eventos abertos" value={String(stats.eventos_abertos)} color="text-azul" icon={<Icon name="cutlery" size={18} />} hint={`${stats.total_eventos} no total`} />
       </div>
+
+      {eventos.length > 0 && <GraficoXimbocaEventos eventos={eventos} />}
 
       <Card className="!p-0 overflow-hidden">
         <div className="px-4 sm:px-5 py-3 border-b border-borda flex items-center justify-between gap-3">

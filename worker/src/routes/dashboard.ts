@@ -218,17 +218,18 @@ dashboard.get('/lucratividade', authMiddleware, async (c) => {
 });
 
 dashboard.get('/stats', authMiddleware, async (c) => {
-  const now = new Date();
-  const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const hoje = now.toISOString().split('T')[0];
+  // Mês e dia no horário de Brasília (o Worker roda em UTC: depois das 21h já seria o dia seguinte)
+  const brt = new Date(Date.now() - 3 * 3600 * 1000);
+  const mesAtual = brt.toISOString().slice(0, 7);
+  const hoje = brt.toISOString().slice(0, 10);
 
   const [vendidoMes, recebidoMes, pendente, vendasHoje, devedores, ultimos7dias] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT COALESCE(SUM(total), 0) as valor FROM pedidos WHERE created_at LIKE ? || '%'"
+      "SELECT COALESCE(SUM(total), 0) as valor FROM pedidos WHERE strftime('%Y-%m', created_at, '-3 hours') = ?"
     ).bind(mesAtual).first<{ valor: number }>(),
 
     c.env.DB.prepare(
-      "SELECT COALESCE(SUM(total), 0) as valor FROM pedidos WHERE status = 'pago' AND created_at LIKE ? || '%'"
+      "SELECT COALESCE(SUM(total), 0) as valor FROM pedidos WHERE status = 'pago' AND strftime('%Y-%m', created_at, '-3 hours') = ?"
     ).bind(mesAtual).first<{ valor: number }>(),
 
     c.env.DB.prepare(
@@ -236,7 +237,7 @@ dashboard.get('/stats', authMiddleware, async (c) => {
     ).first<{ valor: number }>(),
 
     c.env.DB.prepare(
-      "SELECT COUNT(*) as valor FROM pedidos WHERE DATE(created_at) = ?"
+      "SELECT COUNT(*) as valor FROM pedidos WHERE date(created_at, '-3 hours') = ?"
     ).bind(hoje).first<{ valor: number }>(),
 
     c.env.DB.prepare(`
@@ -250,10 +251,10 @@ dashboard.get('/stats', authMiddleware, async (c) => {
     `).all(),
 
     c.env.DB.prepare(`
-      SELECT DATE(created_at) as data, COALESCE(SUM(total), 0) as total
+      SELECT date(created_at, '-3 hours') as data, COALESCE(SUM(total), 0) as total
       FROM pedidos
-      WHERE created_at >= datetime('now', '-7 days')
-      GROUP BY DATE(created_at)
+      WHERE date(created_at, '-3 hours') >= date('now', '-3 hours', '-6 days')
+      GROUP BY data
       ORDER BY data ASC
     `).all(),
   ]);
@@ -265,6 +266,87 @@ dashboard.get('/stats', authMiddleware, async (c) => {
     vendas_hoje: vendasHoje?.valor ?? 0,
     devedores: devedores.results,
     ultimos_7_dias: ultimos7dias.results,
+  });
+});
+
+// Painel geral (gráficos): últimos N dias, com datas no horário de Brasília (UTC-3, sem horário de verão)
+// ?dias=7|30|90 (padrão 30)
+dashboard.get('/painel', authMiddleware, async (c) => {
+  const dias = [7, 30, 90].includes(Number(c.req.query('dias'))) ? Number(c.req.query('dias')) : 30;
+  // Café: as duas salas são públicos diferentes; ?cafe_tipo=oficial|graduado separa o gráfico mensal
+  const cafeTipo = ['oficial', 'graduado'].includes(c.req.query('cafe_tipo') || '') ? c.req.query('cafe_tipo')! : '';
+  const db = c.env.DB;
+  const BRT = "'-3 hours'";
+  // Janela atual: de (hoje - dias + 1) até hoje, em dias de Brasília; anterior: os N dias antes disso
+  const ini = `date('now', ${BRT}, '-${dias - 1} days')`;
+  const iniAnt = `date('now', ${BRT}, '-${dias * 2 - 1} days')`;
+  const diaDe = (col: string) => `date(${col}, ${BRT})`;
+
+  const [
+    cantinaDia, lojaDia, cafeDia, recebidoDia,
+    anterior, porHora, aging, metodos, topProdutos, cafeMeses, lojaMeses,
+  ] = await Promise.all([
+    db.prepare(`SELECT ${diaDe('created_at')} as dia, COALESCE(SUM(total),0) as valor, COUNT(*) as qtd
+      FROM pedidos WHERE ${diaDe('created_at')} >= ${ini} GROUP BY dia ORDER BY dia`).all<{ dia: string; valor: number; qtd: number }>(),
+    db.prepare(`SELECT ${diaDe('created_at')} as dia, COALESCE(SUM(total),0) as valor, COUNT(*) as qtd
+      FROM loja_pedidos WHERE ${diaDe('created_at')} >= ${ini} GROUP BY dia ORDER BY dia`).all<{ dia: string; valor: number; qtd: number }>(),
+    db.prepare(`SELECT ${diaDe('paid_at')} as dia, COALESCE(SUM(valor),0) as valor
+      FROM cafe_pagamentos WHERE status = 'pago' AND paid_at IS NOT NULL AND ${diaDe('paid_at')} >= ${ini} GROUP BY dia ORDER BY dia`).all<{ dia: string; valor: number }>(),
+    // Dinheiro que de fato entrou por dia (pela data do pagamento), cantina + loja
+    db.prepare(`SELECT dia, SUM(valor) as valor FROM (
+        SELECT ${diaDe('paid_at')} as dia, total as valor FROM pedidos WHERE status = 'pago' AND paid_at IS NOT NULL
+        UNION ALL
+        SELECT ${diaDe('paid_at')} as dia, total as valor FROM loja_pedidos WHERE status = 'pago' AND paid_at IS NOT NULL
+      ) WHERE dia >= ${ini} GROUP BY dia ORDER BY dia`).all<{ dia: string; valor: number }>(),
+    db.prepare(`SELECT
+        (SELECT COALESCE(SUM(total),0) FROM pedidos WHERE ${diaDe('created_at')} >= ${iniAnt} AND ${diaDe('created_at')} < ${ini}) as cantina,
+        (SELECT COALESCE(SUM(total),0) FROM loja_pedidos WHERE ${diaDe('created_at')} >= ${iniAnt} AND ${diaDe('created_at')} < ${ini}) as loja,
+        (SELECT COALESCE(SUM(valor),0) FROM cafe_pagamentos WHERE status = 'pago' AND paid_at IS NOT NULL AND ${diaDe('paid_at')} >= ${iniAnt} AND ${diaDe('paid_at')} < ${ini}) as cafe`
+    ).first<{ cantina: number; loja: number; cafe: number }>(),
+    db.prepare(`SELECT CAST(strftime('%H', created_at, ${BRT}) AS INTEGER) as hora, COUNT(*) as qtd, COALESCE(SUM(total),0) as valor
+      FROM pedidos WHERE ${diaDe('created_at')} >= ${ini} GROUP BY hora ORDER BY hora`).all<{ hora: number; qtd: number; valor: number }>(),
+    // Idade da dívida em aberto (cantina + loja), por faixa de dias
+    db.prepare(`SELECT faixa, COUNT(*) as qtd, SUM(total) as valor FROM (
+        SELECT total, CASE
+          WHEN julianday('now') - julianday(created_at) <= 7 THEN 1
+          WHEN julianday('now') - julianday(created_at) <= 30 THEN 2
+          WHEN julianday('now') - julianday(created_at) <= 60 THEN 3
+          ELSE 4 END as faixa
+        FROM (SELECT total, created_at FROM pedidos WHERE status IN ('pendente','fiado')
+              UNION ALL SELECT total, created_at FROM loja_pedidos WHERE status IN ('pendente','fiado'))
+      ) GROUP BY faixa ORDER BY faixa`).all<{ faixa: number; qtd: number; valor: number }>(),
+    db.prepare(`SELECT metodo_pagamento as metodo, COUNT(*) as qtd, COALESCE(SUM(total),0) as valor
+      FROM pedidos WHERE ${diaDe('created_at')} >= ${ini} GROUP BY metodo_pagamento ORDER BY valor DESC`).all<{ metodo: string; qtd: number; valor: number }>(),
+    db.prepare(`SELECT ip.nome_produto as nome, SUM(ip.quantidade) as qtd, COALESCE(SUM(ip.subtotal),0) as valor
+      FROM itens_pedido ip JOIN pedidos p ON p.id = ip.pedido_id
+      WHERE ${diaDe('p.created_at')} >= ${ini}
+      GROUP BY ip.nome_produto ORDER BY valor DESC LIMIT 8`).all<{ nome: string; qtd: number; valor: number }>(),
+    // Café: últimos 6 meses de referência mensal (YYYY-MM)
+    db.prepare(`SELECT cp.referencia as mes,
+        COALESCE(SUM(CASE WHEN cp.status = 'pago' THEN cp.valor ELSE 0 END),0) as pago,
+        COALESCE(SUM(CASE WHEN cp.status = 'pendente' THEN cp.valor ELSE 0 END),0) as pendente
+      FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
+      WHERE length(cp.referencia) = 7 AND (? = '' OR ca.tipo = ?)
+      GROUP BY cp.referencia ORDER BY cp.referencia DESC LIMIT 6`).bind(cafeTipo, cafeTipo).all<{ mes: string; pago: number; pendente: number }>(),
+    db.prepare(`SELECT strftime('%Y-%m', created_at, ${BRT}) as mes, COALESCE(SUM(total),0) as valor, COUNT(*) as qtd
+      FROM loja_pedidos GROUP BY mes ORDER BY mes DESC LIMIT 6`).all<{ mes: string; valor: number; qtd: number }>(),
+  ]);
+
+  return c.json({
+    dias,
+    series: {
+      cantina: cantinaDia.results,
+      loja: lojaDia.results,
+      cafe: cafeDia.results,
+      recebido: recebidoDia.results,
+    },
+    anterior: anterior ?? { cantina: 0, loja: 0, cafe: 0 },
+    por_hora: porHora.results,
+    aging: aging.results,
+    metodos: metodos.results,
+    top_produtos: topProdutos.results,
+    cafe_meses: cafeMeses.results.reverse(),
+    loja_meses: lojaMeses.results.reverse(),
   });
 });
 
@@ -282,21 +364,21 @@ dashboard.get('/relatorio', authMiddleware, async (c) => {
         COALESCE(SUM(total), 0) as total_vendido,
         COALESCE(SUM(CASE WHEN status = 'pago' THEN total ELSE 0 END), 0) as total_recebido,
         COALESCE(SUM(CASE WHEN status IN ('pendente','fiado') THEN total ELSE 0 END), 0) as total_pendente
-      FROM pedidos WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+      FROM pedidos WHERE date(created_at, '-3 hours') >= ? AND date(created_at, '-3 hours') <= ?
     `).bind(de, ate).first(),
 
     // Por método de pagamento
     c.env.DB.prepare(`
       SELECT metodo_pagamento, status, COUNT(*) as qtd, COALESCE(SUM(total), 0) as valor
-      FROM pedidos WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+      FROM pedidos WHERE date(created_at, '-3 hours') >= ? AND date(created_at, '-3 hours') <= ?
       GROUP BY metodo_pagamento, status ORDER BY valor DESC
     `).bind(de, ate).all(),
 
     // Vendas por dia
     c.env.DB.prepare(`
-      SELECT DATE(created_at) as data, COUNT(*) as pedidos, COALESCE(SUM(total), 0) as total
-      FROM pedidos WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
-      GROUP BY DATE(created_at) ORDER BY data ASC
+      SELECT date(created_at, '-3 hours') as data, COUNT(*) as pedidos, COALESCE(SUM(total), 0) as total
+      FROM pedidos WHERE date(created_at, '-3 hours') >= ? AND date(created_at, '-3 hours') <= ?
+      GROUP BY date(created_at, '-3 hours') ORDER BY data ASC
     `).bind(de, ate).all(),
 
     // Top produtos vendidos
@@ -304,7 +386,7 @@ dashboard.get('/relatorio', authMiddleware, async (c) => {
       SELECT ip.nome_produto, SUM(ip.quantidade) as qtd_vendida, SUM(ip.subtotal) as total_vendido
       FROM itens_pedido ip
       JOIN pedidos p ON p.id = ip.pedido_id
-      WHERE DATE(p.created_at) >= ? AND DATE(p.created_at) <= ?
+      WHERE date(p.created_at, '-3 hours') >= ? AND date(p.created_at, '-3 hours') <= ?
       GROUP BY ip.nome_produto ORDER BY qtd_vendida DESC LIMIT 15
     `).bind(de, ate).all(),
 
@@ -312,7 +394,7 @@ dashboard.get('/relatorio', authMiddleware, async (c) => {
     c.env.DB.prepare(`
       SELECT cl.nome_guerra, SUM(p.total) as total_devido, COUNT(*) as pedidos
       FROM pedidos p JOIN clientes cl ON cl.id = p.cliente_id
-      WHERE p.status IN ('pendente','fiado') AND DATE(p.created_at) >= ? AND DATE(p.created_at) <= ?
+      WHERE p.status IN ('pendente','fiado') AND date(p.created_at, '-3 hours') >= ? AND date(p.created_at, '-3 hours') <= ?
       GROUP BY cl.id ORDER BY total_devido DESC
     `).bind(de, ate).all(),
   ]);

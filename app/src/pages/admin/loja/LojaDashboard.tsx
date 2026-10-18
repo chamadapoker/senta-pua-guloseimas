@@ -8,6 +8,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Icon } from '../../../components/ui/Icon';
+import { GraficoLojaMeses } from '../../../components/charts/GraficosAreas';
 
 interface LojaStats {
   vendido_mes: number;
@@ -67,6 +68,7 @@ export function LojaDashboard() {
         <StatCard label="A receber" value={brl(stats.pendente_total)} color="text-escarlate" icon={<Icon name="clock" size={18} />} hint="Pendentes e fiados, de todos os meses" />
         <StatCard label="Vendas hoje" value={String(stats.vendas_hoje)} color="text-azul" icon={<Icon name="bag" size={18} />} />
       </div>
+      <GraficoLojaMeses />
     </AppLayout>
   );
 }

@@ -7,6 +7,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Icon } from '../../../components/ui/Icon';
+import { GraficoCafeMeses } from '../../../components/charts/GraficosAreas';
 
 interface CafeStats {
   total_assinantes: number;
@@ -63,6 +64,7 @@ export function CafeDashboard() {
           <StatCard label="Insumos em alerta" value={String(stats.insumos_alerta)} color={stats.insumos_alerta > 0 ? 'text-escarlate' : 'text-verde'} icon={<Icon name="coffee" size={18} />} hint={stats.insumos_alerta > 0 ? 'Abaixo do estoque mínimo' : 'Estoque em dia'} />
         </div>
       )}
+      {stats && <GraficoCafeMeses tipo={tipo} />}
     </AppLayout>
   );
 }
