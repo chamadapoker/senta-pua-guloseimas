@@ -9,6 +9,7 @@ import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante
 import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import { audit } from '../lib/audit';
 import { statusCafeMilitar, comRotulo, tipoCafeDaCategoria } from '../lib/cafe';
+import { esquadraoDoEnv } from '../lib/esquadrao';
 import type { AppType } from '../index';
 import type { Context } from 'hono';
 
@@ -516,11 +517,11 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
       ximboca: { pago: ximbocaPagoTotal, pendente: ximbocaPendenteTotal },
       geral: { pago: totalPagoGeral, pendente: totalPendenteGeral },
     },
-    aniversario: checarAniversario(user)
+    aniversario: checarAniversario(user, esquadraoDoEnv(c.env).servidor.aniversario_homenagem)
   });
 });
 
-function checarAniversario(u: any) {
+function checarAniversario(u: any, homenagemPadrao: string) {
   if (!u.data_nascimento) return null;
   // Data de hoje em horário de Brasília (UTC-3), evitando erro na virada do dia
   const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000);
@@ -533,7 +534,7 @@ function checarAniversario(u: any) {
   // Usa a homenagem personalizada do militar (se houver) ou textos padrão.
   return {
     titulo: u.niver_titulo || 'Feliz Aniversário!',
-    texto: u.niver_texto || 'O 1/10 GpAv deseja a você muitas felicidades e sucesso!',
+    texto: u.niver_texto || homenagemPadrao,
     imagem_url: u.niver_imagem_url || null,
   };
 }

@@ -47,4 +47,20 @@ export interface EsquadraoConfig {
   };
   /** Áreas do sistema habilitadas (preparado para desligar áreas no futuro). */
   areas: Record<AreaEsquadrao, boolean>;
+  /** Textos gerados pelo servidor (worker): notificações do cron e homenagem padrão. */
+  servidor: {
+    /** Frases sorteadas na notificação "MENSALIDADE CAFÉ" (cron, dias 1 a 5). */
+    mensalidade_cafe: string[];
+    /** Frases sorteadas na notificação "ANUIDADE CAFÉ" (o período é acrescentado ao final). */
+    anuidade_cafe: string[];
+    /** Notificação "FELIZ ANIVERSÁRIO!" enviada pelo cron no dia do aniversário. */
+    aniversario_notificacao: string;
+    /** Texto padrão da homenagem de aniversário quando o admin não personalizou. */
+    aniversario_homenagem: string;
+    /**
+     * Notificação "CAFÉ EM ABERTO" do dia 10. Marcadores: {qtd} (número), {cobrancas}
+     * ("cobrança"/"cobranças") e {total} (valor já formatado, ex.: "40,00").
+     */
+    lembrete_cafe_pendente: string;
+  };
 }

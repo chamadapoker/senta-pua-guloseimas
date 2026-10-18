@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
 import { origensPermitidas } from './lib/cors';
+import { esquadraoDoEnv, textoLembreteCafe } from './lib/esquadrao';
 import auth from './routes/auth';
 import produtos from './routes/produtos';
 import clientes from './routes/clientes';
@@ -33,6 +34,8 @@ export type Env = {
   ADMIN_SENHA: string;
   FRONTEND_URL: string;
   AMBIENTE: string;
+  /** Id do esquadrão (app/esquadroes/<id>.json). Padrão "senta-pua". */
+  ESQUADRAO?: string;
 };
 
 export type AppType = { Bindings: Env; Variables: { adminEmail: string; adminRole: string; adminId: string; adminEscopo: string | null; userId: number; userEmail: string; userTrigrama: string } };
@@ -56,7 +59,7 @@ app.use('*', secureHeaders({
 
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
-    origin: origensPermitidas(c.env.FRONTEND_URL),
+    origin: origensPermitidas(c.env.FRONTEND_URL, esquadraoDoEnv(c.env).url_app),
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   });
@@ -128,6 +131,7 @@ async function gerarCobrancasAutomaticas(env: Env) {
   ).bind(mes).all<{ assinante_id: string }>();
 
   const jaMes = new Set(existMes.map(e => e.assinante_id));
+  const textos = esquadraoDoEnv(env).servidor;
 
   const batch: D1PreparedStatement[] = [];
   let criados = 0;
@@ -135,12 +139,7 @@ async function gerarCobrancasAutomaticas(env: Env) {
     if (!jaMes.has(a.id)) {
       batch.push(env.DB.prepare('INSERT INTO cafe_pagamentos (assinante_id, referencia, valor) VALUES (?, ?, ?)').bind(a.id, mes, a.valor));
       criados++;
-      const frases = [
-        "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
-        "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
-        "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
-        "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
-      ];
+      const frases = textos.mensalidade_cafe;
       const msg = frases[Math.floor(Math.random() * frases.length)];
 
       batch.push(env.DB.prepare('INSERT INTO notificacoes (trigrama, titulo, mensagem) VALUES (?, ?, ?)').bind(
@@ -153,11 +152,7 @@ async function gerarCobrancasAutomaticas(env: Env) {
   // Anual = 12 meses a partir da adesão: renova quando o mês atual passou do fim da cobertura
   // (ou se nunca teve anuidade). Início = mês seguinte ao fim, nunca no passado.
   const anuidades: { assinante_id: string; inicio: string; fim: string }[] = [];
-  const frasesAnual = [
-    "Anuidade do café lançada no seu extrato. Disciplina o ano inteiro mantém o radar limpo!",
-    "Sua contribuição anual do café foi registrada. Café quente garantido, Senta a Pua!",
-    "Anuidade do café no extrato. Missão de um ano, cumprida de uma vez. Mantenha o radar em dia."
-  ];
+  const frasesAnual = textos.anuidade_cafe;
   for (const a of anuais) {
     if (a.fim_cobertura && mes <= a.fim_cobertura) continue;
     const inicio = inicioProximaAnuidade(a.fim_cobertura, mes);
@@ -237,6 +232,7 @@ async function verificarAniversariantes(env: Env) {
 
   if (aniversariantes.length === 0) return;
 
+  const mensagem = esquadraoDoEnv(env).servidor.aniversario_notificacao;
   // INSERT ... WHERE NOT EXISTS: se o cron rodar de novo no mesmo dia, ninguém recebe o parabéns duas vezes
   const batch: D1PreparedStatement[] = aniversariantes.map(a =>
     env.DB.prepare(
@@ -245,7 +241,7 @@ async function verificarAniversariantes(env: Env) {
        WHERE NOT EXISTS (
          SELECT 1 FROM notificacoes WHERE trigrama = ? AND titulo = 'FELIZ ANIVERSÁRIO!' AND date(created_at) = date('now')
        )`
-    ).bind(a.trigrama, "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Senta a Pua!", a.trigrama)
+    ).bind(a.trigrama, mensagem, a.trigrama)
   );
 
   await env.DB.batch(batch);
@@ -267,8 +263,9 @@ async function lembrarMensalidadesPendentes(env: Env) {
 
   if (results.length === 0) return;
 
+  const cfg = esquadraoDoEnv(env);
   const batch = results.map(r => {
-    const msg = `Você tem ${r.qtd} ${r.qtd === 1 ? 'cobrança' : 'cobranças'} do café em aberto (mensalidade/anuidade), total de R$ ${r.total.toFixed(2).replace('.', ',')}. Pague pelo app com PIX e envie o comprovante.`;
+    const msg = textoLembreteCafe(cfg, r.qtd, r.total);
     return env.DB.prepare(
       `INSERT INTO notificacoes (trigrama, titulo, mensagem)
        SELECT ?, 'CAFÉ EM ABERTO', ?

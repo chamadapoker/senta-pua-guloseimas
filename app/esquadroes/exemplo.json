@@ -49,5 +49,17 @@
     "cafe": true,
     "ximboca": true,
     "inventario": true
+  },
+  "servidor": {
+    "mensalidade_cafe": [
+      "Sua mensalidade do café foi lançada no extrato. Confira e mantenha o radar em dia.",
+      "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso."
+    ],
+    "anuidade_cafe": [
+      "Anuidade do café lançada no seu extrato. Café quente garantido, Avante, Exemplo!"
+    ],
+    "aniversario_notificacao": "O Esquadrão Exemplo te deseja um excelente dia e um feliz aniversário! Avante, Exemplo!",
+    "aniversario_homenagem": "O 9/99 GpEx deseja a você muitas felicidades e sucesso!",
+    "lembrete_cafe_pendente": "Você tem {qtd} {cobrancas} do café em aberto (mensalidade/anuidade), total de R$ {total}. Pague pelo app com PIX e envie o comprovante."
   }
 }

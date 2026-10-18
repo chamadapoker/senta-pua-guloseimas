@@ -4,11 +4,14 @@ on:
     branches: [main]
     paths:
       - 'worker/**'
+      # O worker lê a identidade do esquadrão (mensagens, CORS) desses arquivos
+      - 'app/esquadroes/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-worker.yml'
   pull_request:
     paths:
       - 'worker/**'
+      - 'app/esquadroes/**'
       - 'pnpm-lock.yaml'
   workflow_dispatch:
 

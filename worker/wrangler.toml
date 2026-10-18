@@ -14,8 +14,36 @@ bucket_name  = "senta-pua-images"
 
 [vars]
 AMBIENTE = "production"
+# Identidade do esquadrão: app/esquadroes/<id>.json (embutido no bundle por src/lib/esquadrao.ts)
+ESQUADRAO = "senta-pua"
 
 # Cron diário às 03:00 UTC (00:00 Brasília): checa aniversariantes todo dia;
 # as cobranças (mensalidades/anuais) só são geradas no dia 1 (guard no código).
 [triggers]
 crons = ["0 3 * * *"]
+
+# ---------------------------------------------------------------------------------------------
+# OUTRO ESQUADRÃO (exemplo, DESATIVADO). O ambiente padrão acima é o Senta Pua em produção.
+# Cada esquadrão tem worker, banco D1 e bucket R2 próprios; o código é o mesmo.
+# Passo a passo completo em app/esquadroes/README.md (seção "Servidor").
+# Para ativar: descomente, troque os ids e publique com `wrangler deploy --env exemplo`.
+# Atenção: [vars] e [triggers] NÃO são herdados pelos ambientes; repita-os aqui.
+#
+# [env.exemplo]
+# name = "exemplo-worker"
+#
+# [[env.exemplo.d1_databases]]
+# binding       = "DB"
+# database_name = "exemplo-db"
+# database_id   = "<id devolvido por: wrangler d1 create exemplo-db>"
+#
+# [[env.exemplo.r2_buckets]]
+# binding     = "IMAGES"
+# bucket_name = "exemplo-images"
+#
+# [env.exemplo.vars]
+# AMBIENTE  = "production"
+# ESQUADRAO = "exemplo"
+#
+# [env.exemplo.triggers]
+# crons = ["0 3 * * *"]

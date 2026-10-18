@@ -8,7 +8,7 @@ export const ESQUADRAO_PADRAO = 'senta-pua';
 
 const CAMPOS_OBRIGATORIOS = [
   'id', 'nome', 'nome_completo', 'sigla_documentos', 'slogan', 'cidade_pix_padrao', 'url_app', 'rodape',
-  'cores', 'cor_fundo_pwa', 'imagens', 'salas_cafe', 'salas_cafe_documentos', 'frases', 'areas',
+  'cores', 'cor_fundo_pwa', 'imagens', 'salas_cafe', 'salas_cafe_documentos', 'frases', 'areas', 'servidor',
 ] as const;
 
 export function idEsquadrao(): string {

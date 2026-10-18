@@ -56,5 +56,21 @@
     "cafe": true,
     "ximboca": true,
     "inventario": true
+  },
+  "servidor": {
+    "mensalidade_cafe": [
+      "A disciplina financeira é a base da operatividade. Sua mensalidade do café foi lançada no extrato.",
+      "Radar limpo e conta paga. Esse é o lema. Confira seu extrato, a mensalidade do café já está disponível.",
+      "O esquadrão conta com sua pontualidade para manter o café quente. Mensalidade lançada com sucesso.",
+      "Missão dada é missão cumprida. Sua mensalidade do café foi registrada. Mantenha seu radar em dia."
+    ],
+    "anuidade_cafe": [
+      "Anuidade do café lançada no seu extrato. Disciplina o ano inteiro mantém o radar limpo!",
+      "Sua contribuição anual do café foi registrada. Café quente garantido, Senta a Pua!",
+      "Anuidade do café no extrato. Missão de um ano, cumprida de uma vez. Mantenha o radar em dia."
+    ],
+    "aniversario_notificacao": "O Esquadrão Senta Pua te deseja um excelente dia e um feliz aniversário! Lembre-se: o RP pode até esquecer o próprio nome, mas nunca esquece da sua dívida. Senta a Pua!",
+    "aniversario_homenagem": "O 1/10 GpAv deseja a você muitas felicidades e sucesso!",
+    "lembrete_cafe_pendente": "Você tem {qtd} {cobrancas} do café em aberto (mensalidade/anuidade), total de R$ {total}. Pague pelo app com PIX e envie o comprovante."
   }
 }
