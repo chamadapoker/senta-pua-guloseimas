@@ -13,6 +13,7 @@ import { Card } from '../../../components/ui/Card';
 import { Loading } from '../../../components/ui/Loading';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { Badge } from '../../../components/ui/Badge';
+import type { LojaCategoria } from '../../../types';
 
 const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -72,9 +73,15 @@ interface LojaProduto {
   imagem_url: string | null;
   disponivel: number;
   ordem: number;
+  categoria_id?: string | null;
   variacoes: Variacao[];
   imagens: Imagem[];
 }
+
+const NOVA_CATEGORIA = '__nova__';
+type FiltroCategoria = 'todas' | 'sem' | string;
+
+const msgErro = (e: unknown, padrao = 'tente novamente') => (e instanceof Error && e.message ? e.message : padrao);
 
 export function LojaProdutos() {
   const [produtos, setProdutos] = useState<LojaProduto[]>([]);
@@ -92,8 +99,26 @@ export function LojaProdutos() {
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [novaTamanho, setNovaTamanho] = useState('');
   const [novaCor, setNovaCor] = useState('');
+  const [categoriaId, setCategoriaId] = useState<string>('');
+  const [criandoCatForm, setCriandoCatForm] = useState(false);
+  const [novaCatForm, setNovaCatForm] = useState('');
   const confirmar = useConfirm();
   const { showToast } = useToast();
+
+  // Categorias
+  const [categorias, setCategorias] = useState<LojaCategoria[]>([]);
+  const [catModalAberto, setCatModalAberto] = useState(false);
+  const fecharCatModal = useCallback(() => setCatModalAberto(false), []);
+  const [novaCatNome, setNovaCatNome] = useState('');
+  const [renomeandoId, setRenomeandoId] = useState<string | null>(null);
+  const [renomeandoNome, setRenomeandoNome] = useState('');
+  const [catOcupada, setCatOcupada] = useState(false);
+  const [filtroCat, setFiltroCat] = useState<FiltroCategoria>('todas');
+
+  const carregarCategorias = () =>
+    api.get<LojaCategoria[]>('/api/loja/categorias')
+      .then(setCategorias)
+      .catch(() => { /* sem categorias, a tela segue funcionando */ });
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -104,13 +129,108 @@ export function LojaProdutos() {
       .catch((e: any) => setErro(e?.message || 'Erro ao carregar produtos'))
       .finally(() => setCarregando(false));
   };
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); carregarCategorias(); }, []);
+
+  const nomeCategoria = (id: string | null | undefined) => (id ? categorias.find(c => c.id === id)?.nome : undefined);
+  const contagemCat = (id: string) => produtos.filter(p => p.categoria_id === id).length;
+  const semCategoriaQtd = produtos.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id)).length;
+  const produtosFiltrados = produtos.filter(p => {
+    if (filtroCat === 'todas') return true;
+    if (filtroCat === 'sem') return !p.categoria_id || !categorias.some(c => c.id === p.categoria_id);
+    return p.categoria_id === filtroCat;
+  });
+
+  const criarCategoria = async (nomeCat: string): Promise<LojaCategoria | null> => {
+    const n = nomeCat.trim();
+    if (!n) return null;
+    setCatOcupada(true);
+    try {
+      const nova = await api.post<LojaCategoria>('/api/loja/admin/categorias', { nome: n });
+      await carregarCategorias();
+      showToast(`Categoria "${nova.nome}" criada`, 'success');
+      return nova;
+    } catch (e) {
+      showToast('Erro ao criar categoria: ' + msgErro(e), 'error');
+      return null;
+    } finally {
+      setCatOcupada(false);
+    }
+  };
+
+  const adicionarCategoria = async () => {
+    const nova = await criarCategoria(novaCatNome);
+    if (nova) setNovaCatNome('');
+  };
+
+  const salvarRenomear = async (c: LojaCategoria) => {
+    const n = renomeandoNome.trim();
+    if (!n || n === c.nome) { setRenomeandoId(null); return; }
+    setCatOcupada(true);
+    try {
+      await api.put(`/api/loja/admin/categorias/${c.id}`, { nome: n });
+      setRenomeandoId(null);
+      await carregarCategorias();
+    } catch (e) {
+      showToast('Erro ao renomear: ' + msgErro(e), 'error');
+    } finally {
+      setCatOcupada(false);
+    }
+  };
+
+  const moverCategoria = async (index: number, direcao: -1 | 1) => {
+    const alvo = index + direcao;
+    if (alvo < 0 || alvo >= categorias.length) return;
+    const novas = [...categorias];
+    [novas[index], novas[alvo]] = [novas[alvo], novas[index]];
+    // Renumera tudo (0..n-1) para a troca funcionar mesmo se as ordens estiverem repetidas
+    const renumeradas = novas.map((c, i) => ({ ...c, ordem: i }));
+    const alteradas = renumeradas.filter(c => categorias.find(o => o.id === c.id)?.ordem !== c.ordem);
+    setCategorias(renumeradas);
+    setCatOcupada(true);
+    try {
+      await Promise.all(alteradas.map(c => api.put(`/api/loja/admin/categorias/${c.id}`, { ordem: c.ordem })));
+    } catch (e) {
+      showToast('Erro ao reordenar: ' + msgErro(e), 'error');
+    } finally {
+      setCatOcupada(false);
+      carregarCategorias();
+    }
+  };
+
+  const excluirCategoria = async (c: LojaCategoria) => {
+    const qtd = contagemCat(c.id);
+    const aviso = qtd === 0
+      ? 'Nenhum produto usa esta categoria.'
+      : qtd === 1 ? 'O produto desta categoria ficará sem categoria.' : `Os ${qtd} produtos desta categoria ficarão sem categoria.`;
+    if (!(await confirmar({ title: 'Excluir categoria', message: `Excluir "${c.nome}"? ${aviso}`, confirmText: 'Excluir', danger: true }))) return;
+    setCatOcupada(true);
+    try {
+      await api.delete(`/api/loja/admin/categorias/${c.id}`);
+      if (filtroCat === c.id) setFiltroCat('todas');
+      await Promise.all([carregarCategorias(), carregar()]);
+    } catch (e) {
+      showToast('Erro ao excluir categoria: ' + msgErro(e), 'error');
+    } finally {
+      setCatOcupada(false);
+    }
+  };
+
+  const confirmarNovaCatForm = async () => {
+    const nova = await criarCategoria(novaCatForm);
+    if (nova) {
+      setCategoriaId(nova.id);
+      setCriandoCatForm(false);
+      setNovaCatForm('');
+    }
+  };
 
   const abrirNovo = () => {
     setEditando(null);
     setNome(''); setDescricao(''); setPreco(''); setOrdem('0'); setDisponivel(true);
     setImagens([]);
     setVariacoes([]); setNovaTamanho(''); setNovaCor('');
+    setCategoriaId(filtroCat !== 'todas' && filtroCat !== 'sem' ? filtroCat : '');
+    setCriandoCatForm(false); setNovaCatForm('');
     setModalAberto(true);
   };
 
@@ -120,6 +240,8 @@ export function LojaProdutos() {
     setImagens((p.imagens || []).map(i => ({ url: i.url, preview: resolveImg(i.url) || i.url })));
     setVariacoes(p.variacoes || []);
     setNovaTamanho(''); setNovaCor('');
+    setCategoriaId(p.categoria_id && categorias.some(c => c.id === p.categoria_id) ? p.categoria_id : '');
+    setCriandoCatForm(false); setNovaCatForm('');
     setModalAberto(true);
   };
 
@@ -171,6 +293,7 @@ export function LojaProdutos() {
       ordem: parseInt(ordem),
       disponivel: disponivel ? 1 : 0,
       imagem_url: imagens[0]?.url || null,
+      categoria_id: categoriaId || null,
       imagens: imagens.map((img, i) => ({ url: img.url, ordem: i })),
       variacoes: variacoes.map(v => ({ nome: v.nome || `${v.tamanho || ''}${v.cor ? ' - ' + v.cor : ''}`.trim(), tamanho: v.tamanho || null, cor: v.cor || null, estoque: v.estoque ?? 0 })),
     };
@@ -182,6 +305,7 @@ export function LojaProdutos() {
       }
       setModalAberto(false);
       carregar();
+      carregarCategorias();
     } catch (err) {
       showToast('Erro ao salvar: ' + (err instanceof Error ? err.message : 'tente novamente'), 'error');
     }
@@ -205,8 +329,31 @@ export function LojaProdutos() {
       <PageHeader
         title="Produtos da loja"
         subtitle="Cadastre produtos, fotos, tamanhos e estoque."
-        right={<Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo produto</Button>}
+        right={
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="ghost" onClick={() => setCatModalAberto(true)}><Icon name="tag" size={16} /> Categorias</Button>
+            <Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo produto</Button>
+          </div>
+        }
       />
+
+      {!erro && !carregando && produtos.length > 0 && categorias.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por categoria">
+          {([
+            { id: 'todas', nome: 'Todas', qtd: produtos.length },
+            ...categorias.map(c => ({ id: c.id, nome: c.nome, qtd: contagemCat(c.id) })),
+            ...(semCategoriaQtd > 0 ? [{ id: 'sem', nome: 'Sem categoria', qtd: semCategoriaQtd }] : []),
+          ]).map(f => (
+            <button key={f.id} type="button" aria-pressed={filtroCat === f.id} onClick={() => setFiltroCat(f.id)}
+              className={`inline-flex items-center gap-1.5 min-h-[40px] px-3.5 rounded-full text-sm font-medium border transition-colors outline-none focus-visible:ring-2 focus-visible:ring-azul/40 ${
+                filtroCat === f.id ? 'bg-noite text-white border-noite' : 'bg-white text-texto border-borda hover:border-azul/60'
+              }`}>
+              {f.nome}
+              <span className={`text-xs tabular-nums ${filtroCat === f.id ? 'text-white/80' : 'text-texto-fraco'}`}>{f.qtd}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {erro ? (
         <Card className="text-center py-10">
@@ -224,9 +371,17 @@ export function LojaProdutos() {
             action={<Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo produto</Button>}
           />
         </Card>
+      ) : produtosFiltrados.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<Icon name="tag" size={24} />}
+            message="Nenhum produto nesta categoria"
+            action={<Button size="sm" variant="ghost" onClick={() => setFiltroCat('todas')}>Ver todos</Button>}
+          />
+        </Card>
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {produtos.map((p) => (
+        {produtosFiltrados.map((p) => (
           <div key={p.id} className={`bg-white rounded-2xl overflow-hidden border border-borda shadow-sm flex flex-col ${p.disponivel ? '' : 'opacity-75'}`}>
             <div className="aspect-video bg-fundo relative">
               {p.imagens?.length > 0 ? (
@@ -249,6 +404,11 @@ export function LojaProdutos() {
                 <h3 className="font-semibold text-noite min-w-0 break-words">{p.nome}</h3>
                 <span className="font-display text-xl text-dourado tracking-wide leading-none shrink-0">{brl(p.preco)}</span>
               </div>
+              {nomeCategoria(p.categoria_id) && (
+                <span className="self-start inline-flex items-center gap-1 text-[11px] font-medium text-azul bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 mb-1.5">
+                  <Icon name="tag" size={12} /> {nomeCategoria(p.categoria_id)}
+                </span>
+              )}
               {p.descricao && <p className="text-sm text-texto-fraco mb-2 break-words">{p.descricao}</p>}
 
               <div className="flex items-center justify-between gap-2 bg-fundo rounded-xl px-3 py-2 my-2">
@@ -341,6 +501,41 @@ export function LojaProdutos() {
               <label htmlFor="lp-ordem" className="block text-sm font-medium mb-1.5">Ordem na vitrine</label>
               <input id="lp-ordem" type="number" value={ordem} onChange={(e) => setOrdem(e.target.value)} className={inputClass} />
             </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="lp-categoria" className="block text-sm font-medium mb-1.5">Categoria</label>
+              <select
+                id="lp-categoria"
+                value={criandoCatForm ? NOVA_CATEGORIA : categoriaId}
+                onChange={(e) => {
+                  if (e.target.value === NOVA_CATEGORIA) { setCriandoCatForm(true); setNovaCatForm(''); }
+                  else { setCriandoCatForm(false); setCategoriaId(e.target.value); }
+                }}
+                className={inputClass}
+              >
+                <option value="">Sem categoria</option>
+                {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                <option value={NOVA_CATEGORIA}>+ Nova categoria…</option>
+              </select>
+              {criandoCatForm && (
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+                  <input
+                    value={novaCatForm}
+                    aria-label="Nome da nova categoria"
+                    autoFocus
+                    onChange={(e) => setNovaCatForm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); confirmarNovaCatForm(); }
+                    }}
+                    placeholder="Nome da categoria"
+                    className={inputClass}
+                  />
+                  <Button type="button" size="sm" onClick={confirmarNovaCatForm} disabled={catOcupada || !novaCatForm.trim()}>
+                    {catOcupada ? 'Criando...' : 'Criar'}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setCriandoCatForm(false)}>Cancelar</Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Variações */}
@@ -406,6 +601,75 @@ export function LojaProdutos() {
             {uploading ? 'Aguarde o envio da foto...' : editando ? 'Salvar alterações' : 'Criar produto'}
           </Button>
         </form>
+      </Modal>
+
+      <Modal open={catModalAberto} onClose={fecharCatModal} title="Categorias">
+        <div className="space-y-4">
+          <p className="text-sm text-texto-fraco">A ordem aqui é a ordem das seções na loja.</p>
+          {categorias.length === 0 ? (
+            <p className="text-sm text-texto-fraco bg-fundo rounded-xl px-4 py-3">Nenhuma categoria ainda. Crie a primeira abaixo.</p>
+          ) : (
+            <ul className="space-y-2">
+              {categorias.map((c, i) => {
+                const qtd = contagemCat(c.id);
+                return (
+                  <li key={c.id} className="flex items-center gap-2 bg-fundo rounded-xl px-2 py-2">
+                    <div className="flex flex-col shrink-0">
+                      <button type="button" onClick={() => moverCategoria(i, -1)} disabled={i === 0 || catOcupada}
+                        aria-label={`Subir ${c.nome}`}
+                        className="w-10 h-6 flex items-center justify-center rounded-md text-texto-fraco hover:bg-borda disabled:opacity-30">
+                        <Icon name="chevron-up" size={16} />
+                      </button>
+                      <button type="button" onClick={() => moverCategoria(i, 1)} disabled={i === categorias.length - 1 || catOcupada}
+                        aria-label={`Descer ${c.nome}`}
+                        className="w-10 h-6 flex items-center justify-center rounded-md text-texto-fraco hover:bg-borda disabled:opacity-30">
+                        <Icon name="chevron-down" size={16} />
+                      </button>
+                    </div>
+                    {renomeandoId === c.id ? (
+                      <>
+                        <input
+                          value={renomeandoNome}
+                          aria-label={`Novo nome para ${c.nome}`}
+                          autoFocus
+                          onChange={(e) => setRenomeandoNome(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); salvarRenomear(c); } }}
+                          className={`${inputClass} flex-1 min-w-0`}
+                        />
+                        <Button size="sm" variant="chip-success" onClick={() => salvarRenomear(c)} disabled={catOcupada} aria-label="Salvar nome"><Icon name="check" size={15} /></Button>
+                        <Button size="sm" variant="chip" onClick={() => setRenomeandoId(null)} aria-label="Cancelar renomear"><Icon name="close" size={15} /></Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-noite break-words">{c.nome}</div>
+                          <div className="text-xs text-texto-fraco">{qtd} {qtd === 1 ? 'produto' : 'produtos'}</div>
+                        </div>
+                        <Button size="sm" variant="chip-primary" onClick={() => { setRenomeandoId(c.id); setRenomeandoNome(c.nome); }} aria-label={`Renomear ${c.nome}`}><Icon name="pencil" size={15} /></Button>
+                        <Button size="sm" variant="chip-danger" onClick={() => excluirCategoria(c)} disabled={catOcupada} aria-label={`Excluir ${c.nome}`}><Icon name="trash" size={15} /></Button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div>
+            <label htmlFor="lp-nova-cat" className="block text-sm font-medium mb-1.5">Nova categoria</label>
+            <div className="flex gap-2">
+              <input
+                id="lp-nova-cat"
+                value={novaCatNome}
+                onChange={(e) => setNovaCatNome(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarCategoria(); } }}
+                placeholder="Ex.: Camisetas"
+                className={`${inputClass} flex-1 min-w-0`}
+              />
+              <Button size="sm" onClick={adicionarCategoria} disabled={catOcupada || !novaCatNome.trim()}><Icon name="plus" size={16} /> Adicionar</Button>
+            </div>
+          </div>
+        </div>
       </Modal>
     </AppLayout>
   );

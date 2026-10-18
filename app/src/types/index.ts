@@ -82,3 +82,10 @@ export interface DashboardStats {
   devedores: { cliente_id: string; nome_guerra: string; whatsapp: string | null; total_devido: number }[];
   ultimos_7_dias: { data: string; total: number }[];
 }
+
+export interface LojaCategoria {
+  id: string;
+  nome: string;
+  ordem: number;
+  total_produtos: number;
+}

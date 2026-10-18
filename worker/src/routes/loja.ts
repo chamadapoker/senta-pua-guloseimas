@@ -19,6 +19,69 @@ async function checkVisitanteSeLogado(c: Context<AppType>, next: Next) {
 
 const loja = new Hono<AppType>();
 
+// PUBLIC: categorias (com quantos produtos à venda cada uma tem)
+loja.get('/categorias', async (c) => {
+  const { results } = await c.env.DB.prepare(`
+    SELECT cat.id, cat.nome, cat.ordem,
+      (SELECT COUNT(*) FROM loja_produtos p WHERE p.categoria_id = cat.id AND p.disponivel = 1) as total_produtos
+    FROM loja_categorias cat
+    ORDER BY cat.ordem ASC, cat.nome ASC
+  `).all();
+  return c.json(results);
+});
+
+// ADMIN: criar categoria
+loja.post('/admin/categorias', authMiddleware, async (c) => {
+  const { nome } = await c.req.json<{ nome?: string }>().catch(() => ({ nome: '' }));
+  const nomeLimpo = (nome || '').trim().replace(/\s+/g, ' ');
+  if (!nomeLimpo) return c.json({ error: 'Informe o nome da categoria' }, 400);
+  if (nomeLimpo.length > 40) return c.json({ error: 'Nome da categoria muito longo (máximo 40 letras)' }, 400);
+  const existe = await c.env.DB.prepare('SELECT id FROM loja_categorias WHERE nome = ? COLLATE NOCASE').bind(nomeLimpo).first();
+  if (existe) return c.json({ error: 'Já existe uma categoria com esse nome' }, 409);
+  const prox = await c.env.DB.prepare('SELECT COALESCE(MAX(ordem), -1) + 1 as ordem FROM loja_categorias').first<{ ordem: number }>();
+  const criada = await c.env.DB.prepare(
+    'INSERT INTO loja_categorias (nome, ordem) VALUES (?, ?) RETURNING *'
+  ).bind(nomeLimpo, prox?.ordem ?? 0).first();
+  await audit(c, 'criar_categoria_loja', 'loja_categorias', String((criada as any)?.id ?? ''), null, criada);
+  return c.json({ ...(criada as object), total_produtos: 0 }, 201);
+});
+
+// ADMIN: renomear / reordenar categoria
+loja.put('/admin/categorias/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json<{ nome?: string; ordem?: number }>().catch(() => ({} as { nome?: string; ordem?: number }));
+  const antes = await c.env.DB.prepare('SELECT * FROM loja_categorias WHERE id = ?').bind(id).first();
+  if (!antes) return c.json({ error: 'Categoria não encontrada' }, 404);
+  const campos: string[] = [];
+  const valores: unknown[] = [];
+  if (body.nome !== undefined) {
+    const nomeLimpo = String(body.nome).trim().replace(/\s+/g, ' ');
+    if (!nomeLimpo) return c.json({ error: 'Informe o nome da categoria' }, 400);
+    if (nomeLimpo.length > 40) return c.json({ error: 'Nome da categoria muito longo (máximo 40 letras)' }, 400);
+    const dup = await c.env.DB.prepare('SELECT id FROM loja_categorias WHERE nome = ? COLLATE NOCASE AND id != ?').bind(nomeLimpo, id).first();
+    if (dup) return c.json({ error: 'Já existe uma categoria com esse nome' }, 409);
+    campos.push('nome = ?'); valores.push(nomeLimpo);
+  }
+  if (body.ordem !== undefined && Number.isFinite(Number(body.ordem))) { campos.push('ordem = ?'); valores.push(Math.trunc(Number(body.ordem))); }
+  if (!campos.length) return c.json(antes);
+  const depois = await c.env.DB.prepare(`UPDATE loja_categorias SET ${campos.join(', ')} WHERE id = ? RETURNING *`).bind(...valores, id).first();
+  await audit(c, 'editar_categoria_loja', 'loja_categorias', id, antes, depois);
+  return c.json(depois);
+});
+
+// ADMIN: excluir categoria (os produtos ficam sem categoria; nada é apagado além da categoria)
+loja.delete('/admin/categorias/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const antes = await c.env.DB.prepare('SELECT * FROM loja_categorias WHERE id = ?').bind(id).first();
+  if (!antes) return c.json({ error: 'Categoria não encontrada' }, 404);
+  await c.env.DB.batch([
+    c.env.DB.prepare('UPDATE loja_produtos SET categoria_id = NULL WHERE categoria_id = ?').bind(id),
+    c.env.DB.prepare('DELETE FROM loja_categorias WHERE id = ?').bind(id),
+  ]);
+  await audit(c, 'excluir_categoria_loja', 'loja_categorias', id, antes, null);
+  return c.json({ ok: true });
+});
+
 // PUBLIC: list available products with variations
 loja.get('/produtos', async (c) => {
   const { results: produtos } = await c.env.DB.prepare(
@@ -287,12 +350,12 @@ loja.get('/admin/produtos', authMiddleware, async (c) => {
 loja.post('/admin/produtos', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
-    const { nome, descricao, preco, preco_custo, imagem_url, ordem, variacoes, imagens } = body;
+    const { nome, descricao, preco, preco_custo, imagem_url, ordem, variacoes, imagens, categoria_id } = body;
     if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
 
     const { results } = await c.env.DB.prepare(
-      'INSERT INTO loja_produtos (nome, descricao, preco, preco_custo, imagem_url, ordem, disponivel) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
-    ).bind(nome, descricao || '', preco, preco_custo ?? null, imagem_url || null, ordem ?? 0, body.disponivel ?? 1).all();
+      'INSERT INTO loja_produtos (nome, descricao, preco, preco_custo, imagem_url, ordem, disponivel, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+    ).bind(nome, descricao || '', preco, preco_custo ?? null, imagem_url || null, ordem ?? 0, body.disponivel ?? 1, categoria_id || null).all();
 
     const produto = results[0] as any;
 
@@ -341,6 +404,7 @@ loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
     if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
     if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
     if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
+    if ('categoria_id' in body) { fields.push('categoria_id = ?'); values.push(body.categoria_id || null); }
 
     if (fields.length) {
       values.push(id);

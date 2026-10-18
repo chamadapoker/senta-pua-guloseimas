@@ -12,6 +12,7 @@ import { getConfig } from '../services/config';
 import { EmptyState } from '../components/ui/EmptyState';
 import { gerarPayloadPix } from '../services/pix';
 import { useCopiar } from '../hooks/useCopiar';
+import type { LojaCategoria } from '../types';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -43,6 +44,7 @@ interface Produto {
   preco: number;
   disponivel: number;
   imagem_url: string | null;
+  categoria_id?: string | null;
   variacoes: Variacao[];
   imagens: Imagem[];
 }
@@ -55,6 +57,8 @@ interface ItemCarrinho {
 
 export function LojaPublica() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [categorias, setCategorias] = useState<LojaCategoria[]>([]);
+  const [filtroCat, setFiltroCat] = useState<string>('tudo');
   const [loading, setLoading] = useState(true);
   const [erroCarga, setErroCarga] = useState(false);
   const { copiar, modalCopiaManual } = useCopiar();
@@ -88,6 +92,10 @@ export function LojaPublica() {
       .then(setProdutos)
       .catch(() => setErroCarga(true))
       .finally(() => setLoading(false));
+    // Categorias são opcionais: se falhar, a loja segue sem elas
+    api.get<LojaCategoria[]>('/api/loja/categorias')
+      .then(c => setCategorias(Array.isArray(c) ? c : []))
+      .catch(() => setCategorias([]));
   };
 
   useEffect(() => {
@@ -409,6 +417,50 @@ export function LojaPublica() {
     );
   }
 
+  // Categorias com produtos à venda, na ordem cadastrada
+  const disponiveis = produtos.filter(p => p.disponivel !== 0);
+  const catsVisiveis = categorias.filter(c => disponiveis.some(p => p.categoria_id === c.id));
+  const idsVisiveis = new Set(catsVisiveis.map(c => c.id));
+  const filtroAtivo = filtroCat !== 'tudo' && idsVisiveis.has(filtroCat) ? filtroCat : 'tudo';
+  const produtosVisiveis = filtroAtivo === 'tudo' ? produtos : produtos.filter(p => p.categoria_id === filtroAtivo);
+  const semCategoria = produtos.filter(p => !p.categoria_id || !idsVisiveis.has(p.categoria_id));
+  const secoes = filtroAtivo === 'tudo' && catsVisiveis.length > 0
+    ? [
+        ...catsVisiveis.map(c => ({ id: c.id, nome: c.nome, itens: produtos.filter(p => p.categoria_id === c.id) })),
+        ...(semCategoria.length > 0 ? [{ id: 'outros', nome: 'Outros', itens: semCategoria }] : []),
+      ]
+    : null;
+
+  const renderProduto = (p: Produto) => {
+    const img = p.imagens?.[0] ? resolveImg(p.imagens[0].url) : resolveImg(p.imagem_url);
+    const opcoes = p.variacoes.filter(v => v.estoque > 0).length;
+    const semEstoque = p.variacoes.length > 0 && opcoes === 0;
+    return (
+      <button key={p.id} onClick={() => abrirProduto(p)}
+        className="flex flex-col bg-white rounded-2xl overflow-hidden border border-borda text-left hover:border-azul/60 active:scale-[0.98] transition-[border-color,transform] outline-none focus-visible:ring-2 focus-visible:ring-azul/40">
+        <div className="relative aspect-square w-full bg-fundo-elevado">
+          {img ? (
+            <img src={img} alt="" loading="lazy" className={`w-full h-full object-cover ${semEstoque ? 'grayscale opacity-60' : ''}`} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-texto-fraco/40">
+              <Icon name="bag" size={40} />
+            </div>
+          )}
+          {semEstoque && (
+            <span className="absolute top-2 left-2 bg-noite text-white text-xs font-semibold px-2.5 py-1 rounded-lg">Esgotado</span>
+          )}
+        </div>
+        <div className="p-3 flex-1 flex flex-col">
+          <h3 className="font-medium text-[15px] leading-snug line-clamp-2">{p.nome}</h3>
+          <div className="font-display text-2xl leading-none tracking-wide text-noite mt-1.5">{brl(p.preco)}</div>
+          {p.variacoes.length > 0 && !semEstoque && (
+            <p className="text-xs text-texto-fraco mt-1.5">{opcoes} {opcoes === 1 ? 'opção disponível' : 'opções disponíveis'}</p>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   // Vitrine
   return (
     <AppLayout>
@@ -445,36 +497,33 @@ export function LojaPublica() {
           hint="Novos produtos aparecem aqui assim que forem cadastrados."
         />
       ) : (
-        <div className={`${GRADE} ${carrinho.length > 0 ? 'pb-28' : 'pb-4'}`}>
-          {produtos.map(p => {
-            const img = p.imagens?.[0] ? resolveImg(p.imagens[0].url) : resolveImg(p.imagem_url);
-            const opcoes = p.variacoes.filter(v => v.estoque > 0).length;
-            const semEstoque = p.variacoes.length > 0 && opcoes === 0;
-            return (
-              <button key={p.id} onClick={() => abrirProduto(p)}
-                className="flex flex-col bg-white rounded-2xl overflow-hidden border border-borda text-left hover:border-azul/60 active:scale-[0.98] transition-[border-color,transform] outline-none focus-visible:ring-2 focus-visible:ring-azul/40">
-                <div className="relative aspect-square w-full bg-fundo-elevado">
-                  {img ? (
-                    <img src={img} alt="" loading="lazy" className={`w-full h-full object-cover ${semEstoque ? 'grayscale opacity-60' : ''}`} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-texto-fraco/40">
-                      <Icon name="bag" size={40} />
-                    </div>
-                  )}
-                  {semEstoque && (
-                    <span className="absolute top-2 left-2 bg-noite text-white text-xs font-semibold px-2.5 py-1 rounded-lg">Esgotado</span>
-                  )}
-                </div>
-                <div className="p-3 flex-1 flex flex-col">
-                  <h3 className="font-medium text-[15px] leading-snug line-clamp-2">{p.nome}</h3>
-                  <div className="font-display text-2xl leading-none tracking-wide text-noite mt-1.5">{brl(p.preco)}</div>
-                  {p.variacoes.length > 0 && !semEstoque && (
-                    <p className="text-xs text-texto-fraco mt-1.5">{opcoes} {opcoes === 1 ? 'opção disponível' : 'opções disponíveis'}</p>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+        <div className={carrinho.length > 0 ? 'pb-28' : 'pb-4'}>
+          {catsVisiveis.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-3" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+              role="group" aria-label="Filtrar por categoria">
+              {[{ id: 'tudo', nome: 'Tudo' }, ...catsVisiveis].map(c => (
+                <button key={c.id} type="button" aria-pressed={filtroAtivo === c.id} onClick={() => setFiltroCat(c.id)}
+                  className={`shrink-0 min-h-[44px] px-4 rounded-full text-sm font-medium border whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-azul/40 ${
+                    filtroAtivo === c.id ? 'bg-noite text-white border-noite' : 'bg-white text-texto border-borda hover:border-azul/60'
+                  }`}>
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {secoes ? (
+            <div className="space-y-6">
+              {secoes.map(sec => (
+                <section key={sec.id} aria-labelledby={`loja-sec-${sec.id}`}>
+                  <h2 id={`loja-sec-${sec.id}`} className="font-display text-2xl text-noite tracking-wide leading-none mb-3">{sec.nome}</h2>
+                  <div className={GRADE}>{sec.itens.map(renderProduto)}</div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className={GRADE}>{produtosVisiveis.map(renderProduto)}</div>
+          )}
         </div>
       )}
 
