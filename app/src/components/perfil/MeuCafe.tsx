@@ -8,22 +8,11 @@ import { api } from '../../services/api';
 import { getConfig } from '../../services/config';
 import { gerarPayloadPix } from '../../services/pix';
 import { useCopiar } from '../../hooks/useCopiar';
+import { useUserAuth } from '../../hooks/useUserAuth';
+import type { MeuCafeStatus as CafeStatus, SalaCafeTipo } from '../../types';
+import { mesCurto, nomeSalaCafe, pixSalaCafe, rotuloReferencia, salaDaCategoria } from '../../pages/admin/cafe/SalaCafe';
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-interface HistoricoItem { id?: string; referencia: string; valor: number; status: string; paid_at: string | null }
-
-interface CafeStatus {
-  tem_assinatura: boolean;
-  tipo: string | null;
-  plano?: string;
-  valor_mensal?: number;
-  mes_atual?: string;
-  mes_atual_pago?: boolean;
-  total_pendente?: number;
-  historico?: HistoricoItem[];
-  sem_sala?: boolean;
-}
 
 export function MeuCafe() {
   const [status, setStatus] = useState<CafeStatus | null>(null);
@@ -32,6 +21,7 @@ export function MeuCafe() {
   const [copiado, setCopiado] = useState(false);
   const [erro, setErro] = useState(false);
   const { copiar, modalCopiaManual } = useCopiar();
+  const { user } = useUserAuth();
 
   const carregar = () => {
     setLoading(true);
@@ -72,22 +62,44 @@ export function MeuCafe() {
       </Card>
     );
   }
-  if (!status || status.sem_sala) return null;
+  if (!status) return null;
+
+  // Sala vem do servidor (segue a categoria); sem o campo (backend antigo), usa o comportamento anterior
+  const salaServidor = 'sala' in status ? status.sala ?? null : undefined;
+  const sala: SalaCafeTipo | null = salaServidor !== undefined
+    ? salaServidor
+    : status.sem_sala ? null
+    : (status.tipo === 'oficial' || status.tipo === 'graduado') ? status.tipo
+    : salaDaCategoria(user?.categoria);
+
+  if (sala === null) {
+    return (
+      <Card>
+        {titulo}
+        <p className="text-sm text-texto-fraco mt-2">
+          A caixinha do café é das salas de oficiais e de graduados, por isso não há cobrança de café para você. A cantina e a loja continuam à disposição.
+        </p>
+      </Card>
+    );
+  }
+
+  const nomeSala = nomeSalaCafe(config, sala);
 
   if (!status.tem_assinatura) {
     return (
       <Card>
         {titulo}
-        <p className="text-sm text-texto-fraco mt-2">Você não tem assinatura ativa. Fale com o responsável da sua sala.</p>
+        <p className="text-sm text-texto-fraco mt-2">Você não tem assinatura ativa na {nomeSala}. Fale com o responsável da sua sala.</p>
       </Card>
     );
   }
 
-  const tipo = status.tipo as 'oficial' | 'graduado';
-  const chave = config[tipo === 'oficial' ? 'pix_cafe_oficial_chave' : 'pix_cafe_graduado_chave'] || '';
-  const nome = config[tipo === 'oficial' ? 'pix_cafe_oficial_nome' : 'pix_cafe_graduado_nome'] || '';
-  const whatsapp = config[tipo === 'oficial' ? 'pix_cafe_oficial_whatsapp' : 'pix_cafe_graduado_whatsapp'] || '';
+  const { chave, nome, whatsapp } = pixSalaCafe(config, sala);
   const totalPendente = status.total_pendente || 0;
+  const anual = status.plano === 'anual';
+  const valorPlano = status.valor ?? status.valor_mensal ?? 0;
+  const historico = status.historico ?? status.pagamentos ?? [];
+  const validoAte = status.valido_ate;
 
   const copiarPix = async () => {
     if (!chave || totalPendente <= 0) return;
@@ -99,7 +111,7 @@ export function MeuCafe() {
 
   const enviarComprovante = () => {
     if (!whatsapp) return;
-    const msg = `Comprovante Caixinha do Café\nValor: R$ ${totalPendente.toFixed(2)}\n\n_Anexe o comprovante abaixo_`;
+    const msg = `Comprovante Caixinha do Café\n${nomeSala}\nValor: R$ ${totalPendente.toFixed(2)}\n\n_Anexe o comprovante abaixo_`;
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -107,12 +119,18 @@ export function MeuCafe() {
     <Card>
       <div className="flex items-center justify-between gap-3">
         {titulo}
-        <Badge variant={status.mes_atual_pago ? 'success' : 'danger'}>{status.mes_atual_pago ? 'Mês pago' : 'Mês pendente'}</Badge>
+        {anual
+          ? <Badge variant={status.mes_atual_pago ? 'success' : 'danger'}>{status.mes_atual_pago ? 'Anuidade paga' : 'Anuidade em aberto'}</Badge>
+          : <Badge variant={status.mes_atual_pago ? 'success' : 'danger'}>{status.mes_atual_pago ? 'Mês pago' : 'Mês pendente'}</Badge>}
       </div>
+      <p className="text-xs text-texto-fraco mt-0.5">{nomeSala}</p>
 
       <p className="text-sm text-texto-fraco mt-2">
-        Mensalidade: <span className="font-display text-xl leading-none tracking-wide text-texto">{brl(status.valor_mensal || 0)}</span>
+        {anual ? 'Anuidade' : 'Mensalidade'}: <span className="font-display text-xl leading-none tracking-wide text-texto">{brl(valorPlano)}</span>
       </p>
+      {anual && validoAte && (
+        <p className="text-sm text-verde-escuro font-medium mt-1">Anuidade válida até {mesCurto(validoAte)}</p>
+      )}
 
       {totalPendente > 0 && (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3.5">
@@ -130,14 +148,14 @@ export function MeuCafe() {
         </div>
       )}
 
-      {status.historico && status.historico.length > 0 && (
+      {historico.length > 0 && (
         <div className="mt-4">
           <h3 className="text-sm font-medium text-texto-fraco mb-1">Histórico</h3>
           <ul className="divide-y divide-borda">
-            {status.historico.map(h => (
+            {historico.map(h => (
               <li key={h.id || h.referencia} className="py-2.5">
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium">{h.referencia}</span>
+                  <span className="font-medium">{rotuloReferencia(h)}</span>
                   <span className="flex items-center gap-2.5">
                     <span className="tabular-nums text-texto-fraco">{brl(h.valor)}</span>
                     <Badge variant={h.status === 'pago' ? 'success' : 'danger'}>{h.status === 'pago' ? 'Pago' : h.status === 'pendente' ? 'Pendente' : h.status}</Badge>

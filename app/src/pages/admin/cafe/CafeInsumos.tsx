@@ -12,6 +12,7 @@ import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Loading } from '../../../components/ui/Loading';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { SeletorSalaCafe, nomeSalaCafe, useConfigCafe, useSalaCafe } from './SalaCafe';
 
 interface Insumo {
   id: string;
@@ -27,9 +28,8 @@ export function CafeInsumos() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
-    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
-  );
+  const [tipo, setTipo] = useSalaCafe();
+  const config = useConfigCafe();
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const fecharModal = useCallback(() => setModalAberto(false), []);
@@ -39,7 +39,6 @@ export function CafeInsumos() {
   const [estoque, setEstoque] = useState('0');
   const [estoqueMin, setEstoqueMin] = useState('0');
 
-  useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
   const carregar = () => {
     setCarregando(true);
     setErro('');
@@ -93,23 +92,17 @@ export function CafeInsumos() {
 
   return (
     <AppLayout>
+      <SeletorSalaCafe sala={tipo} onChange={setTipo} config={config} />
       <PageHeader
         title="Insumos do café"
-        subtitle="Estoque de café, açúcar, copos e o mínimo de cada um."
+        subtitle={`Estoque de café, açúcar, copos e o mínimo de cada um na ${nomeSalaCafe(config, tipo)}.`}
         right={<Button size="sm" onClick={abrirNovo}><Icon name="plus" size={16} /> Novo insumo</Button>}
       />
-      <div className="flex flex-wrap items-center gap-2 mb-5" role="group" aria-label="Sala do café">
-        {(['oficial', 'graduado'] as const).map(t => (
-          <Button key={t} size="sm" variant={tipo === t ? 'primary' : 'chip'} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
-            {t === 'oficial' ? 'Oficiais' : 'Graduados'}
-          </Button>
-        ))}
-        {emAlerta > 0 && (
-          <span className="inline-flex items-center gap-1.5 text-sm text-escarlate font-medium ml-1">
-            <Icon name="warning" size={16} /> {emAlerta} {emAlerta === 1 ? 'item abaixo' : 'itens abaixo'} do mínimo
-          </span>
-        )}
-      </div>
+      {emAlerta > 0 && (
+        <p role="status" className="flex items-center gap-1.5 text-sm text-escarlate font-medium -mt-2 mb-5">
+          <Icon name="warning" size={16} /> {emAlerta} {emAlerta === 1 ? 'item abaixo' : 'itens abaixo'} do mínimo
+        </p>
+      )}
 
       {erro ? (
         <Card className="text-center py-10">
@@ -154,6 +147,7 @@ export function CafeInsumos() {
 
       <Modal open={modalAberto} onClose={fecharModal} title={editando ? 'Editar insumo' : 'Novo insumo'}>
         <form onSubmit={salvar} className="space-y-4">
+          <p className="text-sm text-texto-fraco">Sala: <strong className="text-texto">{nomeSalaCafe(config, tipo)}</strong></p>
           <div>
             <label htmlFor="ci-nome" className="block text-sm font-medium mb-1.5">Nome</label>
             <input id="ci-nome" value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} required placeholder="Ex.: Café, açúcar, copos" />

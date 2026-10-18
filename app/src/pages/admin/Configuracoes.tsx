@@ -16,7 +16,7 @@ type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 const ABAS: { id: Aba; label: string; icon: 'tag' | 'pix' | 'cash' | 'cart'; descricao: string }[] = [
   { id: 'nomes',   label: 'Nomes',   icon: 'tag',  descricao: 'Como as cantinas e as salas do café aparecem no app.' },
   { id: 'pix',     label: 'PIX',     icon: 'pix',  descricao: 'Chaves que recebem os pagamentos de cada área.' },
-  { id: 'valores', label: 'Valores', icon: 'cash', descricao: 'Valores cobrados de visitantes no café.' },
+  { id: 'valores', label: 'Valores', icon: 'cash', descricao: 'Valores padrão do café por sala e plano, e o valor cobrado de visitantes.' },
   { id: 'loja',    label: 'Loja',    icon: 'cart', descricao: 'Parcelamento e frete da loja.' },
 ];
 
@@ -44,6 +44,33 @@ function Secao({ title, descricao, children }: { title: string; descricao?: stri
       </div>
       {children}
     </section>
+  );
+}
+
+// Valores padrão do café por sala e plano (fora do corpo de Configuracoes, pelo mesmo motivo acima)
+function ValoresPadraoCafe({ v, set }: { v: (k: string, f?: string) => string; set: (k: string, valor: string) => void }) {
+  const salas = [
+    { id: 'oficial', nome: v('nome_cafe_oficiais', 'Sala dos oficiais') },
+    { id: 'graduado', nome: v('nome_cafe_graduados', 'Sala dos graduados') },
+  ];
+  return (
+    <Secao title="Café" descricao="Valor usado ao cadastrar um assinante sem informar o valor. O anual vale 12 meses a partir da adesão.">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {salas.map(sala => (
+          <fieldset key={sala.id} className="space-y-3 border border-borda rounded-xl p-3">
+            <legend className="px-1 text-sm font-medium text-noite">{sala.nome}</legend>
+            {(['mensal', 'anual'] as const).map(plano => {
+              const k = `cafe_valor_${sala.id}_${plano}`;
+              return (
+                <Campo key={k} id={k} label={plano === 'mensal' ? 'Mensal (R$)' : 'Anual (R$)'}>
+                  <input id={k} type="number" inputMode="decimal" step="0.01" min="0" value={v(k)} onChange={e => set(k, e.target.value)} className={inputClass} placeholder="0,00" />
+                </Campo>
+              );
+            })}
+          </fieldset>
+        ))}
+      </div>
+    </Secao>
   );
 }
 
@@ -217,6 +244,8 @@ export function Configuracoes() {
             )}
 
             {aba === 'valores' && (
+              <>
+              <ValoresPadraoCafe v={v} set={set} />
               <Secao title="Café para visitantes" descricao="Valor pago por visitantes de outros esquadrões para usar o café.">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Campo id="cafe_visitante_oficial_valor" label="Oficiais (R$)">
@@ -227,6 +256,7 @@ export function Configuracoes() {
                   </Campo>
                 </div>
               </Secao>
+              </>
             )}
 
             {aba === 'loja' && (

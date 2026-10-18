@@ -7,6 +7,7 @@ import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categ
 import { visitanteBloqueado, calcularExpiracaoVisitante } from '../lib/visitante';
 import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import { audit } from '../lib/audit';
+import { statusCafeMilitar, comRotulo, tipoCafeDaCategoria } from '../lib/cafe';
 import type { AppType } from '../index';
 import type { Context } from 'hono';
 
@@ -349,7 +350,7 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
 
   const user = await c.env.DB.prepare(
     'SELECT id, email, trigrama, saram, whatsapp, foto_url, categoria, sala_cafe, is_visitante, esquadrao_origem, expira_em, acesso_pausado, permite_fiado, created_at, data_nascimento, niver_titulo, niver_texto, niver_imagem_url FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{ sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number; data_nascimento: string | null; niver_titulo: string | null; niver_texto: string | null; niver_imagem_url: string | null }>();
+  ).bind(userId).first<{ categoria: string; sala_cafe: string | null; is_visitante: number; expira_em: string | null; acesso_pausado: number; data_nascimento: string | null; niver_titulo: string | null; niver_texto: string | null; niver_imagem_url: string | null }>();
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
   const cliente = await c.env.DB.prepare(
@@ -415,32 +416,24 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
     }));
   }
 
-  let cafeStatus: { mes_atual: string; pago: boolean; valor: number | null; tem_assinatura: boolean } | null = null;
-
-  if (user.sala_cafe && cliente) {
-    const now = new Date();
-    const mesAtual = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-
-    const assinante = await c.env.DB.prepare(
-      "SELECT id, valor, plano FROM cafe_assinantes WHERE cliente_id = ? AND tipo = ? AND ativo = 1"
-    ).bind(cliente.id, user.sala_cafe === 'oficiais' ? 'oficial' : 'graduado').first<{ id: string; valor: number; plano: string }>();
-
-    if (!assinante) {
-      cafeStatus = { mes_atual: mesAtual, pago: false, valor: null, tem_assinatura: false };
-    } else {
-      const referencia = assinante.plano === 'anual' ? String(now.getUTCFullYear()) : mesAtual;
-      const pag = await c.env.DB.prepare(
-        "SELECT status, valor FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
-      ).bind(assinante.id, referencia).first<{ status: string; valor: number }>();
-
-      cafeStatus = {
-        mes_atual: referencia,
-        pago: pag?.status === 'pago',
-        valor: pag?.valor ?? assinante.valor,
-        tem_assinatura: true,
-      };
-    }
-  }
+  // Café: mesmo critério do /me/cafe (assinante ativo do cliente vinculado, sem filtrar pela sala).
+  // null só para quem não participa (praça) e não tem assinatura.
+  const cafe = await statusCafeMilitar(c.env.DB, trigrama, user.categoria);
+  const cafeStatus = (!cafe.tem_assinatura && cafe.sem_sala) ? null : {
+    // legado (Dashboard.tsx)
+    mes_atual: cafe.mes_atual,
+    pago: cafe.mes_atual_pago,
+    valor: cafe.valor,
+    tem_assinatura: cafe.tem_assinatura,
+    // novos (mesmo vocabulário do /me/cafe)
+    mes_atual_rotulo: cafe.mes_atual_rotulo,
+    sala: cafe.sala,
+    plano: cafe.plano,
+    ativo: cafe.ativo,
+    valido_ate: cafe.valido_ate,
+    total_pendente: cafe.total_pendente,
+    historico: cafe.historico,
+  };
 
   const acesso_bloqueado = visitanteBloqueado({
     is_visitante: user.is_visitante,
@@ -451,7 +444,7 @@ usuarios.get('/me/dashboard', userAuthMiddleware, async (c) => {
   // Café totais
   let cafePagoTotal = 0;
   let cafePendenteTotal = 0;
-  if (user.sala_cafe && cliente) {
+  if (cliente) {
     const row = await c.env.DB.prepare(
       `SELECT
          COALESCE(SUM(CASE WHEN p.status = 'pago' THEN p.valor ELSE 0 END), 0) as pago,
@@ -576,7 +569,7 @@ usuarios.get('/me/extrato', userAuthMiddleware, async (c) => {
     cliente: cliente || { nome_guerra: trigrama },
     guloseimas: gs.results,
     loja: lj.results,
-    cafe: cf.results,
+    cafe: (cf.results as { referencia: string; periodo_fim?: string | null }[]).map(comRotulo),
     ximboca: xb.results,
   });
 });
@@ -587,57 +580,13 @@ usuarios.get('/me/cafe', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
 
   const user = await c.env.DB.prepare(
-    'SELECT sala_cafe, categoria FROM usuarios WHERE id = ?'
-  ).bind(userId).first<{ sala_cafe: string | null; categoria: string }>();
+    'SELECT categoria FROM usuarios WHERE id = ?'
+  ).bind(userId).first<{ categoria: string }>();
 
   if (!user) return c.json({ error: 'Usuário não encontrado' }, 404);
 
-  if (!user.sala_cafe) {
-    return c.json({ tem_assinatura: false, tipo: null, sem_sala: true });
-  }
-
-  const cliente = await c.env.DB.prepare(
-    'SELECT id FROM clientes WHERE nome_guerra = ? COLLATE NOCASE'
-  ).bind(trigrama).first<{ id: string }>();
-
-  if (!cliente) return c.json({ tem_assinatura: false, tipo: user.sala_cafe, sem_sala: false });
-
-  const assinante = await c.env.DB.prepare(
-    "SELECT id, valor, tipo, plano FROM cafe_assinantes WHERE cliente_id = ? AND ativo = 1"
-  ).bind(cliente.id).first<{ id: string; valor: number; tipo: string; plano: string }>();
-
-  if (!assinante) return c.json({ tem_assinatura: false, tipo: user.sala_cafe, sem_sala: false });
-
-  const now = new Date();
-  const anoAtual = String(now.getUTCFullYear());
-  const mesAtual = `${anoAtual}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-
-  // Para plano anual: referencia e o ano (ex: "2026")
-  // Para plano mensal: referencia e o mes (ex: "2026-04")
-  const referenciaAtual = assinante.plano === 'anual' ? anoAtual : mesAtual;
-
-  const pagAtual = await c.env.DB.prepare(
-    "SELECT status FROM cafe_pagamentos WHERE assinante_id = ? AND referencia = ?"
-  ).bind(assinante.id, referenciaAtual).first<{ status: string }>();
-
-  const pendRow = await c.env.DB.prepare(
-    "SELECT COALESCE(SUM(valor), 0) as total FROM cafe_pagamentos WHERE assinante_id = ? AND status = 'pendente'"
-  ).bind(assinante.id).first<{ total: number }>();
-
-  const { results: historico } = await c.env.DB.prepare(
-    "SELECT id, referencia, valor, status, paid_at FROM cafe_pagamentos WHERE assinante_id = ? ORDER BY referencia DESC LIMIT 6"
-  ).bind(assinante.id).all();
-
-  return c.json({
-    tem_assinatura: true,
-    tipo: assinante.tipo,
-    plano: assinante.plano,
-    valor_mensal: assinante.valor,
-    mes_atual: referenciaAtual,
-    mes_atual_pago: pagAtual?.status === 'pago',
-    total_pendente: pendRow?.total || 0,
-    historico,
-  });
+  // Mesmo critério do /me/dashboard: assinante ativo do cliente vinculado, sem filtrar pela sala
+  return c.json(await statusCafeMilitar(c.env.DB, trigrama, user.categoria));
 });
 
 // Usuario logado: upload foto
@@ -828,16 +777,49 @@ usuarios.put('/admin/:id/categoria', authMiddleware, async (c) => {
 
   const salaCafe = derivarSalaCafe(categoria as Categoria);
 
-  const antes = await c.env.DB.prepare('SELECT trigrama, categoria, sala_cafe FROM usuarios WHERE id = ?').bind(id).first();
+  const antes = await c.env.DB.prepare('SELECT trigrama, categoria, sala_cafe FROM usuarios WHERE id = ?')
+    .bind(id).first<{ trigrama: string; categoria: string; sala_cafe: string | null }>();
   if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
 
-  const result = await c.env.DB.prepare(
-    'UPDATE usuarios SET categoria = ?, sala_cafe = ? WHERE id = ?'
-  ).bind(categoria, salaCafe, id).run();
+  // A sala do café segue a categoria: assinatura ativa vinculada muda de sala junto; praça é desativada
+  const assinante = await c.env.DB.prepare(
+    `SELECT ca.id, ca.tipo FROM cafe_assinantes ca JOIN clientes cl ON cl.id = ca.cliente_id
+     WHERE cl.nome_guerra = ? COLLATE NOCASE AND ca.ativo = 1`
+  ).bind(antes.trigrama).all<{ id: string; tipo: string }>();
+  const novoTipo = tipoCafeDaCategoria(categoria);
 
+  const batch: D1PreparedStatement[] = [
+    c.env.DB.prepare('UPDATE usuarios SET categoria = ?, sala_cafe = ? WHERE id = ?').bind(categoria, salaCafe, id),
+  ];
+  const movidos: { id: string; de: string; para: string }[] = [];
+  const desativados: string[] = [];
+  for (const a of assinante.results) {
+    if (!novoTipo) {
+      batch.push(c.env.DB.prepare('UPDATE cafe_assinantes SET ativo = 0 WHERE id = ?').bind(a.id));
+      desativados.push(a.id);
+    } else if (a.tipo !== novoTipo) {
+      batch.push(c.env.DB.prepare('UPDATE cafe_assinantes SET tipo = ? WHERE id = ?').bind(novoTipo, a.id));
+      movidos.push({ id: a.id, de: a.tipo, para: novoTipo });
+    }
+  }
+
+  const [result] = await c.env.DB.batch(batch);
   if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
+
   await audit(c, 'alterar_categoria_usuario', 'usuarios', id, antes, { categoria, sala_cafe: salaCafe });
-  return c.json({ ok: true, categoria, sala_cafe: salaCafe });
+  for (const m of movidos) {
+    await audit(c, 'mover_assinante_cafe_sala', 'cafe_assinantes', m.id, { tipo: m.de }, { tipo: m.para, motivo: 'troca de categoria', usuario_id: id });
+  }
+  for (const d of desativados) {
+    await audit(c, 'desativar_assinante_cafe', 'cafe_assinantes', d, { ativo: 1 }, { ativo: 0, motivo: 'categoria praça', usuario_id: id });
+  }
+  return c.json({
+    ok: true, categoria, sala_cafe: salaCafe,
+    cafe_desativado: desativados.length > 0,
+    cafe_movido: movidos.length > 0,
+    // sala da assinatura ativa após a troca (null se não há assinatura ativa)
+    cafe_tipo: novoTipo && assinante.results.length ? novoTipo : null,
+  });
 });
 
 // Admin: atualizar permite_fiado

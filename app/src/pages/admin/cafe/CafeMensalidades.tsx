@@ -7,7 +7,6 @@ import { inputClass } from '../../../components/ui/Field';
 import { Modal } from '../../../components/ui/Modal';
 import { api } from '../../../services/api';
 import { dataLocal } from '../../../services/periodo';
-import { getConfig } from '../../../services/config';
 import { gerarCobrancaCafePDF } from '../../../services/pdf';
 import { useToast } from '../../../hooks/useToast';
 import { useAcao } from '../../../hooks/useAcao';
@@ -16,6 +15,7 @@ import { Card } from '../../../components/ui/Card';
 import { Loading } from '../../../components/ui/Loading';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { StatCard } from '../../../components/admin/StatCard';
+import { SeletorSalaCafe, ehAnuidade, mesCurto, nomeSalaCafe, pixSalaCafe, rotuloReferencia, useConfigCafe, useSalaCafe } from './SalaCafe';
 
 const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -28,32 +28,28 @@ interface Mensalidade {
   nome_guerra: string;
   tipo: string;
   paid_at: string | null;
+  // Contrato novo (opcionais para compatibilidade)
+  periodo_fim?: string | null;
+  rotulo?: string | null;
+  plano?: string;
 }
 
 export function CafeMensalidades() {
   const { showToast } = useToast();
   const { busy, executar } = useAcao();
-  const [tipo, setTipo] = useState<'oficial' | 'graduado'>(() =>
-    (localStorage.getItem('cafe_tipo') as 'oficial' | 'graduado') || 'graduado'
-  );
+  const [tipo, setTipo] = useSalaCafe();
+  const config = useConfigCafe();
+  const nomeSala = nomeSalaCafe(config, tipo);
   const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroRef, setFiltroRef] = useState('');
   const [modalGerar, setModalGerar] = useState(false);
   const [referencia, setReferencia] = useState('');
   const [gerando, setGerando] = useState(false);
-  const [pixConfig, setPixConfig] = useState({ oficial: '', graduado: '' });
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const abrirGerar = useCallback(() => setModalGerar(true), []);
   const fecharGerar = useCallback(() => setModalGerar(false), []);
-
-  useEffect(() => { localStorage.setItem('cafe_tipo', tipo); }, [tipo]);
-  useEffect(() => {
-    getConfig().then(c => {
-      setPixConfig({ oficial: c.pix_cafe_oficial_chave || '', graduado: c.pix_cafe_graduado_chave || '' });
-    }).catch(() => {});
-  }, []);
 
   const carregar = () => {
     const params = new URLSearchParams();
@@ -89,8 +85,8 @@ export function CafeMensalidades() {
   const cobrar = async (m: Mensalidade) => {
     const pendentes = mensalidades.filter(x => x.nome_guerra === m.nome_guerra && x.status === 'pendente');
     const totalDevido = pendentes.reduce((a, x) => a + x.valor, 0);
-    const pixChave = pixConfig[tipo];
-    await gerarCobrancaCafePDF(m.nome_guerra, tipo, pendentes.map(p => ({ referencia: p.referencia, valor: p.valor })), totalDevido, pixChave);
+    const pixChave = pixSalaCafe(config, tipo).chave;
+    await gerarCobrancaCafePDF(m.nome_guerra, tipo, pendentes.map(p => ({ referencia: rotuloReferencia(p), valor: p.valor })), totalDevido, pixChave);
   };
 
   const marcarPago = async (id: string) => {
@@ -101,10 +97,10 @@ export function CafeMensalidades() {
   // Get unique references for filter
   const referencias = [...new Set(mensalidades.map(m => m.referencia))].sort().reverse();
 
-  const refBR = (r: string) => {
-    const [a, m] = r.split('-');
-    return m ? `${m}/${a}` : r;
-  };
+  const refBR = (r: string) => (/^\d{4}$/.test(r) ? `Ano ${r}` : mesCurto(r));
+  const seloAnuidade = (m: Mensalidade) => (ehAnuidade(m) || m.plano === 'anual') && (
+    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">Anuidade</span>
+  );
   const totalPendente = mensalidades.filter(m => m.status === 'pendente').reduce((a, m) => a + m.valor, 0);
   const totalPago = mensalidades.filter(m => m.status === 'pago').reduce((a, m) => a + m.valor, 0);
 
@@ -121,18 +117,12 @@ export function CafeMensalidades() {
 
   return (
     <AppLayout>
+      <SeletorSalaCafe sala={tipo} onChange={setTipo} config={config} />
       <PageHeader
         title="Mensalidades do café"
-        subtitle="Gere as cobranças do mês e marque quem já pagou."
+        subtitle={`Gere as cobranças do mês da ${nomeSala} e marque quem já pagou.`}
         right={<Button size="sm" onClick={abrirGerar}><Icon name="plus" size={16} /> Gerar mensalidades</Button>}
       />
-      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Sala do café">
-        {(['oficial', 'graduado'] as const).map(t => (
-          <Button key={t} size="sm" variant={tipo === t ? 'primary' : 'chip'} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
-            {t === 'oficial' ? 'Oficiais' : 'Graduados'}
-          </Button>
-        ))}
-      </div>
 
       <div className="flex gap-2 mb-4 flex-wrap items-center">
         <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar por status">
@@ -185,7 +175,10 @@ export function CafeMensalidades() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="min-w-0">
                     <div className="font-display text-2xl text-noite tracking-wide leading-none">{m.nome_guerra}</div>
-                    <div className="text-xs text-texto-fraco mt-1">Referência {refBR(m.referencia)} · <span className="capitalize">{m.tipo}</span></div>
+                    <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                      {seloAnuidade(m)}
+                      <span className="text-xs text-texto-fraco">{rotuloReferencia(m)}</span>
+                    </div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-display text-xl text-dourado tracking-wide leading-none">{brl(m.valor)}</div>
@@ -203,7 +196,7 @@ export function CafeMensalidades() {
               <thead>
                 <tr className="bg-noite">
                   <th className="px-4 py-3 text-left text-xs font-medium text-white">Militar</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-white">Sala</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-white">Tipo</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-white">Referência</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-white">Valor</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-white">Status</th>
@@ -214,8 +207,8 @@ export function CafeMensalidades() {
                 {mensalidades.map((m) => (
                   <tr key={m.id} className="border-b border-borda/50 last:border-0 hover:bg-fundo">
                     <td className="px-4 py-3 font-medium text-texto">{m.nome_guerra}</td>
-                    <td className="px-4 py-3 text-center text-xs text-texto-fraco capitalize">{m.tipo}</td>
-                    <td className="px-4 py-3 text-center text-xs text-texto-fraco">{refBR(m.referencia)}</td>
+                    <td className="px-4 py-3 text-center">{seloAnuidade(m) || <span className="text-xs text-texto-fraco">Mensalidade</span>}</td>
+                    <td className="px-4 py-3 text-center text-xs text-texto-fraco">{rotuloReferencia(m)}</td>
                     <td className="px-4 py-3 text-right font-display text-lg text-dourado tracking-wide whitespace-nowrap">{brl(m.valor)}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge variant={m.status === 'pago' ? 'success' : 'warning'}>{m.status === 'pago' ? 'Pago' : 'Pendente'}</Badge>
@@ -234,9 +227,9 @@ export function CafeMensalidades() {
           <div>
             <label htmlFor="cm-ref" className="block text-sm font-medium mb-1.5">Mês de referência</label>
             <input id="cm-ref" type="month" value={referencia} onChange={(e) => setReferencia(e.target.value)} className={inputClass} />
-            <p className="text-xs text-texto-fraco mt-1">Plano mensal: cobra o mês escolhido. Plano anual: cobra uma vez por ano, automaticamente.</p>
+            <p className="text-xs text-texto-fraco mt-1">Plano mensal: cobra o mês escolhido. Plano anual: a anuidade vale 12 meses a partir da adesão e só é cobrada de novo quando vence.</p>
           </div>
-          <p className="text-sm text-texto-fraco">Sala: <strong className="text-texto">{tipo === 'oficial' ? 'Oficiais' : 'Graduados'}</strong></p>
+          <p className="text-sm text-texto-fraco">Sala: <strong className="text-texto">{nomeSala}</strong></p>
           <Button className="w-full" onClick={gerarMensalidades} disabled={gerando}>
             {gerando ? 'Gerando...' : 'Gerar mensalidades'}
           </Button>

@@ -16,6 +16,10 @@ async function getPixChave(): Promise<string> {
   const c = await getConfig();
   return c.pix_guloseimas_chave || '';
 }
+async function getPixCafe(tipo: 'oficial' | 'graduado'): Promise<string> {
+  const c = await getConfig();
+  return c[`pix_cafe_${tipo}_chave`] || '';
+}
 async function getCafeNome(tipo: string): Promise<string> {
   const c = await getConfig();
   return tipo === 'oficial' ? (c.nome_cafe_oficiais || 'Sala dos Oficiais') : (c.nome_cafe_graduados || 'Sala do Lange');
@@ -28,7 +32,12 @@ interface DebitoUnificado {
   ximboca: { evento: string; data: string; valor: number }[];
 }
 
-export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnificado, totalGeral: number, cafeGraduado = false) {
+/**
+ * `cafeGraduado`: sala do café do militar. Aceita boolean (true = graduados) por compatibilidade
+ * ou a sala ('oficial' | 'graduado') vinda do servidor. Define o PIX usado no total do café.
+ */
+export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnificado, totalGeral: number, cafeGraduado: boolean | 'oficial' | 'graduado' = false) {
+  const salaCafe: 'oficial' | 'graduado' = cafeGraduado === true || cafeGraduado === 'graduado' ? 'graduado' : 'oficial';
   const doc = new jsPDF();
   const azul: [number, number, number] = [26, 58, 107];
   const vermelho: [number, number, number] = [192, 57, 43];
@@ -166,14 +175,49 @@ export async function gerarExtratoUnificadoPDF(nome: string, debitos: DebitoUnif
   doc.setTextColor(255, 255, 255);
   doc.text(`TOTAL GERAL PENDENTE: R$ ${totalGeral.toFixed(2)}`, pageWidth / 2, currentY + 15, { align: 'center' });
 
+  // Como pagar: o café vai para o PIX da sala do militar; o resto, para o PIX da cantina (como antes)
+  const somar = (l: { valor: number }[]) => l.reduce((a, d) => a + (d.valor || 0), 0);
+  const totalCafe = somar(debitos.cafe);
+  const totalDemais = Math.max(0, totalGeral - totalCafe);
+  const areasDemais = [
+    debitos.guloseimas.length > 0 && 'cantina',
+    debitos.loja.length > 0 && 'loja',
+    debitos.ximboca.length > 0 && 'ximboca',
+  ].filter(Boolean).join(', ');
+  const pixChaveDoc = await getPixChave();
+  const linhasPix: { titulo: string; valor: number; chave: string }[] = [];
+  if (totalDemais > 0.004) linhasPix.push({ titulo: areasDemais ? areasDemais.charAt(0).toUpperCase() + areasDemais.slice(1) : 'Cantina', valor: totalDemais, chave: pixChaveDoc });
+  if (totalCafe > 0.004) {
+    linhasPix.push({ titulo: `Cafe - ${await getCafeNome(salaCafe)}`, valor: totalCafe, chave: await getPixCafe(salaCafe) });
+  }
+
+  let pixY = currentY + 30;
+  if (linhasPix.length > 0) {
+    if (pixY + 10 + linhasPix.length * 12 > 285) { doc.addPage(); pixY = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...azul);
+    doc.text(linhasPix.length > 1 ? 'COMO PAGAR (PIX SEPARADOS)' : 'COMO PAGAR', 14, pixY);
+    pixY += 6;
+    for (const l of linhasPix) {
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(14, pixY - 4, pageWidth - 28, 10, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`${l.titulo}: R$ ${l.valor.toFixed(2)}`, 18, pixY + 2);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`PIX: ${l.chave || 'nao configurado'}`, pageWidth - 18, pixY + 2, { align: 'right' });
+      pixY += 12;
+    }
+  }
+
   // Rodape
-  const footerY = currentY + 34;
+  const footerY = pixY + 6;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text('Documento gerado automaticamente pelo sistema Senta Pua.', pageWidth / 2, footerY, { align: 'center' });
-  const pixChaveDoc = await getPixChave();
-  doc.text(`PIX: ${pixChaveDoc}`, pageWidth / 2, footerY + 5, { align: 'center' });
 
   doc.save(`extrato-unificado-${nome.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }

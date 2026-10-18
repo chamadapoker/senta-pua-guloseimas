@@ -62,10 +62,12 @@ const ADMIN_SECTIONS: BottomSection[] = [
   {
     match: (p) => p.startsWith('/admin/cafe'),
     items: [
+      // Máx. 4 + Menu. Despesas fica nos atalhos do Painel do café e no Menu.
+      // A sala escolhida é lembrada (localStorage) ao trocar de tela por aqui.
       { to: '/admin/cafe', label: 'Painel', icon: 'chart' },
       { to: '/admin/cafe/mensalidades', label: 'Mensal.', icon: 'cash' },
       { to: '/admin/cafe/assinantes', label: 'Assinantes', icon: 'users' },
-      { to: '/admin/cafe/despesas', label: 'Despesas', icon: 'credit-card' },
+      { to: '/admin/cafe/insumos', label: 'Insumos', icon: 'archive' },
     ],
   },
   {

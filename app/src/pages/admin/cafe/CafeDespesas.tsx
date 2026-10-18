@@ -14,6 +14,7 @@ import { StatCard } from '../../../components/admin/StatCard';
 import { Card } from '../../../components/ui/Card';
 import { Loading } from '../../../components/ui/Loading';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { SeletorSalaCafe, nomeSalaCafe, useConfigCafe, useSalaCafe } from './SalaCafe';
 
 const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -55,12 +56,14 @@ export function CafeDespesas() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const [tipo, setTipo] = useState<'' | 'oficial' | 'graduado'>('');
+  // Segue a sala escolhida no topo (a mesma das outras telas do café)
+  const [tipo, setTipo] = useSalaCafe();
+  const config = useConfigCafe();
+  const nomeSala = nomeSalaCafe(config, tipo);
   const [lista, setLista] = useState<Despesa[]>([]);
   const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [modal, setModal] = useState(false);
   const fecharModal = useCallback(() => setModal(false), []);
-  const [novoTipo, setNovoTipo] = useState<'oficial' | 'graduado'>('graduado');
   const [descricao, setDescricao] = useState('');
   const [categoria, setCategoria] = useState('geral');
   const [valor, setValor] = useState('');
@@ -69,7 +72,7 @@ export function CafeDespesas() {
   const [observacao, setObservacao] = useState('');
 
   const carregar = () => {
-    const q = tipo ? `?tipo=${tipo}` : '';
+    const q = `?tipo=${tipo}`;
     setCarregando(true);
     setErro('');
     Promise.all([
@@ -88,7 +91,7 @@ export function CafeDespesas() {
     setSalvando(true);
     try {
       await api.post('/api/cafe/admin/despesas', {
-        tipo: novoTipo, descricao, categoria,
+        tipo, descricao, categoria,
         valor: parseFloat(valor), data,
         nota_fiscal: notaFiscal || null,
         observacao,
@@ -114,20 +117,13 @@ export function CafeDespesas() {
 
   return (
     <AppLayout>
-      <BackButton to="/admin/cafe" className="mb-3" />
+      <BackButton to={`/admin/cafe?sala=${tipo}`} className="mb-3" />
+      <SeletorSalaCafe sala={tipo} onChange={setTipo} config={config} />
       <PageHeader
         title="Despesas do café"
-        subtitle="Compras da caixinha e o saldo de cada sala."
+        subtitle={`Compras da caixinha e o saldo da ${nomeSala}.`}
         right={<Button size="sm" onClick={() => setModal(true)}><Icon name="plus" size={16} /> Nova despesa</Button>}
       />
-
-      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por sala">
-        {(['', 'oficial', 'graduado'] as const).map(t => (
-          <Button key={t || 'all'} size="sm" variant={tipo === t ? 'primary' : 'chip'} aria-pressed={tipo === t} onClick={() => setTipo(t)}>
-            {t === '' ? 'Todas as salas' : t === 'oficial' ? 'Oficiais' : 'Graduados'}
-          </Button>
-        ))}
-      </div>
 
       {saldo && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -150,7 +146,7 @@ export function CafeDespesas() {
           <EmptyState
             icon={<Icon name="note" size={24} />}
             message="Nenhuma despesa registrada"
-            hint="Registre as compras da caixinha para acompanhar o saldo."
+            hint={`Registre as compras da ${nomeSala} para acompanhar o saldo.`}
             action={<Button size="sm" onClick={() => setModal(true)}><Icon name="plus" size={16} /> Nova despesa</Button>}
           />
         </Card>
@@ -163,7 +159,7 @@ export function CafeDespesas() {
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-texto break-words">{d.descricao}</div>
                   <div className="text-xs text-texto-fraco mt-0.5">
-                    {dataBR(d.data)} · {CATEGORIAS[d.categoria] || d.categoria} · <span className="capitalize">{d.tipo}</span>
+                    {dataBR(d.data)} · {CATEGORIAS[d.categoria] || d.categoria}
                     {d.nota_fiscal && <> · NF {d.nota_fiscal}</>}
                   </div>
                   {d.observacao && <div className="text-xs text-texto-fraco mt-1 break-words">{d.observacao}</div>}
@@ -186,7 +182,6 @@ export function CafeDespesas() {
                   <th className="px-4 py-3 text-left text-xs text-white font-medium">Data</th>
                   <th className="px-4 py-3 text-left text-xs text-white font-medium">Descrição</th>
                   <th className="px-4 py-3 text-left text-xs text-white font-medium">Categoria</th>
-                  <th className="px-4 py-3 text-left text-xs text-white font-medium">Sala</th>
                   <th className="px-4 py-3 text-right text-xs text-white font-medium">Valor</th>
                   <th className="px-4 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
@@ -200,7 +195,6 @@ export function CafeDespesas() {
                       {d.nota_fiscal && <span className="ml-1.5 text-xs text-texto-fraco">NF {d.nota_fiscal}</span>}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-texto-fraco">{CATEGORIAS[d.categoria] || d.categoria}</td>
-                    <td className="px-4 py-2.5 text-xs capitalize">{d.tipo}</td>
                     <td className="px-4 py-2.5 text-right font-medium text-escarlate whitespace-nowrap">{brl(d.valor)}</td>
                     <td className="px-4 py-2.5 text-right">
                       <Button variant="chip-danger" size="sm" onClick={() => excluir(d)} aria-label={`Excluir ${d.descricao}`}>
@@ -217,20 +211,15 @@ export function CafeDespesas() {
 
       <Modal open={modal} onClose={fecharModal} title="Nova despesa">
         <form onSubmit={salvar} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="cd-sala" className="block text-sm font-medium mb-1.5">Sala</label>
-              <select id="cd-sala" value={novoTipo} onChange={e => setNovoTipo(e.target.value as 'oficial' | 'graduado')} className={inputClass}>
-                <option value="graduado">Graduados</option>
-                <option value="oficial">Oficiais</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="cd-cat" className="block text-sm font-medium mb-1.5">Categoria</label>
-              <select id="cd-cat" value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
-                {Object.entries(CATEGORIAS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
+          <p className="text-sm text-texto-fraco">
+            Sala: <strong className="text-texto">{nomeSala}</strong>
+            <span className="block text-xs mt-0.5">Para lançar em outra sala, troque a sala no topo da tela.</span>
+          </p>
+          <div>
+            <label htmlFor="cd-cat" className="block text-sm font-medium mb-1.5">Categoria</label>
+            <select id="cd-cat" value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
+              {Object.entries(CATEGORIAS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
           </div>
           <div>
             <label htmlFor="cd-desc" className="block text-sm font-medium mb-1.5">Descrição</label>

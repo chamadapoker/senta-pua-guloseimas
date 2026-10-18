@@ -35,6 +35,18 @@ function sanitizarCidadePix(valor: string): string {
     .trim();
 }
 
+// Valores padrão do café por sala e plano (usados ao criar assinante sem valor)
+const CHAVES_VALOR_CAFE = [
+  'cafe_valor_oficial_mensal', 'cafe_valor_oficial_anual',
+  'cafe_valor_graduado_mensal', 'cafe_valor_graduado_anual',
+];
+
+// Aceita "25,50" ou "25.50"; vazio/inválido/negativo vira "" (sem padrão)
+function normalizarValor(valor: unknown): string {
+  const n = parseFloat(String(valor ?? '').replace(',', '.'));
+  return n > 0 ? String(Math.round(n * 100) / 100) : '';
+}
+
 // Admin: atualizar configuração
 config.put('/', authMiddleware, async (c) => {
   const body = await c.req.json<Record<string, string>>();
@@ -52,6 +64,7 @@ config.put('/', authMiddleware, async (c) => {
     let v = valor;
     if (/^pix_.*_nome$/.test(chave)) v = sanitizarNomePix(valor);
     else if (/^pix_.*_cidade$/.test(chave)) v = sanitizarCidadePix(valor);
+    else if (CHAVES_VALOR_CAFE.includes(chave)) v = normalizarValor(valor);
     const anterior = mapaAtual.get(chave) ?? null;
     if (anterior !== v) { antes[chave] = anterior; depois[chave] = v; }
     return c.env.DB.prepare(

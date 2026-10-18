@@ -11,28 +11,17 @@ import { api } from '../services/api';
 import { getConfig } from '../services/config';
 import { Loading } from '../components/ui/Loading';
 import { gerarPayloadPix } from '../services/pix';
-import { dataLocal } from '../services/periodo';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { useCopiar } from '../hooks/useCopiar';
+import type { MeuCafeStatus } from '../types';
+import { ehAnuidade, mesCurto, nomeSalaCafe, pixSalaCafe, rotuloReferencia } from './admin/cafe/SalaCafe';
 
 type Sala = 'oficial' | 'graduado' | null;
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-interface MeuCafeStatus {
-  tem_assinatura: boolean;
-  tipo: string | null;
-  plano?: string;
-  valor_mensal?: number;
-  mes_atual?: string;
-  mes_atual_pago?: boolean;
-  total_pendente?: number;
-  historico?: { referencia: string; valor: number; status: string; paid_at: string | null }[];
-  sem_sala?: boolean;
-}
-
 function formatMesReferencia(ref: string): string {
-  // Se for só o ano (plano anual), retorna "Ano 2026"
+  // Se for só o ano (plano anual antigo), retorna "Ano 2026"
   if (/^\d{4}$/.test(ref)) return `Ano ${ref}`;
   const [ano, mes] = ref.split('-');
   const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -41,11 +30,28 @@ function formatMesReferencia(ref: string): string {
   return `${nomes[mesIdx]}/${ano}`;
 }
 
+function PracaNaoParticipa() {
+  return (
+    <AppLayout>
+      <PageHeader title="Caixinha do café" />
+      <Card>
+        <EmptyState
+          icon={<Icon name="coffee" size={24} />}
+          message="Você não participa da caixinha do café"
+          hint="A caixinha é das salas de oficiais e de graduados, então não há nada para você pagar aqui. A cantina e a loja continuam à sua disposição."
+          action={<Link to="/" className="inline-flex items-center min-h-[44px] px-5 rounded-xl border border-borda bg-white font-medium hover:bg-fundo-elevado">Voltar ao início</Link>}
+        />
+      </Card>
+    </AppLayout>
+  );
+}
+
 export function CafePublico() {
   const [searchParams] = useSearchParams();
   const { user } = useUserAuth();
 
-  const ehMilitarEsquadrao = user && user.is_visitante === 0 && user.sala_cafe !== null;
+  // Militar do esquadrão (não visitante): a sala vem do servidor, que segue a categoria
+  const ehMilitar = !!user && user.is_visitante === 0;
 
   const userSala: Sala = user?.sala_cafe === 'oficiais' ? 'oficial'
     : user?.sala_cafe === 'graduados' ? 'graduado'
@@ -82,9 +88,9 @@ export function CafePublico() {
   useEffect(() => { carregarConfig(); }, []);
 
   useEffect(() => {
-    if (ehMilitarEsquadrao) carregarStatus();
+    if (ehMilitar) carregarStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ehMilitarEsquadrao]);
+  }, [ehMilitar]);
 
   const cidadePix = config.pix_guloseimas_cidade || 'ANAPOLIS';
 
@@ -95,30 +101,35 @@ export function CafePublico() {
     </div>
   );
 
-  // Praça logado sem sala
-  if (user && !user.sala_cafe) {
-    return (
-      <AppLayout>
-        <PageHeader title="Caixinha do café" />
-        <Card>
-          <EmptyState
-            icon={<Icon name="coffee" size={24} />}
-            message="Você não participa da caixinha do café"
-            hint="A caixinha é das salas de oficiais e de graduados."
-            action={<Link to="/" className="inline-flex items-center min-h-[44px] px-5 rounded-xl border border-borda bg-white font-medium hover:bg-fundo-elevado">Voltar ao início</Link>}
-          />
-        </Card>
-      </AppLayout>
-    );
+  // Sala do militar: `sala` do servidor; sem o campo (backend antigo) ou com erro, a sala_cafe do cadastro
+  const salaServidor: Sala | undefined = meuStatus && 'sala' in meuStatus ? (meuStatus.sala ?? null) : undefined;
+  const salaMilitar: Sala = salaServidor !== undefined ? salaServidor : userSala;
+
+  if (ehMilitar) {
+    // Enquanto não sabe a sala, não decide nada
+    if (!meuStatus && !erroStatus) {
+      return (
+        <AppLayout>
+          <PageHeader title="Meu café" />
+          <Loading label="Carregando sua caixinha..." />
+        </AppLayout>
+      );
+    }
+    if (salaMilitar === null) return <PracaNaoParticipa />;
+  } else if (user && !user.sala_cafe) {
+    // Logado sem sala (comportamento anterior)
+    return <PracaNaoParticipa />;
   }
 
   // Militar do esquadrão: status pessoal detalhado
-  if (ehMilitarEsquadrao) {
-    const tipo = userSala!;
-    const chave = config[tipo === 'oficial' ? 'pix_cafe_oficial_chave' : 'pix_cafe_graduado_chave'] || '';
-    const nome = config[tipo === 'oficial' ? 'pix_cafe_oficial_nome' : 'pix_cafe_graduado_nome'] || '';
-    const whatsapp = config[tipo === 'oficial' ? 'pix_cafe_oficial_whatsapp' : 'pix_cafe_graduado_whatsapp'] || '';
-    const nomeCantina = tipo === 'oficial' ? 'Cantina dos Oficiais' : 'Cantina dos Graduados';
+  if (ehMilitar && salaMilitar) {
+    const tipo = salaMilitar;
+    const { chave, nome, whatsapp } = pixSalaCafe(config, tipo);
+    const nomeSala = nomeSalaCafe(config, tipo);
+    const anual = meuStatus?.plano === 'anual';
+    const valorPlano = meuStatus?.valor ?? meuStatus?.valor_mensal ?? 0;
+    const historico = meuStatus?.historico ?? meuStatus?.pagamentos ?? [];
+    const validoAte = meuStatus?.valido_ate;
 
     const copiarPix = async () => {
       if (!chave || !meuStatus?.total_pendente) return;
@@ -137,16 +148,17 @@ export function CafePublico() {
 
     const enviarComprovante = () => {
       if (!whatsapp || !meuStatus?.total_pendente) return;
-      const msg = `Comprovante Caixinha do Café\n${user.trigrama}\nValor: R$ ${meuStatus.total_pendente.toFixed(2)}\n\n_Anexe o comprovante abaixo_`;
+      const msg = `Comprovante Caixinha do Café\n${nomeSala}\n${user!.trigrama}\nValor: R$ ${meuStatus.total_pendente.toFixed(2)}\n\n_Anexe o comprovante abaixo_`;
       window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
-    const mesesPendentes = meuStatus?.historico?.filter(h => h.status === 'pendente').length || 0;
+    const pendentes = historico.filter(h => h.status === 'pendente');
+    const temAnuidadePendente = pendentes.some(h => ehAnuidade(h));
 
     return (
       <AppLayout>
         <div className="max-w-xl mx-auto animate-fade-in">
-          <PageHeader title="Meu café" subtitle={nomeCantina} />
+          <PageHeader title="Meu café" subtitle={nomeSala} />
           {avisoErroConfig}
 
           {loadingStatus ? (
@@ -161,30 +173,34 @@ export function CafePublico() {
               <EmptyState
                 icon={<Icon name="coffee" size={24} />}
                 message="Você ainda não é assinante"
-                hint="Fale com o responsável da cantina para começar a participar da caixinha."
+                hint={`Fale com o responsável da ${nomeSala} para começar a participar da caixinha.`}
               />
             </Card>
           ) : (
             <>
-              {/* Mês atual */}
+              {/* Situação do plano */}
               <Card size="lg" className="mb-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium text-texto-fraco">
-                    {meuStatus.mes_atual ? formatMesReferencia(meuStatus.mes_atual) : 'Mês atual'}
+                    {anual
+                      ? 'Anuidade'
+                      : meuStatus.mes_atual ? formatMesReferencia(meuStatus.mes_atual) : 'Mês atual'}
                   </span>
-                  <Badge variant={meuStatus.mes_atual_pago ? 'success' : 'danger'}>{meuStatus.mes_atual_pago ? 'Pago' : 'Pendente'}</Badge>
+                  {anual
+                    ? <Badge variant={meuStatus.mes_atual_pago ? 'success' : 'danger'}>{meuStatus.mes_atual_pago ? 'Em dia' : 'Em aberto'}</Badge>
+                    : <Badge variant={meuStatus.mes_atual_pago ? 'success' : 'danger'}>{meuStatus.mes_atual_pago ? 'Pago' : 'Pendente'}</Badge>}
                 </div>
                 <div className="font-display text-4xl leading-none tracking-wide text-noite mt-2">
-                  {brl(meuStatus.valor_mensal || 0)}
+                  {brl(valorPlano)}
                 </div>
                 <div className="text-sm text-texto-fraco mt-1.5">
-                  Plano {meuStatus.plano === 'anual' ? 'anual' : 'mensal'}
-                  {meuStatus.plano === 'anual' && meuStatus.mes_atual_pago && (
-                    <span className="text-verde-escuro font-medium"> · válido até 31/12/{dataLocal(new Date()).slice(0, 4)}</span>
+                  Plano {anual ? 'anual (12 meses)' : 'mensal'}
+                  {anual && validoAte && (
+                    <span className="text-verde-escuro font-medium"> · anuidade válida até {mesCurto(validoAte)}</span>
                   )}
-                  {meuStatus.plano === 'anual' && !meuStatus.mes_atual_pago && (
+                  {anual && !validoAte && (meuStatus.mes_atual_pago ? null : (
                     <span className="text-vermelho font-medium"> · anuidade pendente</span>
-                  )}
+                  ))}
                 </div>
               </Card>
 
@@ -193,8 +209,10 @@ export function CafePublico() {
                 <Card size="lg" className="mb-4 !border-escarlate/40">
                   <p className="text-sm font-medium text-texto-fraco">Total a pagar</p>
                   <p className="font-display text-5xl leading-none tracking-wide text-escarlate mt-1">{brl(meuStatus.total_pendente || 0)}</p>
-                  {mesesPendentes > 1 && (
-                    <p className="text-sm text-texto-fraco mt-1.5">{mesesPendentes} meses pendentes</p>
+                  {pendentes.length > 1 && (
+                    <p className="text-sm text-texto-fraco mt-1.5">
+                      {temAnuidadePendente ? `${pendentes.length} cobranças pendentes` : `${pendentes.length} meses pendentes`}
+                    </p>
                   )}
                   <Button variant="success" size="lg" className="w-full mt-4 min-h-[56px]" onClick={copiarPix} disabled={!chave}>
                     <Icon name={copiadoCodigo ? 'check' : 'document'} size={20} />
@@ -208,13 +226,13 @@ export function CafePublico() {
               )}
 
               {/* Histórico */}
-              {meuStatus.historico && meuStatus.historico.length > 0 && (
+              {historico.length > 0 && (
                 <Card>
                   <h2 className="text-[15px] font-semibold text-noite mb-1">Histórico</h2>
                   <ul className="divide-y divide-borda">
-                    {meuStatus.historico.map(h => (
-                      <li key={h.referencia} className="flex items-center justify-between gap-3 text-sm py-2.5">
-                        <span className="flex-1">{formatMesReferencia(h.referencia)}</span>
+                    {historico.map(h => (
+                      <li key={h.id || h.referencia} className="flex items-center justify-between gap-3 text-sm py-2.5">
+                        <span className="flex-1">{h.rotulo || h.periodo_fim ? rotuloReferencia(h) : formatMesReferencia(h.referencia)}</span>
                         <span className="text-texto-fraco tabular-nums">{brl(h.valor)}</span>
                         <Badge variant={h.status === 'pago' ? 'success' : 'danger'}>{h.status === 'pago' ? 'Pago' : 'Pendente'}</Badge>
                       </li>
@@ -236,14 +254,11 @@ export function CafePublico() {
       <AppLayout>
         <PageHeader title="Caixinha do café" subtitle="De qual sala é o café que você tomou?" />
         <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
-          {([
-            { v: 'oficial', titulo: 'Cantina dos Oficiais' },
-            { v: 'graduado', titulo: 'Cantina dos Graduados' },
-          ] as const).map(o => (
-            <button key={o.v} onClick={() => setSala(o.v)}
+          {(['oficial', 'graduado'] as const).map(v => (
+            <button key={v} onClick={() => setSala(v)}
               className="flex items-center gap-3.5 bg-white rounded-2xl p-4 min-h-[72px] border border-borda hover:border-azul/60 active:scale-[0.99] transition-[border-color,transform] text-left outline-none focus-visible:ring-2 focus-visible:ring-azul/40">
-              <span className="w-12 h-12 shrink-0 rounded-xl bg-noite text-white flex items-center justify-center"><Icon name="coffee" size={22} /></span>
-              <span className="flex-1 font-semibold text-texto">{o.titulo}</span>
+              <span className={`w-12 h-12 shrink-0 rounded-xl text-white flex items-center justify-center ${v === 'oficial' ? 'bg-noite' : 'bg-faixa'}`}><Icon name="coffee" size={22} /></span>
+              <span className="flex-1 font-semibold text-texto">{nomeSalaCafe(config, v)}</span>
               <Icon name="chevron-right" size={18} className="text-texto-fraco" />
             </button>
           ))}
@@ -252,12 +267,10 @@ export function CafePublico() {
     );
   }
 
-  const chave = config[sala === 'oficial' ? 'pix_cafe_oficial_chave' : 'pix_cafe_graduado_chave'] || '';
-  const nome = config[sala === 'oficial' ? 'pix_cafe_oficial_nome' : 'pix_cafe_graduado_nome'] || '';
-  const whatsapp = config[sala === 'oficial' ? 'pix_cafe_oficial_whatsapp' : 'pix_cafe_graduado_whatsapp'] || '';
+  const { chave, nome, whatsapp } = pixSalaCafe(config, sala);
   const valorStr = config[sala === 'oficial' ? 'cafe_visitante_oficial_valor' : 'cafe_visitante_graduado_valor'] || '20.00';
   const valor = parseFloat(valorStr) || 20;
-  const nomeCantina = sala === 'oficial' ? 'Cantina dos Oficiais' : 'Cantina dos Graduados';
+  const nomeCantina = nomeSalaCafe(config, sala);
 
   const copiarPix = async () => {
     if (!chave) return;

@@ -17,7 +17,9 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../hooks/useToast';
 import { dataLocal } from '../services/periodo';
 import { formatarDataBanco, formatarDiaRelativo } from '../services/datas';
-import type { Usuario } from '../types';
+import type { Usuario, SalaCafeTipo, PlanoCafe } from '../types';
+import { getConfig } from '../services/config';
+import { mesCurto, nomeSalaCafe, rotuloReferencia } from './admin/cafe/SalaCafe';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -47,6 +49,12 @@ interface CafeStatus {
   pago: boolean;
   valor: number | null;
   tem_assinatura: boolean;
+  // Contrato novo (opcionais: backend antigo não manda)
+  sala?: SalaCafeTipo | null;
+  plano?: PlanoCafe | string;
+  valido_ate?: string | null;
+  rotulo?: string | null;
+  periodo_fim?: string | null;
 }
 
 interface Totais {
@@ -95,6 +103,8 @@ export function Dashboard() {
   const [showBirthday, setShowBirthday] = useState(false);
   const comprov = useComprovantesStatus();
   const { showToast } = useToast();
+  const [configPub, setConfigPub] = useState<Record<string, string>>({});
+  useEffect(() => { getConfig().then(setConfigPub).catch(() => {}); }, []);
 
   const carregar = () => {
     setLoading(true);
@@ -131,11 +141,13 @@ export function Dashboard() {
         + d.loja.filter((p: any) => p.status !== 'pago').reduce((s: number, p: any) => s + p.total, 0)
         + d.cafe.filter((p: any) => p.status === 'pendente').reduce((s: number, p: any) => s + p.valor, 0)
         + d.ximboca.filter((p: any) => p.status !== 'pago').reduce((s: number, p: any) => s + (p.valor_individual ?? p.valor_por_pessoa), 0);
-      const cafeGraduado = d.cafe.some((p: any) => p.cafe_tipo === 'graduado');
+      // PIX do café: sala do servidor quando vier; senão, a do assinante no extrato
+      const salaCafeServ = data?.cafe_status?.sala;
+      const cafeGraduado: boolean | SalaCafeTipo = salaCafeServ ?? d.cafe.some((p: any) => p.cafe_tipo === 'graduado');
       await gerarExtratoUnificadoPDF(d.cliente.nome_guerra, {
         guloseimas: d.guloseimas.filter((p: any) => p.status !== 'pago').map((p: any) => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at) })),
         loja: d.loja.filter((p: any) => p.status !== 'pago').map((p: any) => ({ itens: p.itens_resumo || '-', valor: p.total, data: fmt(p.created_at), parcelas: p.parcelas })),
-        cafe: d.cafe.filter((p: any) => p.status === 'pendente').map((p: any) => ({ referencia: p.referencia, valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
+        cafe: d.cafe.filter((p: any) => p.status === 'pendente').map((p: any) => ({ referencia: rotuloReferencia(p), valor: p.valor, tipo: `${p.cafe_tipo} - ${p.cafe_plano}` })),
         ximboca: d.ximboca.filter((p: any) => p.status !== 'pago').map((p: any) => ({ evento: p.evento_nome, data: formatarDataBanco(p.evento_data), valor: p.valor_individual ?? p.valor_por_pessoa })),
       }, total, cafeGraduado);
     } catch {
@@ -149,6 +161,12 @@ export function Dashboard() {
   if (!user) return null;
 
   const foto = resolveImg(user.foto_url);
+  // Sala do café: a do servidor (segue a categoria); sem o campo, a sala_cafe do cadastro
+  const cs = data?.cafe_status ?? null;
+  const salaCafe: SalaCafeTipo | null = cs && cs.sala !== undefined
+    ? cs.sala
+    : user.sala_cafe === 'oficiais' ? 'oficial' : user.sala_cafe === 'graduados' ? 'graduado' : null;
+  const cafeAnual = cs?.plano === 'anual' || /^\d{4}$/.test(cs?.mes_atual || '');
   const pendenteTotal = data ? (data.totais ? data.totais.geral.pendente : data.debito_total) : 0;
   const temPedidoAberto = data ? data.ultimos_pedidos.some(p => p.status !== 'pago') : false;
   const linkAcao = 'inline-flex items-center min-h-[44px] text-sm font-medium text-azul underline underline-offset-2';
@@ -280,24 +298,31 @@ export function Dashboard() {
               <h2 className="text-[15px] font-semibold text-noite flex items-center gap-2">
                 <Icon name="coffee" size={18} /> Caixinha do café
               </h2>
-              {user.sala_cafe && data.cafe_status?.tem_assinatura && (
-                <Badge variant={data.cafe_status.pago ? 'success' : 'danger'}>{data.cafe_status.pago ? 'Pago' : 'Pendente'}</Badge>
+              {salaCafe && cs?.tem_assinatura && (
+                cafeAnual
+                  ? <Badge variant={cs.pago ? 'success' : 'danger'}>{cs.pago ? 'Anuidade em dia' : 'Anuidade em aberto'}</Badge>
+                  : <Badge variant={cs.pago ? 'success' : 'danger'}>{cs.pago ? 'Pago' : 'Pendente'}</Badge>
               )}
             </div>
+            {salaCafe && <p className="text-xs text-texto-fraco mt-0.5">{nomeSalaCafe(configPub, salaCafe)}</p>}
 
-            {!user.sala_cafe && (
-              <p className="text-sm text-texto-fraco mt-2">Você não participa da caixinha do café.</p>
+            {!salaCafe && (
+              <p className="text-sm text-texto-fraco mt-2">A caixinha do café é das salas de oficiais e de graduados, então não há cobrança de café para você.</p>
             )}
-            {user.sala_cafe && data.cafe_status && !data.cafe_status.tem_assinatura && (
+            {salaCafe && cs && !cs.tem_assinatura && (
               <p className="text-sm text-texto-fraco mt-2">Você ainda não assinou a caixinha. Procure o responsável da sua sala.</p>
             )}
-            {user.sala_cafe && data.cafe_status?.tem_assinatura && (
+            {salaCafe && cs?.tem_assinatura && (
               <div className="flex items-end justify-between gap-3 mt-2">
                 <div>
-                  <div className="font-display text-3xl leading-none text-texto tracking-wide">{brl(data.cafe_status.valor || 0)}</div>
-                  <div className="text-sm text-texto-fraco mt-1">Referência: {data.cafe_status.mes_atual}</div>
+                  <div className="font-display text-3xl leading-none text-texto tracking-wide">{brl(cs.valor || 0)}</div>
+                  <div className="text-sm text-texto-fraco mt-1">
+                    {cafeAnual
+                      ? (cs.valido_ate ? `Anuidade válida até ${mesCurto(cs.valido_ate)}` : cs.rotulo || 'Anuidade')
+                      : `Referência: ${cs.rotulo || rotuloReferencia({ referencia: cs.mes_atual })}`}
+                  </div>
                 </div>
-                {!data.cafe_status.pago && (
+                {!cs.pago && (
                   <Link to="/cafe" className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-azul text-white text-sm font-medium hover:bg-azul-claro">
                     Pagar café
                   </Link>

@@ -89,3 +89,34 @@ export interface LojaCategoria {
   ordem: number;
   total_produtos: number;
 }
+
+// ---- Café (contrato novo do backend; campos opcionais para compatibilidade com o antigo) ----
+export type SalaCafeTipo = 'oficial' | 'graduado';
+export type PlanoCafe = 'mensal' | 'anual';
+
+export interface CafePagamentoMilitar {
+  id?: string;
+  referencia: string;
+  periodo_fim?: string | null; // 'YYYY-MM' (anuidade) ou null
+  valor: number;
+  status: string;
+  rotulo?: string | null; // texto pronto (ex.: "out/2026" ou "Anuidade out/2026 a set/2027")
+  paid_at?: string | null;
+}
+
+export interface MeuCafeStatus {
+  tem_assinatura: boolean;
+  tipo: string | null;
+  sala?: SalaCafeTipo | null; // null = praça (não participa); ausente = backend antigo
+  plano?: PlanoCafe | string;
+  valor?: number;
+  valor_mensal?: number;
+  ativo?: number | boolean;
+  valido_ate?: string | null; // 'YYYY-MM' (anual)
+  mes_atual?: string;
+  mes_atual_pago?: boolean;
+  total_pendente?: number;
+  historico?: CafePagamentoMilitar[];
+  pagamentos?: CafePagamentoMilitar[];
+  sem_sala?: boolean;
+}

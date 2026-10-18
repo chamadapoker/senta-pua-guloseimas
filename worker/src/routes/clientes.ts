@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { audit } from '../lib/audit';
+import { comRotulo } from '../lib/cafe';
 import type { AppType } from '../index';
 
 const clientes = new Hono<AppType>();
@@ -156,7 +157,7 @@ clientes.get('/:id/extrato-completo', authMiddleware, async (c) => {
     JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
     WHERE ca.cliente_id = ?
     ORDER BY cp.referencia DESC
-  `).bind(id).all();
+  `).bind(id).all<{ referencia: string; periodo_fim: string | null }>();
 
   // Ximbóca participações
   const { results: ximbocaPendentes } = await c.env.DB.prepare(`
@@ -171,7 +172,7 @@ clientes.get('/:id/extrato-completo', authMiddleware, async (c) => {
     cliente,
     guloseimas: pedidosGuloseimas,
     loja: pedidosLoja,
-    cafe: cafePendentes,
+    cafe: cafePendentes.map(comRotulo),
     ximboca: ximbocaPendentes,
   });
 });

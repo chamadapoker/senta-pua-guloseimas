@@ -321,12 +321,12 @@ dashboard.get('/painel', authMiddleware, async (c) => {
       FROM itens_pedido ip JOIN pedidos p ON p.id = ip.pedido_id
       WHERE ${diaDe('p.created_at')} >= ${ini}
       GROUP BY ip.nome_produto ORDER BY valor DESC LIMIT 8`).all<{ nome: string; qtd: number; valor: number }>(),
-    // Café: últimos 6 meses de referência mensal (YYYY-MM)
+    // Café: últimos 6 meses de referência mensal (YYYY-MM); anuidade nova também é YYYY-MM, mas tem periodo_fim
     db.prepare(`SELECT cp.referencia as mes,
         COALESCE(SUM(CASE WHEN cp.status = 'pago' THEN cp.valor ELSE 0 END),0) as pago,
         COALESCE(SUM(CASE WHEN cp.status = 'pendente' THEN cp.valor ELSE 0 END),0) as pendente
       FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id
-      WHERE length(cp.referencia) = 7 AND (? = '' OR ca.tipo = ?)
+      WHERE length(cp.referencia) = 7 AND cp.periodo_fim IS NULL AND (? = '' OR ca.tipo = ?)
       GROUP BY cp.referencia ORDER BY cp.referencia DESC LIMIT 6`).bind(cafeTipo, cafeTipo).all<{ mes: string; pago: number; pendente: number }>(),
     db.prepare(`SELECT strftime('%Y-%m', created_at, ${BRT}) as mes, COALESCE(SUM(total),0) as valor, COUNT(*) as qtd
       FROM loja_pedidos GROUP BY mes ORDER BY mes DESC LIMIT 6`).all<{ mes: string; valor: number; qtd: number }>(),
