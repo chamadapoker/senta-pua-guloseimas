@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
+import { validarArquivo, TIPOS_IMAGEM } from '../lib/arquivo';
 import type { AppType } from '../index';
 
 const inventario = new Hono<AppType>();
@@ -73,13 +74,11 @@ inventario.post('/', async (c) => {
 // Upload de foto do item (R2)
 inventario.post('/upload', async (c) => {
   const formData = await c.req.formData();
-  const file = formData.get('file') as File | null;
-  if (!file) return c.json({ error: 'Nenhum arquivo enviado' }, 400);
-  if (file.size > 5 * 1024 * 1024) return c.json({ error: 'Arquivo deve ter no máximo 5MB' }, 400);
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) return c.json({ error: 'Formato não suportado. Use: jpg, png, webp, gif' }, 400);
-  const key = `inventario/${crypto.randomUUID()}.${ext}`;
-  await c.env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+  // Tipo pelo conteúdo (magic bytes), nome gerado no servidor
+  const v = await validarArquivo(formData.get('file'), TIPOS_IMAGEM);
+  if (!v.ok) return c.json({ error: v.erro }, 400);
+  const key = `inventario/${crypto.randomUUID()}.${v.arquivo.ext}`;
+  await c.env.IMAGES.put(key, v.arquivo.bytes, { httpMetadata: { contentType: v.arquivo.contentType } });
   return c.json({ url: `/api/images/${key}` });
 });
 

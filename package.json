@@ -1,11 +1,17 @@
 {
-  "name": "senta-pua-guloseimas",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev:app": "pnpm --filter senta-pua-app dev",
-    "dev:worker": "pnpm --filter senta-pua-worker dev",
-    "build:app": "pnpm --filter senta-pua-app build",
-    "deploy:worker": "pnpm --filter senta-pua-worker deploy"
-  }
+    "name":  "senta-pua-guloseimas",
+    "version":  "1.0.0",
+    "private":  true,
+    "scripts":  {
+                    "dev:app":  "pnpm --filter senta-pua-app dev",
+                    "dev:worker":  "pnpm --filter senta-pua-worker dev",
+                    "build:app":  "pnpm --filter senta-pua-app build",
+                    "deploy:worker":  "pnpm --filter senta-pua-worker deploy"
+                },
+    "pnpm":  {
+                 "overrides":  {
+                                   "dompurify":  "3.4.16",
+                                   "fflate":  "^0.8.3"
+                               }
+             }
 }

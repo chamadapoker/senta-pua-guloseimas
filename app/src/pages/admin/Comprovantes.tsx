@@ -16,8 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Modal } from '../../components/ui/Modal';
 import { inputClass } from '../../components/ui/Field';
 import { formatarDataHoraBanco as dataHora, parseDataBanco } from '../../services/datas';
-
-const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
+import { useImagemProtegida, abrirArquivoProtegido } from '../../hooks/useImagemProtegida';
 
 interface Comprovante {
   id: string;
@@ -26,6 +25,8 @@ interface Comprovante {
   trigrama: string;
   valor: number | null;
   imagem_url: string;
+  /** true quando o arquivo é PDF (a URL protegida não tem extensão) */
+  imagem_pdf?: boolean;
   observacao: string;
   status: 'aguardando' | 'aprovado' | 'rejeitado';
   motivo_rejeicao: string | null;
@@ -79,7 +80,29 @@ function tempoEspera(createdAt: string): { texto: string; atrasado: boolean } {
   return { texto: `há ${d} ${d === 1 ? 'dia' : 'dias'}`, atrasado: true };
 }
 
-const ehPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
+const ehPdf = (c: Comprovante) => c.imagem_pdf ?? c.imagem_url.toLowerCase().endsWith('.pdf');
+
+// O arquivo do comprovante é privado: carregado com fetch autenticado (object URL), nunca <img src> direto
+function MiniaturaComprovante({ url }: { url: string }) {
+  const { src, erro } = useImagemProtegida(url);
+  if (erro) {
+    return (
+      <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-texto-fraco">
+        <Icon name="document" size={22} />
+        <span className="text-[10px] font-semibold">Indisponível</span>
+      </span>
+    );
+  }
+  if (!src) return <span className="absolute inset-0 animate-pulse bg-borda/40" aria-hidden="true" />;
+  return <img src={src} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />;
+}
+
+function ImagemComprovante({ url, alt }: { url: string; alt: string }) {
+  const { src, erro, carregando } = useImagemProtegida(url);
+  if (erro) return <p className="text-sm text-vermelho px-2 py-3">Não foi possível carregar o comprovante.</p>;
+  if (carregando || !src) return <Loading />;
+  return <img src={src} alt={alt} className="w-full max-h-[60vh] object-contain rounded-lg" />;
+}
 
 export function Comprovantes() {
   const [aba, setAba] = useState<'aguardando' | 'aprovado' | 'rejeitado'>('aguardando');
@@ -125,7 +148,10 @@ export function Comprovantes() {
   const trocarAba = (novo: typeof aba) => { setAba(novo); setOffset(0); };
   const buscar = (e: React.FormEvent) => { e.preventDefault(); setQAplicada(q); setOffset(0); carregar(); };
 
-  const resolverImg = (url: string) => url.startsWith('/api') ? `${WORKER_URL}${url}` : url;
+  const abrirPdf = async (url: string) => {
+    try { await abrirArquivoProtegido(url); }
+    catch (e: any) { showToast(e?.message || 'Não foi possível abrir o PDF', 'error'); }
+  };
 
   const abrir = (c: Comprovante, modoRejeitar = false) => { setPreview(c); setMotivo(''); setRejeitando(modoRejeitar); };
   const fechar = useCallback(() => { setPreview(null); setRejeitando(false); }, []);
@@ -291,18 +317,13 @@ export function Comprovantes() {
                       className="relative shrink-0 w-[72px] h-[88px] rounded-xl overflow-hidden bg-fundo border border-borda outline-none focus-visible:ring-2 focus-visible:ring-azul/40"
                       aria-label={`Ver comprovante de ${c.trigrama}`}
                     >
-                      {ehPdf(c.imagem_url) ? (
+                      {ehPdf(c) ? (
                         <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-texto-fraco">
                           <Icon name="document" size={24} />
                           <span className="text-[11px] font-semibold">PDF</span>
                         </span>
                       ) : (
-                        <img
-                          src={resolverImg(c.imagem_url)}
-                          alt=""
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <MiniaturaComprovante url={c.imagem_url} />
                       )}
                       <span className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-noite/70 to-transparent flex items-end justify-center pb-0.5" aria-hidden="true">
                         <Icon name="eye" size={13} className="text-white" />
@@ -401,12 +422,12 @@ export function Comprovantes() {
             {preview.observacao && <p className="text-sm text-texto-fraco italic mb-3 break-words">"{preview.observacao}"</p>}
 
             <div className="bg-fundo rounded-xl p-2 mb-4">
-              {preview.imagem_url.endsWith('.pdf') ? (
-                <a href={resolverImg(preview.imagem_url)} target="_blank" rel="noopener noreferrer" className="text-azul hover:underline inline-flex items-center gap-1.5 min-h-[40px] px-2">
+              {ehPdf(preview) ? (
+                <button type="button" onClick={() => abrirPdf(preview.imagem_url)} className="text-azul hover:underline inline-flex items-center gap-1.5 min-h-[40px] px-2">
                   <Icon name="document" size={16} /> Abrir PDF em nova aba
-                </a>
+                </button>
               ) : (
-                <img src={resolverImg(preview.imagem_url)} alt={`Comprovante de ${preview.trigrama}`} className="w-full max-h-[60vh] object-contain rounded-lg" />
+                <ImagemComprovante url={preview.imagem_url} alt={`Comprovante de ${preview.trigrama}`} />
               )}
             </div>
 

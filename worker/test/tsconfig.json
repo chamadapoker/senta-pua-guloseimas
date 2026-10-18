@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types/experimental", "@cloudflare/vitest-pool-workers"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "../src/**/*.ts"],
+  // schema.ts roda no Node (dentro do vitest.config), não no Worker
+  "exclude": ["./helpers/schema.ts"]
+}

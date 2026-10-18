@@ -1,4 +1,16 @@
-# Regras de cache do Cloudflare Pages
+# Regras do Cloudflare Pages
+
+# Segurança em todas as páginas.
+# A CSP está em modo de observação (Report-Only: não bloqueia nada, só mostra no console o que
+# violaria a política). Depois de conferir que não há violações no uso real, trocar para
+# Content-Security-Policy. A câmera fica liberada (check-in da recepcionista lê QR).
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), payment=(), usb=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.workers.dev; connect-src 'self' https://*.workers.dev; media-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+
 # Página inicial e service worker: sempre conferir com o servidor (cada deploy troca os arquivos)
 /
   Cache-Control: no-cache

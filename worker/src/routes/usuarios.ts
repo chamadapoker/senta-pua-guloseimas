@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { sign } from '../lib/jwt';
-import { hashPassword, verifyPassword } from '../lib/password';
+import { hashPassword, verifyPassword, gastarTempoDeVerificacao } from '../lib/password';
+import { validarArquivo } from '../lib/arquivo';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { authMiddleware, superAdminMiddleware } from '../middleware/auth';
 import { isCategoriaValida, derivarSalaCafe, type Categoria } from '../lib/categoria';
@@ -61,8 +62,28 @@ async function localizarClienteParaCadastro(
   return { ok: true, cliente, temHistorico: !!hist?.tem };
 }
 
+// Cadastro público: limite por IP (CF-Connecting-IP). Conta todas as tentativas (freia varredura de
+// email/SARAM/trigrama) e, à parte, os cadastros concluídos (freia criação de contas em massa).
+// Militar e visitante compartilham o mesmo limite. O esquadrão inteiro pode sair pela mesma
+// internet (mesmo IP), então o limite comporta um mutirão de cadastro numa reunião.
+const CADASTRO_MAX_OK_HORA = 40;
+const CADASTRO_MAX_TENTATIVAS_HORA = 120;
+
+async function barrarExcessoDeCadastro(c: Context<AppType>): Promise<Response | null> {
+  const ip = clientKey(c);
+  const tentativas = await checkRateLimit(c, 'cadastro_tentativa', ip, CADASTRO_MAX_TENTATIVAS_HORA, 60);
+  const concluidos = await checkRateLimit(c, 'cadastro_ok', ip, CADASTRO_MAX_OK_HORA, 60);
+  if (!tentativas.ok || !concluidos.ok) {
+    return c.json({ error: 'Muitos cadastros a partir desta rede. Tente de novo em 1 hora.' }, 429);
+  }
+  await recordAttempt(c, 'cadastro_tentativa', ip);
+  return null;
+}
+
 // Publico: cadastro
 usuarios.post('/cadastro', async (c) => {
+  const barrado = await barrarExcessoDeCadastro(c);
+  if (barrado) return barrado;
   const { email, senha, trigrama, saram, whatsapp, categoria, aceite_lgpd, data_nascimento } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string; categoria: string;
     aceite_lgpd?: boolean; data_nascimento?: string | null;
@@ -129,6 +150,7 @@ usuarios.post('/cadastro', async (c) => {
     720
   );
 
+  await recordAttempt(c, 'cadastro_ok', clientKey(c));
   return c.json({
     token,
     user: {
@@ -141,6 +163,8 @@ usuarios.post('/cadastro', async (c) => {
 
 // Publico: cadastro de visitante
 usuarios.post('/cadastro/visitante', async (c) => {
+  const barrado = await barrarExcessoDeCadastro(c);
+  if (barrado) return barrado;
   const { email, senha, trigrama, saram, whatsapp, categoria, esquadrao_origem, aceite_lgpd, data_nascimento } = await c.req.json<{
     email: string; senha: string; trigrama: string; saram: string; whatsapp: string;
     categoria: string; esquadrao_origem: string; aceite_lgpd?: boolean; data_nascimento?: string | null;
@@ -212,6 +236,7 @@ usuarios.post('/cadastro/visitante', async (c) => {
     720
   );
 
+  await recordAttempt(c, 'cadastro_ok', clientKey(c));
   return c.json({
     token,
     user: {
@@ -244,11 +269,17 @@ usuarios.post('/login', async (c) => {
     permite_fiado: number; is_recepcionista: number;
   }>();
 
-  if (!user) { await recordAttempt(c, 'user_login', key); return c.json({ error: 'Email ou senha incorretos' }, 401); }
-  if (!user.ativo) return c.json({ error: 'Conta desativada. Procure o administrador.' }, 403);
+  // Email inexistente também paga o custo do PBKDF2 (o tempo de resposta não revela quem existe)
+  if (!user) {
+    await gastarTempoDeVerificacao(senha);
+    await recordAttempt(c, 'user_login', key);
+    return c.json({ error: 'Email ou senha incorretos' }, 401);
+  }
 
+  // Senha conferida ANTES de revelar que a conta está desativada
   const valid = await verifyPassword(senha, user.senha_hash);
   if (!valid) { await recordAttempt(c, 'user_login', key); return c.json({ error: 'Email ou senha incorretos' }, 401); }
+  if (!user.ativo) return c.json({ error: 'Conta desativada. Procure o administrador.' }, 403);
   await clearAttempts(c, 'user_login', key);
 
   const token = await sign(
@@ -524,11 +555,12 @@ usuarios.put('/admin/:id/homenagem', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const { niver_titulo, niver_texto, niver_imagem_url } = await c.req.json();
 
-  await c.env.DB.prepare(`
+  const result = await c.env.DB.prepare(`
     UPDATE usuarios 
     SET niver_titulo = ?, niver_texto = ?, niver_imagem_url = ? 
     WHERE id = ?
-  `).bind(niver_titulo, niver_texto, niver_imagem_url, id).run();
+  `).bind(niver_titulo ?? null, niver_texto ?? null, niver_imagem_url ?? null, id).run();
+  if (!result.meta.changes) return c.json({ error: 'Usuário não encontrado' }, 404);
 
   await audit(c, 'configurar_homenagem_aniversario', 'usuarios', id, null, { niver_titulo });
 
@@ -595,13 +627,9 @@ usuarios.post('/me/foto', userAuthMiddleware, async (c) => {
   const formData = await c.req.formData();
   const file = formData.get('foto') as File | null;
 
-  if (!file) return c.json({ error: 'Nenhum arquivo enviado' }, 400);
-  if (file.size > 2 * 1024 * 1024) return c.json({ error: 'Arquivo muito grande. Máximo 2MB' }, 400);
-
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
-    return c.json({ error: 'Formato não suportado. Use: jpg, png, webp' }, 400);
-  }
+  // Tipo pelo conteúdo (magic bytes); limite de 2MB mantido
+  const v = await validarArquivo(file, ['jpeg', 'png', 'webp'], 2 * 1024 * 1024);
+  if (!v.ok) return c.json({ error: v.erro }, 400);
 
   const current = await c.env.DB.prepare('SELECT foto_url FROM usuarios WHERE id = ?').bind(userId)
     .first<{ foto_url: string | null }>();
@@ -610,8 +638,8 @@ usuarios.post('/me/foto', userAuthMiddleware, async (c) => {
     await c.env.IMAGES.delete(oldKey).catch(() => {});
   }
 
-  const key = `usuarios/${userId}/foto.${ext}`;
-  await c.env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+  const key = `usuarios/${userId}/foto.${v.arquivo.ext}`;
+  await c.env.IMAGES.put(key, v.arquivo.bytes, { httpMetadata: { contentType: v.arquivo.contentType } });
 
   const fotoUrl = `/api/images/${key}`;
   await c.env.DB.prepare('UPDATE usuarios SET foto_url = ? WHERE id = ?').bind(fotoUrl, userId).run();
@@ -847,8 +875,11 @@ usuarios.put('/admin/:id/fiado', authMiddleware, async (c) => {
 usuarios.put('/admin/:id/recepcionista', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const { is_recepcionista } = await c.req.json<{ is_recepcionista: number }>();
-  await c.env.DB.prepare('UPDATE usuarios SET is_recepcionista = ? WHERE id = ?')
-    .bind(is_recepcionista ? 1 : 0, id).run();
+  const antes = await c.env.DB.prepare('SELECT trigrama, is_recepcionista FROM usuarios WHERE id = ?').bind(id).first();
+  if (!antes) return c.json({ error: 'Usuário não encontrado' }, 404);
+  const novo = is_recepcionista ? 1 : 0;
+  await c.env.DB.prepare('UPDATE usuarios SET is_recepcionista = ? WHERE id = ?').bind(novo, id).run();
+  await audit(c, 'alterar_recepcionista_usuario', 'usuarios', id, antes, { is_recepcionista: novo });
   return c.json({ ok: true });
 });
 

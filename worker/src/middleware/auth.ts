@@ -2,6 +2,7 @@ import { Context, Next } from 'hono';
 import { verify } from '../lib/jwt';
 import type { AppType } from '../index';
 import { rotaPermitidaNoEscopo, MSG_ESCOPO_NEGADO } from '../lib/escopo';
+import { auditarNegacaoEscopo } from '../lib/audit';
 
 export async function authMiddleware(c: Context<AppType>, next: Next) {
   const header = c.req.header('Authorization');
@@ -31,6 +32,7 @@ export async function authMiddleware(c: Context<AppType>, next: Next) {
 
   // Admin com escopo: só passa o que está na lista de permissão (vale em todas as rotas protegidas)
   if (admin.escopo && !rotaPermitidaNoEscopo(admin.escopo, c.req.method, c.req.path)) {
+    await auditarNegacaoEscopo(c);
     return c.json({ error: MSG_ESCOPO_NEGADO, escopo_negado: true }, 403);
   }
   await next();

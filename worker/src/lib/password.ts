@@ -29,6 +29,17 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return timingSafeEqual(computedHex, hashHex);
 }
 
+// Hash fixo de mentira (salt:hash em hex). Nenhuma senha corresponde a ele na prática.
+const HASH_FALSO = `${'a5'.repeat(16)}:${'00'.repeat(32)}`;
+
+/**
+ * Roda o mesmo PBKDF2 do login contra um hash fixo: usado quando a conta não existe, para que o
+ * tempo de resposta não revele quais e-mails estão cadastrados.
+ */
+export async function gastarTempoDeVerificacao(password: string): Promise<void> {
+  await verifyPassword(password, HASH_FALSO);
+}
+
 // Comparação em tempo constante (não vaza onde os hashes divergem via timing).
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;

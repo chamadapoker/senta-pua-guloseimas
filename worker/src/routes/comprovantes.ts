@@ -4,6 +4,9 @@ import { userAuthMiddleware } from '../middleware/userAuth';
 import { audit } from '../lib/audit';
 import { pagarPedidoLoja, pagarParcelaLoja } from '../lib/loja';
 import { filtroComprovantesEscopo } from '../lib/escopo';
+import { validarArquivo, TIPOS_IMAGEM } from '../lib/arquivo';
+import { checkRateLimit, recordAttempt } from '../lib/rateLimit';
+import { verify } from '../lib/jwt';
 import type { AppType } from '../index';
 
 const comprovantes = new Hono<AppType>();
@@ -79,6 +82,55 @@ async function comprovanteNoEscopo(c: Context<AppType>, id: string | undefined):
   return !!row;
 }
 
+type RowComprovante = { id: string; imagem_key?: string | null; [k: string]: unknown };
+
+function urlImagemComprovante(id: string): string {
+  return `/api/comprovantes/${id}/imagem`;
+}
+
+// A imagem do comprovante só é servida pela rota autenticada (linhas antigas guardam a URL pública
+// /api/images/comprovantes/..., que agora responde 404). imagem_pdf diz ao app como exibir.
+function comImagemProtegida(row: RowComprovante) {
+  const { imagem_key, ...resto } = row;
+  return {
+    ...resto,
+    imagem_url: urlImagemComprovante(row.id),
+    imagem_pdf: typeof imagem_key === 'string' && imagem_key.toLowerCase().endsWith('.pdf'),
+  };
+}
+
+// Admin OU usuário: escolhe o middleware pelo tipo do token (o middleware revalida tudo no banco)
+async function adminOuUsuario(c: Context<AppType>, next: () => Promise<void>) {
+  const header = c.req.header('Authorization');
+  const payload = header?.startsWith('Bearer ') ? await verify(header.slice(7), c.env.JWT_SECRET) : null;
+  if (payload?.tipo === 'usuario') return userAuthMiddleware(c, next);
+  return authMiddleware(c, next);
+}
+
+// ADMIN (no escopo) ou USUÁRIO dono: arquivo do comprovante. Nunca em cache compartilhado.
+comprovantes.get('/:id/imagem', adminOuUsuario, async (c) => {
+  const id = c.req.param('id');
+  const comp = await c.env.DB.prepare('SELECT id, usuario_id, imagem_key FROM comprovantes WHERE id = ?')
+    .bind(id).first<{ id: string; usuario_id: string | null; imagem_key: string }>();
+  const naoEncontrado = () => c.json({ error: 'Comprovante não encontrado' }, 404);
+  if (!comp) return naoEncontrado();
+
+  if (c.get('adminId')) {
+    if (!(await comprovanteNoEscopo(c, id))) return naoEncontrado();
+  } else if (comp.usuario_id !== String(c.get('userId'))) {
+    return naoEncontrado();
+  }
+
+  const object = await c.env.IMAGES.get(comp.imagem_key);
+  if (!object) return naoEncontrado();
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Content-Disposition', 'inline');
+  return new Response(object.body, { headers });
+});
+
 // USER: envia comprovante
 comprovantes.post('/', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
@@ -93,10 +145,14 @@ comprovantes.post('/', userAuthMiddleware, async (c) => {
   if (!origem || !referencia_id || !file) return c.json({ error: 'origem, referencia_id e file são obrigatórios' }, 400);
   if (!['cantina', 'loja', 'loja_parcela', 'cafe', 'ximboca'].includes(origem)) return c.json({ error: 'Origem inválida' }, 400);
 
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const allowed = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
-  if (!allowed.includes(ext)) return c.json({ error: 'Formato inválido. Use JPG, PNG, WEBP ou PDF' }, 400);
-  if (file.size > 5 * 1024 * 1024) return c.json({ error: 'Arquivo deve ter no máximo 5MB' }, 400);
+  // Tipo e extensão pelo conteúdo (magic bytes), nunca pelo nome/Content-Type do cliente
+  const v = await validarArquivo(file, [...TIPOS_IMAGEM, 'pdf']);
+  if (!v.ok) return c.json({ error: v.erro }, 400);
+
+  // Limite de envios por usuário (evita encher o R2/fila de aprovação)
+  const rlKey = `usuario:${userId}`;
+  const rl = await checkRateLimit(c, 'comprovante_envio', rlKey, 20, 24 * 60);
+  if (!rl.ok) return c.json({ error: 'Limite diário de envio de comprovantes atingido. Tente amanhã.' }, 429);
 
   const val = await validarDono(c, origem, referencia_id, trigrama);
   if (!val.ok) return c.json({ error: val.error }, 403);
@@ -107,16 +163,19 @@ comprovantes.post('/', userAuthMiddleware, async (c) => {
   ).bind(origem, referencia_id).first();
   if (pendente) return c.json({ error: 'Já existe um comprovante aguardando aprovação' }, 409);
 
-  const key = `comprovantes/${crypto.randomUUID()}.${ext}`;
-  await c.env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type || 'image/jpeg' } });
-  const url = `/api/images/${key}`;
+  await recordAttempt(c, 'comprovante_envio', rlKey);
+  // id e nome do arquivo gerados no servidor; a imagem só sai pela rota autenticada
+  const id = crypto.randomUUID().replace(/-/g, '');
+  const key = `comprovantes/${crypto.randomUUID()}.${v.arquivo.ext}`;
+  await c.env.IMAGES.put(key, v.arquivo.bytes, { httpMetadata: { contentType: v.arquivo.contentType } });
+  const url = urlImagemComprovante(id);
 
   const { results } = await c.env.DB.prepare(
-    `INSERT INTO comprovantes (origem, referencia_id, cliente_id, usuario_id, trigrama, valor, imagem_url, imagem_key, observacao)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
-  ).bind(origem, referencia_id, val.cliente_id || null, String(userId), trigrama, val.valor || null, url, key, observacao).all();
+    `INSERT INTO comprovantes (id, origem, referencia_id, cliente_id, usuario_id, trigrama, valor, imagem_url, imagem_key, observacao)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+  ).bind(id, origem, referencia_id, val.cliente_id || null, String(userId), trigrama, val.valor || null, url, key, observacao).all();
 
-  return c.json(results[0], 201);
+  return c.json(comImagemProtegida(results[0] as RowComprovante), 201);
 });
 
 // USER: lista meus comprovantes
@@ -124,8 +183,8 @@ comprovantes.get('/me', userAuthMiddleware, async (c) => {
   const trigrama = c.get('userTrigrama');
   const { results } = await c.env.DB.prepare(
     'SELECT * FROM comprovantes WHERE trigrama = ? COLLATE NOCASE ORDER BY created_at DESC LIMIT 50'
-  ).bind(trigrama).all();
-  return c.json(results);
+  ).bind(trigrama).all<RowComprovante>();
+  return c.json(results.map(comImagemProtegida));
 });
 
 // USER: status do comprovante mais recente por item (para mostrar badge)
@@ -166,9 +225,9 @@ comprovantes.get('/', authMiddleware, async (c) => {
 
   const { results } = await c.env.DB.prepare(
     `SELECT * FROM comprovantes WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-  ).bind(...params, limit, offset).all();
+  ).bind(...params, limit, offset).all<RowComprovante>();
 
-  return c.json({ items: results, total: totalRow?.total || 0, limit, offset });
+  return c.json({ items: results.map(comImagemProtegida), total: totalRow?.total || 0, limit, offset });
 });
 
 // ADMIN: aprovar → marca o item de origem como pago
@@ -202,6 +261,7 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
   ).bind(reviewer, id).all<any>();
   
   const aprovado = results[0];
+  if (!aprovado) return c.json({ error: 'Comprovante não encontrado' }, 404);
   await audit(c, 'aprovar_comprovante', 'comprovantes', id, null, { origem: comp.origem, referencia_id: comp.referencia_id });
 
   // NOTIFICAÇÃO AUTOMÁTICA
@@ -216,7 +276,7 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
     console.error('Erro ao enviar notificação de aprovação:', err);
   }
 
-  return c.json(aprovado);
+  return c.json(comImagemProtegida(aprovado));
 });
 
 // ADMIN: rejeitar
@@ -246,7 +306,7 @@ comprovantes.put('/:id/rejeitar', authMiddleware, async (c) => {
     console.error('Erro ao enviar notificação de rejeição:', err);
   }
 
-  return c.json(rejeitado);
+  return c.json(comImagemProtegida(rejeitado));
 });
 
 // ADMIN: contador de pendentes (para badge)

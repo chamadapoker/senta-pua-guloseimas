@@ -126,8 +126,10 @@ pedidos.post('/', userAuthMiddleware, visitorActiveCheck, async (c) => {
 // Público: status do pedido (para polling PIX)
 pedidos.get('/:id', async (c) => {
   const id = c.req.param('id');
+  // Rota pública (polling do PIX em PixPage/usePixPolling): só o que a tela usa (total e status).
+  // Nunca cliente_id ou outros dados do militar.
   const pedido = await c.env.DB.prepare(
-    'SELECT * FROM pedidos WHERE id = ?'
+    'SELECT id, total, status, metodo_pagamento, created_at, paid_at FROM pedidos WHERE id = ?'
   ).bind(id).first();
 
   if (!pedido) return c.json({ error: 'Pedido não encontrado' }, 404);

@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { secureHeaders } from 'hono/secure-headers';
+import { HTTPException } from 'hono/http-exception';
+import { origensPermitidas } from './lib/cors';
 import auth from './routes/auth';
 import produtos from './routes/produtos';
 import clientes from './routes/clientes';
@@ -36,9 +39,24 @@ export type AppType = { Bindings: Env; Variables: { adminEmail: string; adminRol
 
 const app = new Hono<AppType>();
 
+// Cabeçalhos de segurança para uma API JSON (OWASP REST Security). Sem CSP de conteúdo: só
+// frame-ancestors 'none' (a API nunca é embutida em frame). CORP cross-origin porque o app
+// (outro domínio) carrega as imagens públicas de /api/images com <img>.
+app.use('*', secureHeaders({
+  contentSecurityPolicy: { frameAncestors: ["'none'"] },
+  crossOriginResourcePolicy: 'cross-origin',
+  crossOriginOpenerPolicy: 'same-origin',
+  crossOriginEmbedderPolicy: false,
+  referrerPolicy: 'no-referrer',
+  strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  xContentTypeOptions: 'nosniff',
+  xFrameOptions: 'DENY',
+  xXssProtection: '0',
+}));
+
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
-    origin: [c.env.FRONTEND_URL, 'https://app-senta-pua.pages.dev', 'http://localhost:5173'],
+    origin: origensPermitidas(c.env.FRONTEND_URL),
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   });
@@ -65,10 +83,17 @@ app.route('/api/inventario', inventario);
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 
-// Tratador global de erros: evita 500 com stack cru e dá resposta JSON limpa.
+// Tratador global de erros. Nunca devolve a mensagem/stack do erro ao cliente (só no log).
+// JSON inválido/corpo vazio (c.req.json() lança SyntaxError) é erro do cliente: 400 genérico.
 app.onError((err, c) => {
-  console.error('Erro não tratado:', err);
-  return c.json({ error: 'Erro interno do servidor' }, 500);
+  if (err instanceof SyntaxError) {
+    return c.json({ error: 'Requisição inválida' }, 400);
+  }
+  if (err instanceof HTTPException && err.status < 500) {
+    return c.json({ error: 'Requisição inválida' }, err.status);
+  }
+  console.error('Erro não tratado:', c.req.method, c.req.path, err);
+  return c.json({ error: 'Erro interno' }, 500);
 });
 
 // Cron handler: gera mensalidades e anuais automaticamente

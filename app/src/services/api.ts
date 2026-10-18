@@ -69,7 +69,8 @@ function avisarEscopoNegado() {
   }));
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+// Faz a requisição autenticada e trata erros; devolve a Response (corpo ainda não lido).
+async function enviar(path: string, options?: RequestInit): Promise<Response> {
   const headers: Record<string, string> = {
     ...((options?.headers as Record<string, string>) || {}),
   };
@@ -122,6 +123,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw error;
   }
 
+  return res;
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await enviar(path, options);
   return res.json() as Promise<T>;
 }
 
@@ -132,4 +138,6 @@ export const api = {
   delete: <T>(path: string, data?: unknown) =>
     request<T>(path, data === undefined ? { method: 'DELETE' } : { method: 'DELETE', body: JSON.stringify(data) }),
   upload: <T>(path: string, formData: FormData) => request<T>(path, { method: 'POST', body: formData }),
+  /** GET autenticado de um arquivo (ex.: imagem de comprovante, que não é pública). */
+  blob: async (path: string): Promise<Blob> => (await enviar(path, { cache: 'no-store' })).blob(),
 };

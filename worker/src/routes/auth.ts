@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { sign } from '../lib/jwt';
-import { hashPassword, verifyPassword } from '../lib/password';
+import { hashPassword, verifyPassword, gastarTempoDeVerificacao } from '../lib/password';
+import { audit } from '../lib/audit';
 import { checkRateLimit, recordAttempt, clearAttempts, clientKey } from '../lib/rateLimit';
 import { authMiddleware } from '../middleware/auth';
 import type { AppType } from '../index';
@@ -20,7 +21,10 @@ async function ensureSuperAdmin(env: AppType['Bindings']) {
 
 auth.post('/login', async (c) => {
   const { email, senha } = await c.req.json<{ email: string; senha: string }>();
-  if (!email || !senha) return c.json({ error: 'Email e senha obrigatórios' }, 400);
+  if (!email || !senha || typeof email !== 'string' || typeof senha !== 'string') {
+    return c.json({ error: 'Email e senha obrigatórios' }, 400);
+  }
+  const emailLog = email.trim().toLowerCase().slice(0, 254);
 
   const ip = clientKey(c);
   const key = `${ip}:${email.toLowerCase()}`;
@@ -33,18 +37,19 @@ auth.post('/login', async (c) => {
     'SELECT id, email, senha_hash, nome, role, ativo, escopo FROM admins WHERE email = ? COLLATE NOCASE'
   ).bind(email).first<{ id: string; email: string; senha_hash: string; nome: string; role: string; ativo: number; escopo: string | null }>();
 
-  if (!admin || !admin.ativo) {
+  // Sempre roda um PBKDF2 (contra um hash de mentira quando o admin não existe): o tempo de resposta
+  // não revela quais e-mails existem. Admin inexistente, inativo ou senha errada => mesma resposta.
+  const ok = admin ? await verifyPassword(senha, admin.senha_hash) : (await gastarTempoDeVerificacao(senha), false);
+  if (!admin || !admin.ativo || !ok) {
     await recordAttempt(c, 'admin_login', key);
-    return c.json({ error: 'Credenciais inválidas' }, 401);
-  }
-  const ok = await verifyPassword(senha, admin.senha_hash);
-  if (!ok) {
-    await recordAttempt(c, 'admin_login', key);
+    // Auditoria: só o e-mail informado e o IP (coluna ip_address); nunca a senha
+    await audit(c, 'login_admin_falha', 'admins', admin?.id ?? null, null, { email: emailLog }, emailLog);
     return c.json({ error: 'Credenciais inválidas' }, 401);
   }
 
   await clearAttempts(c, 'admin_login', key);
   await c.env.DB.prepare("UPDATE admins SET last_login = datetime('now') WHERE id = ?").bind(admin.id).run();
+  await audit(c, 'login_admin_ok', 'admins', admin.id, null, { email: admin.email }, admin.email);
 
   const token = await sign({ tipo: 'admin', id: admin.id, email: admin.email, role: admin.role }, c.env.JWT_SECRET);
   return c.json({ token, admin: { id: admin.id, email: admin.email, nome: admin.nome, role: admin.role, escopo: admin.escopo ?? null } });

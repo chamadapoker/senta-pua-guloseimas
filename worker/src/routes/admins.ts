@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware, superAdminMiddleware } from '../middleware/auth';
-import { hashPassword } from '../lib/password';
+import { hashPassword, verifyPassword } from '../lib/password';
+import { checkRateLimit, recordAttempt, clearAttempts } from '../lib/rateLimit';
 import { audit } from '../lib/audit';
 import { ehEscopoValido } from '../lib/escopo';
 import type { AppType } from '../index';
@@ -100,15 +101,32 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   return c.json(results[0]);
 });
 
-// Troca de senha do próprio admin logado (não precisa ser super)
+// Troca de senha do próprio admin logado (não precisa ser super). Exige a senha atual: um token
+// roubado/sessão aberta não basta para tomar a conta.
 admins.put('/me/senha', async (c) => {
   const id = c.get('adminId');
   if (!id) return c.json({ error: 'Sessão inválida' }, 401);
-  const { senha } = await c.req.json<{ senha: string }>();
-  if (!senha || senha.length < 8) return c.json({ error: 'Senha deve ter pelo menos 8 caracteres' }, 400);
+  const { senha, senha_atual } = await c.req.json<{ senha: string; senha_atual: string }>();
+  if (!senha_atual || typeof senha_atual !== 'string') return c.json({ error: 'Informe a senha atual' }, 400);
+  if (!senha || typeof senha !== 'string' || senha.length < 8) return c.json({ error: 'Senha deve ter pelo menos 8 caracteres' }, 400);
+
+  // Freia adivinhação da senha atual com um token na mão
+  const rlKey = `admin:${id}`;
+  const rl = await checkRateLimit(c, 'admin_troca_senha', rlKey, 5, 15);
+  if (!rl.ok) return c.json({ error: `Muitas tentativas. Tente de novo em ${rl.retry_after_min} minutos.` }, 429);
+
+  const atual = await c.env.DB.prepare('SELECT senha_hash FROM admins WHERE id = ?').bind(id).first<{ senha_hash: string }>();
+  if (!atual || !(await verifyPassword(senha_atual, atual.senha_hash))) {
+    await recordAttempt(c, 'admin_troca_senha', rlKey);
+    await audit(c, 'trocar_propria_senha_falha', 'admins', id, null, { motivo: 'senha_atual_incorreta' });
+    return c.json({ error: 'Senha atual incorreta' }, 403);
+  }
+  await clearAttempts(c, 'admin_troca_senha', rlKey);
 
   const hash = await hashPassword(senha);
   await c.env.DB.prepare('UPDATE admins SET senha_hash = ? WHERE id = ?').bind(hash, id).run();
+  // Nunca grava a senha (nem o hash) no log
+  await audit(c, 'trocar_propria_senha', 'admins', id, null, { senha_alterada: true });
   return c.json({ ok: true });
 });
 

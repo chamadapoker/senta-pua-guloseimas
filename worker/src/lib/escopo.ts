@@ -1,6 +1,7 @@
 import type { Context } from 'hono';
 import type { AppType } from '../index';
 import type { TipoCafe } from './cafe';
+import { auditarNegacaoEscopo } from './audit';
 
 // Admin com escopo: acesso restrito a uma parte do sistema (validado no servidor em toda requisição)
 
@@ -19,6 +20,8 @@ const PERMISSOES: Record<EscopoAdmin, [string, RegExp][]> = {
     ['GET', /^\/api\/comprovantes\/pendentes\/count$/],
     ['PUT', /^\/api\/comprovantes\/[^/]+\/aprovar$/],
     ['PUT', /^\/api\/comprovantes\/[^/]+\/rejeitar$/],
+    // Arquivo do comprovante: a rota ainda confere se o comprovante é do café da sala do escopo
+    ['GET', /^\/api\/comprovantes\/[^/]+\/imagem$/],
     ['PUT', /^\/api\/config$/],
     ['GET', /^\/api\/usuarios\/admin\/por-trigrama\/[^/]+$/],
   ],
@@ -46,7 +49,11 @@ export function garantirSalaPermitida(
 ): { ok: true; tipo: string | undefined } | { ok: false; resposta: Response } {
   const sala = salaDoEscopo(c);
   if (!sala) return { ok: true, tipo: tipo || undefined };
-  if (tipo && tipo !== sala) return { ok: false, resposta: c.json({ error: MSG_ESCOPO_NEGADO, escopo_negado: true }, 403) };
+  if (tipo && tipo !== sala) {
+    // Função síncrona: o registro de auditoria roda em segundo plano (com dedupe de 10 min)
+    try { c.executionCtx.waitUntil(auditarNegacaoEscopo(c)); } catch { /* sem executionCtx: não audita */ }
+    return { ok: false, resposta: c.json({ error: MSG_ESCOPO_NEGADO, escopo_negado: true }, 403) };
+  }
   return { ok: true, tipo: sala };
 }
 

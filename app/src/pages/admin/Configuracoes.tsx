@@ -121,6 +121,7 @@ const NOME_PADRAO_GRADUADOS = ESQUADRAO.salas_cafe.graduado;
 // Troca da própria senha (PUT /api/admins/me/senha). Fora do corpo das telas pelo mesmo motivo do foco.
 function TrocarMinhaSenha() {
   const { showToast } = useToast();
+  const [senhaAtual, setSenhaAtual] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -129,12 +130,13 @@ function TrocarMinhaSenha() {
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
+    if (!senhaAtual) { setErro('Informe a senha atual.'); return; }
     if (senha.length < 8) { setErro('A senha precisa ter pelo menos 8 caracteres.'); return; }
     if (senha !== confirmacao) { setErro('As duas senhas não são iguais.'); return; }
     setSalvando(true);
     try {
-      await api.put('/api/admins/me/senha', { senha });
-      setSenha(''); setConfirmacao('');
+      await api.put('/api/admins/me/senha', { senha_atual: senhaAtual, senha });
+      setSenhaAtual(''); setSenha(''); setConfirmacao('');
       showToast('Senha alterada', 'success');
     } catch (e: any) {
       setErro(e?.message || 'Erro ao trocar a senha');
@@ -147,6 +149,10 @@ function TrocarMinhaSenha() {
     <form onSubmit={salvar}>
       <Secao title="Trocar minha senha" descricao="Vale a partir do próximo login. Mínimo de 8 caracteres.">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Campo id="minha_senha_atual" label="Senha atual">
+            <input id="minha_senha_atual" type="password" autoComplete="current-password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)} className={inputClass} required />
+          </Campo>
+          <div className="hidden sm:block" aria-hidden="true" />
           <Campo id="minha_senha_nova" label="Nova senha">
             <input id="minha_senha_nova" type="password" autoComplete="new-password" minLength={8} value={senha} onChange={e => setSenha(e.target.value)} className={inputClass} required />
           </Campo>

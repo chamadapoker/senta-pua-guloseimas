@@ -260,7 +260,11 @@ loja.post('/pedidos', checkVisitanteSeLogado, async (c) => {
 // PUBLIC: get order status (for PIX polling)
 loja.get('/pedidos/:id', async (c) => {
   const id = c.req.param('id');
-  const pedido = await c.env.DB.prepare('SELECT * FROM loja_pedidos WHERE id = ?').bind(id).first();
+  // Rota pública (polling do PIX): só o necessário para a tela de pagamento. Nunca cliente_id,
+  // endereço, rastreamento ou outros dados pessoais.
+  const pedido = await c.env.DB.prepare(
+    'SELECT id, total, status, metodo_pagamento, parcelas, created_at, paid_at FROM loja_pedidos WHERE id = ?'
+  ).bind(id).first();
   if (!pedido) return c.json({ error: 'Pedido não encontrado' }, 404);
   return c.json(pedido);
 });
@@ -348,103 +352,97 @@ loja.get('/admin/produtos', authMiddleware, async (c) => {
 
 // ADMIN: create product
 loja.post('/admin/produtos', authMiddleware, async (c) => {
-  try {
-    const body = await c.req.json();
-    const { nome, descricao, preco, preco_custo, imagem_url, ordem, variacoes, imagens, categoria_id } = body;
-    if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
+  // Erros caem no onError global: 400 para JSON inválido, 500 genérico (detalhe só no log)
+  const body = await c.req.json();
+  const { nome, descricao, preco, preco_custo, imagem_url, ordem, variacoes, imagens, categoria_id } = body;
+  if (!nome || preco == null) return c.json({ error: 'Nome e preço obrigatórios' }, 400);
 
-    const { results } = await c.env.DB.prepare(
-      'INSERT INTO loja_produtos (nome, descricao, preco, preco_custo, imagem_url, ordem, disponivel, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
-    ).bind(nome, descricao || '', preco, preco_custo ?? null, imagem_url || null, ordem ?? 0, body.disponivel ?? 1, categoria_id || null).all();
+  const { results } = await c.env.DB.prepare(
+    'INSERT INTO loja_produtos (nome, descricao, preco, preco_custo, imagem_url, ordem, disponivel, categoria_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *'
+  ).bind(nome, descricao || '', preco, preco_custo ?? null, imagem_url || null, ordem ?? 0, body.disponivel ?? 1, categoria_id || null).all();
 
-    const produto = results[0] as any;
+  const produto = results[0] as any;
 
-    const batch = [];
+  const batch = [];
 
-    // Insert variations
-    if (variacoes?.length) {
-      for (const v of variacoes) {
-        const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
-        batch.push(c.env.DB.prepare(
-          'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
-        ).bind(produto.id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0));
-      }
+  // Insert variations
+  if (variacoes?.length) {
+    for (const v of variacoes) {
+      const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
+      batch.push(c.env.DB.prepare(
+        'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
+      ).bind(produto.id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0));
     }
-
-    // Insert images (max 3)
-    if (imagens?.length) {
-      for (let i = 0; i < Math.min(imagens.length, 3); i++) {
-        batch.push(c.env.DB.prepare(
-          'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
-        ).bind(produto.id, imagens[i].url, i));
-      }
-    }
-
-    if (batch.length) await c.env.DB.batch(batch);
-
-    return c.json(produto, 201);
-  } catch (err: any) {
-    return c.json({ error: 'Erro interno: ' + (err?.message || String(err)) }, 500);
   }
+
+  // Insert images (max 3)
+  if (imagens?.length) {
+    for (let i = 0; i < Math.min(imagens.length, 3); i++) {
+      batch.push(c.env.DB.prepare(
+        'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
+      ).bind(produto.id, imagens[i].url, i));
+    }
+  }
+
+  if (batch.length) await c.env.DB.batch(batch);
+
+  return c.json(produto, 201);
 });
 
 // ADMIN: update product
 loja.put('/admin/produtos/:id', authMiddleware, async (c) => {
-  try {
-    const id = c.req.param('id');
-    const body = await c.req.json();
+  // Erros caem no onError global: 400 para JSON inválido, 500 genérico (detalhe só no log)
+  const id = c.req.param('id');
+  const body = await c.req.json();
 
-    const fields: string[] = [];
-    const values: unknown[] = [];
+  const fields: string[] = [];
+  const values: unknown[] = [];
 
-    if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
-    if ('descricao' in body) { fields.push('descricao = ?'); values.push(body.descricao); }
-    if ('preco' in body) { fields.push('preco = ?'); values.push(body.preco); }
-    if ('preco_custo' in body) { fields.push('preco_custo = ?'); values.push(body.preco_custo); }
-    if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
-    if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
-    if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
-    if ('categoria_id' in body) { fields.push('categoria_id = ?'); values.push(body.categoria_id || null); }
+  if ('nome' in body) { fields.push('nome = ?'); values.push(body.nome); }
+  if ('descricao' in body) { fields.push('descricao = ?'); values.push(body.descricao); }
+  if ('preco' in body) { fields.push('preco = ?'); values.push(body.preco); }
+  if ('preco_custo' in body) { fields.push('preco_custo = ?'); values.push(body.preco_custo); }
+  if ('imagem_url' in body) { fields.push('imagem_url = ?'); values.push(body.imagem_url); }
+  if ('disponivel' in body) { fields.push('disponivel = ?'); values.push(body.disponivel); }
+  if ('ordem' in body) { fields.push('ordem = ?'); values.push(body.ordem); }
+  if ('categoria_id' in body) { fields.push('categoria_id = ?'); values.push(body.categoria_id || null); }
 
-    if (fields.length) {
-      values.push(id);
-      await c.env.DB.prepare(
-        `UPDATE loja_produtos SET ${fields.join(', ')} WHERE id = ?`
-      ).bind(...values).run();
-    }
-
-    // Update variations if provided
-    if (Array.isArray(body.variacoes)) {
-      await c.env.DB.prepare('DELETE FROM loja_variacoes WHERE produto_id = ?').bind(id).run();
-      if (body.variacoes.length) {
-        const batch = body.variacoes.map((v: any) => {
-          const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
-          return c.env.DB.prepare(
-            'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
-          ).bind(id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0);
-        });
-        await c.env.DB.batch(batch);
-      }
-    }
-
-    // Update images if provided
-    if (Array.isArray(body.imagens)) {
-      await c.env.DB.prepare('DELETE FROM loja_produto_imagens WHERE produto_id = ?').bind(id).run();
-      if (body.imagens.length) {
-        const batch = body.imagens.slice(0, 3).map((img: any, i: number) =>
-          c.env.DB.prepare(
-            'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
-          ).bind(id, img.url, i)
-        );
-        await c.env.DB.batch(batch);
-      }
-    }
-
-    const produto = await c.env.DB.prepare('SELECT * FROM loja_produtos WHERE id = ?').bind(id).first();
-    return c.json(produto);
-  } catch (err: any) {
-    return c.json({ error: 'Erro interno: ' + (err?.message || String(err)) }, 500);
+  if (fields.length) {
+    values.push(id);
+    await c.env.DB.prepare(
+      `UPDATE loja_produtos SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
   }
+
+  // Update variations if provided
+  if (Array.isArray(body.variacoes)) {
+    await c.env.DB.prepare('DELETE FROM loja_variacoes WHERE produto_id = ?').bind(id).run();
+    if (body.variacoes.length) {
+      const batch = body.variacoes.map((v: any) => {
+        const vNome = v.nome || [v.tamanho, v.cor].filter(Boolean).join(' - ') || 'Variação';
+        return c.env.DB.prepare(
+          'INSERT INTO loja_variacoes (produto_id, nome, tamanho, cor, estoque) VALUES (?, ?, ?, ?, ?)'
+        ).bind(id, vNome, v.tamanho || null, v.cor || null, parseInt(v.estoque) || 0);
+      });
+      await c.env.DB.batch(batch);
+    }
+  }
+
+  // Update images if provided
+  if (Array.isArray(body.imagens)) {
+    await c.env.DB.prepare('DELETE FROM loja_produto_imagens WHERE produto_id = ?').bind(id).run();
+    if (body.imagens.length) {
+      const batch = body.imagens.slice(0, 3).map((img: any, i: number) =>
+        c.env.DB.prepare(
+          'INSERT INTO loja_produto_imagens (produto_id, url, ordem) VALUES (?, ?, ?)'
+        ).bind(id, img.url, i)
+      );
+      await c.env.DB.batch(batch);
+    }
+  }
+
+  const produto = await c.env.DB.prepare('SELECT * FROM loja_produtos WHERE id = ?').bind(id).first();
+  return c.json(produto);
 });
 
 // ADMIN: delete product
