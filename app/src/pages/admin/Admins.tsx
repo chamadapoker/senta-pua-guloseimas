@@ -11,7 +11,7 @@ import { Loading } from '../../components/ui/Loading';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Icon } from '../../components/ui/Icon';
 import { api } from '../../services/api';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, type EscopoAdmin } from '../../hooks/useAuth';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
 
@@ -21,6 +21,7 @@ interface Admin {
   nome: string;
   role: 'super_admin' | 'admin';
   ativo: number;
+  escopo?: EscopoAdmin;
   created_at: string;
   last_login: string | null;
 }
@@ -46,6 +47,8 @@ export function Admins() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [role, setRole] = useState<'admin' | 'super_admin'>('admin');
+  // Acesso: null = total; 'cafe_graduado' = só o café dos graduados (sempre admin comum)
+  const [escopo, setEscopo] = useState<EscopoAdmin>(null);
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -64,13 +67,13 @@ export function Admins() {
 
   const abrirCriar = () => {
     setEditando(null);
-    setNome(''); setEmail(''); setSenha(''); setRole('admin'); setErro('');
+    setNome(''); setEmail(''); setSenha(''); setRole('admin'); setEscopo(null); setErro('');
     setModalAberto(true);
   };
 
   const abrirEditar = (a: Admin) => {
     setEditando(a);
-    setNome(a.nome); setEmail(a.email); setSenha(''); setRole(a.role); setErro('');
+    setNome(a.nome); setEmail(a.email); setSenha(''); setRole(a.role); setEscopo(a.escopo === 'cafe_graduado' ? 'cafe_graduado' : null); setErro('');
     setModalAberto(true);
   };
 
@@ -78,14 +81,16 @@ export function Admins() {
     e.preventDefault();
     setErro('');
     setLoading(true);
+    // Acesso restrito ao café é sempre admin comum
+    const roleFinal = escopo ? 'admin' : role;
     try {
       if (editando) {
-        const body: Record<string, unknown> = { nome, role };
+        const body: Record<string, unknown> = { nome, role: roleFinal, escopo };
         if (senha) body.senha = senha;
         await api.put(`/api/admins/${editando.id}`, body);
       } else {
         if (!senha) { setErro('Informe uma senha'); return; }
-        await api.post('/api/admins', { nome, email, senha, role });
+        await api.post('/api/admins', { nome, email, senha, role: roleFinal, escopo });
       }
       setModalAberto(false);
       showToast(editando ? 'Administrador atualizado' : 'Administrador criado', 'success');
@@ -141,6 +146,7 @@ export function Admins() {
       <Badge variant={a.role === 'super_admin' ? 'success' : 'neutral'}>
         {a.role === 'super_admin' ? 'Super admin' : 'Admin'}
       </Badge>
+      {a.escopo === 'cafe_graduado' && <Badge variant="warning">Só café dos graduados</Badge>}
       {!a.ativo && <Badge variant="danger">Inativo</Badge>}
     </span>
   );
@@ -150,7 +156,7 @@ export function Admins() {
       <BackButton to="/admin" className="mb-3" />
       <PageHeader
         title="Administradores"
-        subtitle="Quem tem acesso ao painel e com qual papel."
+        subtitle="Quem tem acesso ao painel, com qual papel e com qual acesso."
         right={isSuperAdmin && <Button size="sm" onClick={abrirCriar}><Icon name="plus" size={16} /> Novo administrador</Button>}
       />
 
@@ -243,12 +249,34 @@ export function Admins() {
           <Field label={editando ? 'Nova senha' : 'Senha'} hint={editando ? 'Deixe em branco para manter a senha atual. Mínimo de 8 caracteres.' : 'Mínimo de 8 caracteres.'}>
             <input aria-label={editando ? 'Nova senha' : 'Senha'} type="password" autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} minLength={8} className={inputClass} />
           </Field>
-          <Field label="Papel">
-            <select aria-label="Papel" value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className={inputClass}>
-              <option value="admin">Admin (uso normal)</option>
-              <option value="super_admin">Super admin (gerencia outros admins)</option>
+          <Field
+            label="Acesso"
+            hint={escopo === 'cafe_graduado'
+              ? 'Vê e usa só o café da sala dos graduados (assinantes, mensalidades, despesas, insumos, comprovantes e configurações do café).'
+              : 'Vê e usa todo o painel.'}
+          >
+            <select
+              aria-label="Acesso"
+              value={escopo ?? 'total'}
+              onChange={e => {
+                const novo: EscopoAdmin = e.target.value === 'cafe_graduado' ? 'cafe_graduado' : null;
+                setEscopo(novo);
+                if (novo) setRole('admin');
+              }}
+              className={inputClass}
+            >
+              <option value="total">Acesso total</option>
+              <option value="cafe_graduado">Só o café dos graduados</option>
             </select>
           </Field>
+          {!escopo && (
+            <Field label="Papel">
+              <select aria-label="Papel" value={role} onChange={e => setRole(e.target.value as 'admin' | 'super_admin')} className={inputClass}>
+                <option value="admin">Admin (uso normal)</option>
+                <option value="super_admin">Super admin (gerencia outros admins)</option>
+              </select>
+            </Field>
+          )}
           {erro && <p className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2" role="alert">{erro}</p>}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Button variant="ghost" onClick={fecharModal}>Cancelar</Button>

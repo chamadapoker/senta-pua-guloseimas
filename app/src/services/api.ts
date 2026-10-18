@@ -54,6 +54,21 @@ function handleUserUnauthorized() {
   window.location.replace('/login');
 }
 
+/** Evento disparado quando o backend recusa algo por escopo do admin (403 escopo_negado). */
+export const EVENTO_ESCOPO_NEGADO = 'admin:escopo-negado';
+let ultimoAvisoEscopo = 0;
+
+function avisarEscopoNegado() {
+  if (typeof window === 'undefined') return;
+  // Várias requisições recusadas juntas viram um aviso só
+  const agora = Date.now();
+  if (agora - ultimoAvisoEscopo < 3000) return;
+  ultimoAvisoEscopo = agora;
+  window.dispatchEvent(new CustomEvent(EVENTO_ESCOPO_NEGADO, {
+    detail: 'Essa parte não está liberada para você: seu acesso é só ao café dos graduados.',
+  }));
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     ...((options?.headers as Record<string, string>) || {}),
@@ -74,7 +89,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: 'Erro desconhecido' })) as { error?: string; acesso_bloqueado?: boolean };
+    const body = await res.json().catch(() => ({ error: 'Erro desconhecido' })) as { error?: string; acesso_bloqueado?: boolean; escopo_negado?: boolean };
+    // Admin com acesso restrito (ex.: só o café dos graduados) tentou algo fora do escopo:
+    // avisa (toast via evento) e segue sem deslogar. A tela trata o erro normalmente.
+    const escopoNegado = res.status === 403 && !!body.escopo_negado;
+    if (escopoNegado) avisarEscopoNegado();
     if (res.status === 403 && body.acesso_bloqueado) {
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/acesso-expirado')) {
         window.location.href = '/acesso-expirado';
@@ -99,6 +118,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     }
     const error: any = new Error(body.error || `HTTP ${res.status}`);
     error.status = res.status;
+    if (escopoNegado) error.escopoNegado = true;
     throw error;
   }
 

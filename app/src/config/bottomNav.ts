@@ -104,11 +104,23 @@ const ADMIN_SECTIONS: BottomSection[] = [
   },
 ];
 
+// ---- Admin só do café dos graduados ----
+// Máx. 4 + Menu. Despesas, Insumos e Configurações do café ficam no Menu.
+const ADMIN_CAFE_GRADUADO: BottomItem[] = [
+  { to: '/admin/cafe?sala=graduado', label: 'Painel', icon: 'chart' },
+  { to: '/admin/cafe/mensalidades?sala=graduado', label: 'Mensal.', icon: 'cash' },
+  { to: '/admin/cafe/assinantes?sala=graduado', label: 'Assinantes', icon: 'users' },
+  { to: '/admin/comprovantes', label: 'Comprov.', icon: 'paper-clip' },
+];
+
 export function itensBottomNav(
   pathname: string,
-  opts: { isAdmin: boolean; isUser: boolean }
+  opts: { isAdmin: boolean; isUser: boolean; restritoCafe?: boolean; carregandoAdmin?: boolean }
 ): BottomItem[] {
   if (opts.isAdmin) {
+    // Enquanto não sabemos o escopo do admin, só o botão "Menu"
+    if (opts.carregandoAdmin) return [];
+    if (opts.restritoCafe) return ADMIN_CAFE_GRADUADO;
     const sec = ADMIN_SECTIONS.find((s) => s.match(pathname));
     return sec ? sec.items : ADMIN_CANTINA;
   }

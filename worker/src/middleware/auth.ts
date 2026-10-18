@@ -1,6 +1,7 @@
 import { Context, Next } from 'hono';
 import { verify } from '../lib/jwt';
 import type { AppType } from '../index';
+import { rotaPermitidaNoEscopo, MSG_ESCOPO_NEGADO } from '../lib/escopo';
 
 export async function authMiddleware(c: Context<AppType>, next: Next) {
   const header = c.req.header('Authorization');
@@ -17,8 +18,8 @@ export async function authMiddleware(c: Context<AppType>, next: Next) {
 
   // Confere no banco a cada requisição: admin desativado ou rebaixado perde o acesso na hora
   const admin = await c.env.DB.prepare(
-    'SELECT id, email, role FROM admins WHERE id = ? AND ativo = 1'
-  ).bind(payload.id as string).first<{ id: string; email: string; role: string }>();
+    'SELECT id, email, role, escopo FROM admins WHERE id = ? AND ativo = 1'
+  ).bind(payload.id as string).first<{ id: string; email: string; role: string; escopo: string | null }>();
   if (!admin) {
     return c.json({ error: 'Token inválido ou expirado' }, 401);
   }
@@ -26,6 +27,12 @@ export async function authMiddleware(c: Context<AppType>, next: Next) {
   c.set('adminEmail', admin.email);
   c.set('adminRole', admin.role);
   c.set('adminId', admin.id);
+  c.set('adminEscopo', admin.escopo ?? null);
+
+  // Admin com escopo: só passa o que está na lista de permissão (vale em todas as rotas protegidas)
+  if (admin.escopo && !rotaPermitidaNoEscopo(admin.escopo, c.req.method, c.req.path)) {
+    return c.json({ error: MSG_ESCOPO_NEGADO, escopo_negado: true }, 403);
+  }
   await next();
 }
 

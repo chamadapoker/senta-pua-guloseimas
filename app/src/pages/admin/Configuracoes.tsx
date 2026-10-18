@@ -10,6 +10,7 @@ import { api } from '../../services/api';
 import { clearConfigCache } from '../../services/config';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useToast } from '../../hooks/useToast';
+import { useAcessoAdmin, HOME_CAFE_GRADUADO } from '../../hooks/useAuth';
 
 type Aba = 'nomes' | 'pix' | 'valores' | 'loja';
 
@@ -102,7 +103,177 @@ function BlocoPix({ prefixo, titulo, descricao, comCidade, v, set }: {
   );
 }
 
+// ---------- Responsável só pelo café dos graduados ----------
+
+// Únicas chaves que esse admin pode gravar (o backend recusa qualquer outra)
+const CHAVES_CAFE_GRADUADO = [
+  'nome_cafe_graduados',
+  'pix_cafe_graduado_chave',
+  'pix_cafe_graduado_nome',
+  'pix_cafe_graduado_whatsapp',
+  'cafe_valor_graduado_mensal',
+  'cafe_valor_graduado_anual',
+] as const;
+
+const NOME_PADRAO_GRADUADOS = 'Sala dos graduados';
+
+// Troca da própria senha (PUT /api/admins/me/senha). Fora do corpo das telas pelo mesmo motivo do foco.
+function TrocarMinhaSenha() {
+  const { showToast } = useToast();
+  const [senha, setSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro('');
+    if (senha.length < 8) { setErro('A senha precisa ter pelo menos 8 caracteres.'); return; }
+    if (senha !== confirmacao) { setErro('As duas senhas não são iguais.'); return; }
+    setSalvando(true);
+    try {
+      await api.put('/api/admins/me/senha', { senha });
+      setSenha(''); setConfirmacao('');
+      showToast('Senha alterada', 'success');
+    } catch (e: any) {
+      setErro(e?.message || 'Erro ao trocar a senha');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <form onSubmit={salvar}>
+      <Secao title="Trocar minha senha" descricao="Vale a partir do próximo login. Mínimo de 8 caracteres.">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Campo id="minha_senha_nova" label="Nova senha">
+            <input id="minha_senha_nova" type="password" autoComplete="new-password" minLength={8} value={senha} onChange={e => setSenha(e.target.value)} className={inputClass} required />
+          </Campo>
+          <Campo id="minha_senha_confirma" label="Repita a nova senha">
+            <input id="minha_senha_confirma" type="password" autoComplete="new-password" minLength={8} value={confirmacao} onChange={e => setConfirmacao(e.target.value)} className={inputClass} required />
+          </Campo>
+        </div>
+        {erro && <p role="alert" className="text-vermelho text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{erro}</p>}
+        <Button type="submit" variant="ghost" disabled={salvando}>
+          <Icon name="check" size={16} /> {salvando ? 'Salvando...' : 'Trocar senha'}
+        </Button>
+      </Secao>
+    </form>
+  );
+}
+
+function ConfiguracoesCafeGraduados() {
+  const [config, setConfig] = useState<Record<string, string>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarga, setErroCarga] = useState('');
+  const [tentativa, setTentativa] = useState(0);
+  const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    setCarregando(true);
+    setErroCarga('');
+    api.get<Record<string, string>>('/api/config')
+      .then(setConfig)
+      .catch((e: any) => {
+        const msg = e?.message || 'Erro ao carregar configurações';
+        setErroCarga(msg);
+        showToast(msg, 'error');
+      })
+      .finally(() => setCarregando(false));
+  }, [showToast, tentativa]);
+
+  const v = (key: string, fallback = '') => config[key] || fallback;
+  const set = (key: string, valor: string) => setConfig(prev => ({ ...prev, [key]: valor }));
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSalvando(true);
+    setSalvo(false);
+    // Envia SOMENTE as chaves do café dos graduados (as que já existem ou foram preenchidas)
+    const body: Record<string, string> = {};
+    for (const k of CHAVES_CAFE_GRADUADO) {
+      if (k in config) body[k] = config[k];
+    }
+    body.nome_cafe_graduados = v('nome_cafe_graduados', NOME_PADRAO_GRADUADOS);
+    try {
+      await api.put('/api/config', body);
+      clearConfigCache();
+      setSalvo(true);
+      showToast('Configurações do café salvas', 'success');
+      setTimeout(() => setSalvo(false), 3000);
+    } catch (e: any) {
+      showToast(e?.message || 'Erro ao salvar configurações', 'error');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <AppLayout>
+      <BackButton to={HOME_CAFE_GRADUADO} className="mb-3" />
+      <PageHeader title="Configurações do café dos graduados" subtitle="Nome da sala, chave PIX e valores padrão das mensalidades." />
+
+      {carregando ? (
+        <Loading label="Carregando configurações..." />
+      ) : erroCarga ? (
+        <div role="alert" className="bg-white border border-borda rounded-2xl p-6 text-center max-w-2xl">
+          <p className="font-medium text-texto">Não foi possível carregar as configurações.</p>
+          <p className="text-sm text-texto-fraco mt-1">{erroCarga}</p>
+          <Button variant="ghost" size="sm" className="mt-4" onClick={() => setTentativa(t => t + 1)}>
+            <Icon name="refresh" size={16} /> Tentar de novo
+          </Button>
+        </div>
+      ) : (
+        <div className="max-w-3xl space-y-4">
+          <form onSubmit={salvar} className="space-y-4">
+            <Secao title="Nome da sala" descricao="Como a sala aparece no app e no menu.">
+              <Campo id="nome_cafe_graduados" label="Nome da sala dos graduados">
+                <input id="nome_cafe_graduados" value={v('nome_cafe_graduados', NOME_PADRAO_GRADUADOS)} onChange={e => set('nome_cafe_graduados', e.target.value)} className={inputClass} required />
+              </Campo>
+            </Secao>
+
+            <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-200 text-azul rounded-2xl px-4 py-3 text-sm">
+              <Icon name="info" size={18} className="mt-0.5 shrink-0" />
+              <p>O nome do recebedor vai dentro do código PIX: escreva sem acento e com no máximo 25 letras, senão alguns bancos recusam o pagamento.</p>
+            </div>
+            <BlocoPix prefixo="pix_cafe_graduado" titulo="PIX do café" descricao="Recebe as mensalidades do café dos graduados." v={v} set={set} />
+
+            <Secao title="Valores padrão" descricao="Valor usado ao cadastrar um assinante sem informar o valor. O anual vale 12 meses a partir da adesão.">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Campo id="cafe_valor_graduado_mensal" label="Mensal (R$)">
+                  <input id="cafe_valor_graduado_mensal" type="number" inputMode="decimal" step="0.01" min="0" value={v('cafe_valor_graduado_mensal')} onChange={e => set('cafe_valor_graduado_mensal', e.target.value)} className={inputClass} placeholder="0,00" />
+                </Campo>
+                <Campo id="cafe_valor_graduado_anual" label="Anual (R$)">
+                  <input id="cafe_valor_graduado_anual" type="number" inputMode="decimal" step="0.01" min="0" value={v('cafe_valor_graduado_anual')} onChange={e => set('cafe_valor_graduado_anual', e.target.value)} className={inputClass} placeholder="0,00" />
+                </Campo>
+              </div>
+            </Secao>
+
+            <div className="sticky bottom-[84px] lg:bottom-3 z-10 bg-white border border-borda rounded-2xl p-3 flex flex-wrap items-center gap-x-3 gap-y-2 shadow-sm">
+              <Button type="submit" disabled={salvando} className="flex-1 sm:flex-none">
+                <Icon name="check" size={16} /> {salvando ? 'Salvando...' : 'Salvar configurações do café'}
+              </Button>
+              {salvo && <span role="status" className="text-verde-escuro text-sm font-medium flex items-center gap-1"><Icon name="check" size={16} /> Salvo</span>}
+            </div>
+          </form>
+
+          <TrocarMinhaSenha />
+        </div>
+      )}
+    </AppLayout>
+  );
+}
+
+// ---------- Tela escolhida conforme o acesso do admin ----------
+
 export function Configuracoes() {
+  const { acessoRestritoCafe } = useAcessoAdmin();
+  return acessoRestritoCafe ? <ConfiguracoesCafeGraduados /> : <ConfiguracoesCompletas />;
+}
+
+function ConfiguracoesCompletas() {
   const location = useLocation();
   const navigate = useNavigate();
   const [config, setConfig] = useState<Record<string, string>>({});

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware, superAdminMiddleware } from '../middleware/auth';
 import { hashPassword } from '../lib/password';
 import { audit } from '../lib/audit';
+import { ehEscopoValido } from '../lib/escopo';
 import type { AppType } from '../index';
 
 const admins = new Hono<AppType>();
@@ -11,15 +12,18 @@ admins.use('*', authMiddleware);
 // Qualquer admin vê a lista (sem hash)
 admins.get('/', async (c) => {
   const { results } = await c.env.DB.prepare(
-    'SELECT id, email, nome, role, ativo, created_at, last_login FROM admins ORDER BY created_at ASC'
+    'SELECT id, email, nome, role, ativo, escopo, created_at, last_login FROM admins ORDER BY created_at ASC'
   ).all();
   return c.json(results);
 });
 
 // Apenas super_admin cria
 admins.post('/', superAdminMiddleware, async (c) => {
-  const { email, senha, nome, role } = await c.req.json<{ email: string; senha: string; nome: string; role?: string }>();
+  const { email, senha, nome, role, escopo } = await c.req.json<{ email: string; senha: string; nome: string; role?: string; escopo?: string | null }>();
   if (!email || !senha || !nome) return c.json({ error: 'Email, senha e nome são obrigatórios' }, 400);
+  // escopo: null/ausente = acesso total; senão tem de ser um escopo conhecido
+  if (escopo != null && !ehEscopoValido(escopo)) return c.json({ error: 'Escopo inválido' }, 400);
+  const finalEscopo = escopo ?? null;
   if (senha.length < 8) return c.json({ error: 'Senha deve ter pelo menos 8 caracteres' }, 400);
 
   const existing = await c.env.DB.prepare('SELECT id FROM admins WHERE email = ? COLLATE NOCASE').bind(email).first();
@@ -27,30 +31,37 @@ admins.post('/', superAdminMiddleware, async (c) => {
 
   const createdBy = c.get('adminId');
   const hash = await hashPassword(senha);
-  const finalRole = role === 'super_admin' ? 'super_admin' : 'admin';
+  // Admin com escopo nunca é super admin
+  const finalRole = role === 'super_admin' && !finalEscopo ? 'super_admin' : 'admin';
 
   const { results } = await c.env.DB.prepare(
-    'INSERT INTO admins (email, senha_hash, nome, role, created_by) VALUES (?, ?, ?, ?, ?) RETURNING id, email, nome, role, ativo, created_at'
-  ).bind(email.toLowerCase(), hash, nome, finalRole, createdBy || null).all();
+    'INSERT INTO admins (email, senha_hash, nome, role, escopo, created_by) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, email, nome, role, ativo, escopo, created_at'
+  ).bind(email.toLowerCase(), hash, nome, finalRole, finalEscopo, createdBy || null).all();
 
-  await audit(c, 'criar_admin', 'admins', (results[0] as { id: string }).id, null, { email, nome, role: finalRole });
+  await audit(c, 'criar_admin', 'admins', (results[0] as { id: string }).id, null, { email, nome, role: finalRole, escopo: finalEscopo });
   return c.json(results[0], 201);
 });
 
-// Atualizar (nome, role, ativo, senha) — super_admin only
+// Atualizar (nome, role, ativo, senha, escopo) — super_admin only
 admins.put('/:id', superAdminMiddleware, async (c) => {
   const id = c.req.param('id');
-  const body = await c.req.json<{ nome?: string; role?: string; ativo?: boolean; senha?: string }>();
+  const body = await c.req.json<{ nome?: string; role?: string; ativo?: boolean; senha?: string; escopo?: string | null }>();
 
-  const alvo = await c.env.DB.prepare('SELECT email, nome, role, ativo FROM admins WHERE id = ?').bind(id).first<{ email: string; nome: string; role: string; ativo: number }>();
+  const alvo = await c.env.DB.prepare('SELECT email, nome, role, ativo, escopo FROM admins WHERE id = ?').bind(id).first<{ email: string; nome: string; role: string; ativo: number; escopo: string | null }>();
   if (!alvo) return c.json({ error: 'Admin não encontrado' }, 404);
 
-  const vaiDesativar = body.ativo === false;
-  const vaiRebaixar = !!body.role && body.role !== 'super_admin';
+  const mexeEscopo = 'escopo' in body;
+  if (mexeEscopo && body.escopo != null && !ehEscopoValido(body.escopo)) return c.json({ error: 'Escopo inválido' }, 400);
+  const escopoFinal = mexeEscopo ? (body.escopo ?? null) : alvo.escopo;
+  // Admin com escopo tem role forçado a 'admin'
+  const roleFinal = escopoFinal ? 'admin' : body.role ? (body.role === 'super_admin' ? 'super_admin' : 'admin') : alvo.role;
 
-  // Não pode rebaixar/desativar a si mesmo (evita auto-lockout)
-  if (id === c.get('adminId') && (vaiDesativar || vaiRebaixar)) {
-    return c.json({ error: 'Você não pode rebaixar ou desativar a si mesmo' }, 400);
+  const vaiDesativar = body.ativo === false;
+  const vaiRebaixar = (!!body.role && body.role !== 'super_admin') || (alvo.role === 'super_admin' && roleFinal !== 'super_admin');
+
+  // Não pode rebaixar/desativar a si mesmo nem se dar escopo (evita auto-lockout)
+  if (id === c.get('adminId') && (vaiDesativar || vaiRebaixar || !!escopoFinal)) {
+    return c.json({ error: 'Você não pode rebaixar, desativar ou restringir a si mesmo' }, 400);
   }
 
   // Não pode remover o último super_admin ativo
@@ -67,7 +78,8 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   const values: unknown[] = [];
 
   if (body.nome) { fields.push('nome = ?'); values.push(body.nome); }
-  if (body.role) { fields.push('role = ?'); values.push(body.role === 'super_admin' ? 'super_admin' : 'admin'); }
+  if (body.role || roleFinal !== alvo.role) { fields.push('role = ?'); values.push(roleFinal); }
+  if (mexeEscopo) { fields.push('escopo = ?'); values.push(escopoFinal); }
   if (typeof body.ativo === 'boolean') { fields.push('ativo = ?'); values.push(body.ativo ? 1 : 0); }
   if (body.senha) {
     if (body.senha.length < 8) return c.json({ error: 'Senha deve ter pelo menos 8 caracteres' }, 400);
@@ -79,7 +91,7 @@ admins.put('/:id', superAdminMiddleware, async (c) => {
   values.push(id);
 
   const { results } = await c.env.DB.prepare(
-    `UPDATE admins SET ${fields.join(', ')} WHERE id = ? RETURNING id, email, nome, role, ativo`
+    `UPDATE admins SET ${fields.join(', ')} WHERE id = ? RETURNING id, email, nome, role, ativo, escopo`
   ).bind(...values).all();
 
   if (!results.length) return c.json({ error: 'Admin não encontrado' }, 404);

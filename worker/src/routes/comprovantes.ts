@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { userAuthMiddleware } from '../middleware/userAuth';
 import { audit } from '../lib/audit';
 import { pagarPedidoLoja, pagarParcelaLoja } from '../lib/loja';
+import { filtroComprovantesEscopo } from '../lib/escopo';
 import type { AppType } from '../index';
 
 const comprovantes = new Hono<AppType>();
@@ -67,6 +68,15 @@ async function validarDono(c: Context<AppType>, origem: Origem, refId: string, t
     return { ok: true, valor: p.valor, cliente_id: null };
   }
   return { ok: false, error: 'Origem inválida' };
+}
+
+// Comprovante visível ao admin? Sem escopo sempre; com escopo só os do café da sala dele
+async function comprovanteNoEscopo(c: Context<AppType>, id: string | undefined): Promise<boolean> {
+  const esc = filtroComprovantesEscopo(c);
+  if (!esc) return true;
+  if (!id) return false;
+  const row = await c.env.DB.prepare(`SELECT id FROM comprovantes WHERE id = ? AND ${esc.sql}`).bind(id, ...esc.params).first();
+  return !!row;
 }
 
 // USER: envia comprovante
@@ -147,6 +157,9 @@ comprovantes.get('/', authMiddleware, async (c) => {
   const params: unknown[] = [status];
   if (origem) { conds.push('origem = ?'); params.push(origem); }
   if (q)      { conds.push('trigrama LIKE ? COLLATE NOCASE'); params.push(`%${q}%`); }
+  // Escopo: só comprovantes do café da sala do escopo
+  const esc = filtroComprovantesEscopo(c);
+  if (esc) { conds.push(esc.sql); params.push(...esc.params); }
 
   const where = conds.join(' AND ');
   const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM comprovantes WHERE ${where}`).bind(...params).first<{ total: number }>();
@@ -166,7 +179,7 @@ comprovantes.put('/:id/aprovar', authMiddleware, async (c) => {
   const comp = await c.env.DB.prepare(
     "SELECT origem, referencia_id, status FROM comprovantes WHERE id = ?"
   ).bind(id).first<{ origem: Origem; referencia_id: string; status: string }>();
-  if (!comp) return c.json({ error: 'Comprovante não encontrado' }, 404);
+  if (!comp || !(await comprovanteNoEscopo(c, id))) return c.json({ error: 'Comprovante não encontrado' }, 404);
   if (comp.status !== 'aguardando') return c.json({ error: 'Comprovante já foi processado' }, 400);
 
   // Marca o item de origem como pago
@@ -211,6 +224,7 @@ comprovantes.put('/:id/rejeitar', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const reviewer = c.get('adminEmail');
   const { motivo } = await c.req.json<{ motivo?: string }>();
+  if (!(await comprovanteNoEscopo(c, id))) return c.json({ error: 'Comprovante não encontrado ou já processado' }, 404);
 
   const { results } = await c.env.DB.prepare(
     "UPDATE comprovantes SET status = 'rejeitado', motivo_rejeicao = ?, reviewed_by = ?, reviewed_at = datetime('now') WHERE id = ? AND status = 'aguardando' RETURNING *"
@@ -237,7 +251,10 @@ comprovantes.put('/:id/rejeitar', authMiddleware, async (c) => {
 
 // ADMIN: contador de pendentes (para badge)
 comprovantes.get('/pendentes/count', authMiddleware, async (c) => {
-  const row = await c.env.DB.prepare("SELECT COUNT(*) as total FROM comprovantes WHERE status = 'aguardando'").first<{ total: number }>();
+  const esc = filtroComprovantesEscopo(c);
+  const row = esc
+    ? await c.env.DB.prepare(`SELECT COUNT(*) as total FROM comprovantes WHERE status = 'aguardando' AND ${esc.sql}`).bind(...esc.params).first<{ total: number }>()
+    : await c.env.DB.prepare("SELECT COUNT(*) as total FROM comprovantes WHERE status = 'aguardando'").first<{ total: number }>();
   return c.json({ total: row?.total || 0 });
 });
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getConfig } from '../../../services/config';
 import { Icon } from '../../../components/ui/Icon';
+import { useAcessoAdmin } from '../../../hooks/useAuth';
 import type { SalaCafeTipo, PlanoCafe } from '../../../types';
 
 // ---------- Utilitários puros (usados também nas telas do militar) ----------
@@ -84,8 +85,10 @@ function lerLocal(): SalaCafeTipo {
 /** Sala do café em uso nas telas do admin. Lê ?sala= da URL; sem ela, a última usada. */
 export function useSalaCafe(): [SalaCafeTipo, (s: SalaCafeTipo) => void] {
   const [params, setParams] = useSearchParams();
+  const { acessoRestritoCafe } = useAcessoAdmin();
   const p = params.get('sala');
-  const sala: SalaCafeTipo = p === 'oficial' || p === 'graduado' ? p : lerLocal();
+  // Responsável só pelo café dos graduados: sempre a sala dos graduados (corrige ?sala=oficial)
+  const sala: SalaCafeTipo = acessoRestritoCafe ? 'graduado' : p === 'oficial' || p === 'graduado' ? p : lerLocal();
 
   useEffect(() => {
     try { localStorage.setItem(CHAVE_LOCAL, sala); } catch { /* sem storage */ }
@@ -95,8 +98,9 @@ export function useSalaCafe(): [SalaCafeTipo, (s: SalaCafeTipo) => void] {
   }, [sala, p, setParams]);
 
   const trocar = useCallback((s: SalaCafeTipo) => {
+    if (acessoRestritoCafe && s !== 'graduado') return;
     setParams(prev => { const n = new URLSearchParams(prev); n.set('sala', s); return n; }, { replace: true });
-  }, [setParams]);
+  }, [setParams, acessoRestritoCafe]);
 
   return [sala, trocar];
 }
@@ -125,6 +129,18 @@ export function SeletorSalaCafe({ sala, onChange, config }: {
   sala: SalaCafeTipo; onChange: (s: SalaCafeTipo) => void; config: Record<string, string>;
 }) {
   const nomeAtual = nomeSalaCafe(config, sala);
+  const { acessoRestritoCafe } = useAcessoAdmin();
+  // Responsável só pelo café dos graduados: sem seletor, apenas a faixa da sala dele
+  if (acessoRestritoCafe) {
+    return (
+      <div className="mb-5">
+        <div className={`max-w-xl rounded-xl px-3 py-2 text-sm font-medium flex items-center gap-2 ${ESTILO_SALA.graduado.faixa}`} role="status">
+          <Icon name="coffee" size={16} />
+          <span className="truncate">Café · {nomeSalaCafe(config, 'graduado')}</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="mb-5">
       <div role="radiogroup" aria-label="Sala do café" className="grid grid-cols-2 gap-1 bg-white rounded-2xl p-1 border border-borda shadow-sm max-w-xl">

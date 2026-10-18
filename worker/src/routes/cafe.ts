@@ -7,6 +7,7 @@ import {
   mesAtualBrasilia, somarMeses, ehMesValido, inicioProximaAnuidade, fimCoberturaAnual, comRotulo,
   SQL_FIM_ANUIDADE, SQL_EH_ANUIDADE,
 } from '../lib/cafe';
+import { garantirSalaPermitida, recursoNaSala, salaDoEscopo } from '../lib/escopo';
 import type { AppType } from '../index';
 
 const cafe = new Hono<AppType>();
@@ -57,7 +58,9 @@ async function usuarioDoTrigrama(db: D1Database, trigrama: string) {
 
 // ADMIN: lista assinantes com situação de pagamento (?tipo=oficial|graduado)
 cafe.get('/admin/assinantes', authMiddleware, async (c) => {
-  const tipo = c.req.query('tipo');
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
   if (tipo && !TIPOS_CAFE.includes(tipo as TipoCafe)) return c.json({ error: 'Tipo inválido' }, 400);
 
   let sql = `
@@ -104,7 +107,12 @@ cafe.post('/admin/assinantes', authMiddleware, async (c) => {
   } else {
     tipo = TIPOS_CAFE.includes(body.tipo as TipoCafe) ? (body.tipo as TipoCafe) : null;
   }
+  // Escopo sem conta e sem tipo no body: assume a sala do escopo
+  if (!tipo && !usuario) tipo = salaDoEscopo(c);
   if (!tipo) return c.json({ error: 'Dados obrigatórios' }, 400);
+  // Escopo: a sala final tem de ser a do escopo
+  const salaEscopo = salaDoEscopo(c);
+  if (salaEscopo && tipo !== salaEscopo) return c.json({ error: 'Este militar é da sala dos oficiais', escopo_negado: true }, 403);
 
   let valor = typeof body.valor === 'string' ? parseFloat(body.valor.replace(',', '.')) : Number(body.valor ?? 0);
   if (!(valor > 0)) {
@@ -165,7 +173,9 @@ cafe.put('/admin/assinantes/:id', authMiddleware, async (c) => {
   const antes = await c.env.DB.prepare(
     'SELECT ca.*, cl.nome_guerra FROM cafe_assinantes ca JOIN clientes cl ON cl.id = ca.cliente_id WHERE ca.id = ?'
   ).bind(id).first<{ id: string; tipo: string; plano: string; valor: number; ativo: number; nome_guerra: string }>();
-  if (!antes) return c.json({ error: 'Assinante não encontrado' }, 404);
+  // Escopo: assinante de outra sala = não encontrado
+  const salaEscopo = salaDoEscopo(c);
+  if (!antes || (salaEscopo && antes.tipo !== salaEscopo)) return c.json({ error: 'Assinante não encontrado' }, 404);
 
   const usuario = await usuarioDoTrigrama(c.env.DB, antes.nome_guerra);
   const tipoCategoria = usuario ? tipoCafeDaCategoria(usuario.categoria) : null;
@@ -178,9 +188,15 @@ cafe.put('/admin/assinantes/:id', authMiddleware, async (c) => {
   const values: unknown[] = [];
 
   if (usuario) {
-    if (tipoCategoria && tipoCategoria !== antes.tipo) { fields.push('tipo = ?'); values.push(tipoCategoria); }
+    if (tipoCategoria && tipoCategoria !== antes.tipo) {
+      // Escopo não pode mover o assinante para outra sala
+      if (salaEscopo && tipoCategoria !== salaEscopo) return c.json({ error: 'Este militar é da sala dos oficiais', escopo_negado: true }, 403);
+      fields.push('tipo = ?'); values.push(tipoCategoria);
+    }
   } else if ('tipo' in body) {
     if (!TIPOS_CAFE.includes(body.tipo)) return c.json({ error: 'Tipo inválido' }, 400);
+    const sala = garantirSalaPermitida(c, body.tipo);
+    if (!sala.ok) return sala.resposta;
     fields.push('tipo = ?'); values.push(body.tipo);
   }
   if ('plano' in body) {
@@ -209,6 +225,7 @@ cafe.put('/admin/assinantes/:id', authMiddleware, async (c) => {
 // ADMIN: desativar assinante (soft delete)
 cafe.put('/admin/assinantes/:id/desativar', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'assinante', id))) return c.json({ error: 'Assinante não encontrado' }, 404);
   const result = await c.env.DB.prepare('UPDATE cafe_assinantes SET ativo = 0 WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Assinante não encontrado' }, 404);
   await audit(c, 'desativar_assinante_cafe', 'cafe_assinantes', id, null, { ativo: 0 });
@@ -218,6 +235,7 @@ cafe.put('/admin/assinantes/:id/desativar', authMiddleware, async (c) => {
 // ADMIN: excluir assinante permanentemente (com os pagamentos)
 cafe.delete('/admin/assinantes/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'assinante', id))) return c.json({ error: 'Assinante não encontrado' }, 404);
   const antes = await c.env.DB.prepare('SELECT * FROM cafe_assinantes WHERE id = ?').bind(id).first();
   if (!antes) return c.json({ error: 'Assinante não encontrado' }, 404);
   await c.env.DB.batch([
@@ -233,6 +251,7 @@ cafe.delete('/admin/assinantes/:id', authMiddleware, async (c) => {
 // ('YYYY-MM'); se vier vazia/fora do formato, começa no mês seguinte à cobertura atual (nunca no passado).
 cafe.post('/admin/assinantes/:id/cobrar', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'assinante', id))) return c.json({ error: 'Assinante não encontrado' }, 404);
   const body = await c.req.json<{ valor?: number; referencia?: string; plano?: string }>();
 
   const assinante = await c.env.DB.prepare('SELECT id, plano, valor FROM cafe_assinantes WHERE id = ?')
@@ -272,6 +291,7 @@ cafe.post('/admin/assinantes/:id/cobrar', authMiddleware, async (c) => {
 // ADMIN: pagamentos de um assinante (com rótulo legível)
 cafe.get('/admin/assinantes/:id/pagamentos', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'assinante', id))) return c.json({ error: 'Assinante não encontrado' }, 404);
   const { results } = await c.env.DB.prepare(
     'SELECT * FROM cafe_pagamentos WHERE assinante_id = ? ORDER BY referencia DESC'
   ).bind(id).all<{ referencia: string; periodo_fim: string | null }>();
@@ -280,7 +300,12 @@ cafe.get('/admin/assinantes/:id/pagamentos', authMiddleware, async (c) => {
 
 // ADMIN: gerar mensalidades (só assinantes MENSAIS; anuidades são criadas na adesão e renovadas pelo cron)
 cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
-  const { referencia, tipo } = await c.req.json<{ referencia: string; tipo?: string }>();
+  const body = await c.req.json<{ referencia: string; tipo?: string }>();
+  const referencia = body.referencia;
+  // Escopo: sempre só a sala do escopo
+  const sala = garantirSalaPermitida(c, body.tipo);
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
   if (!ehMesValido(referencia)) return c.json({ error: 'Referência (ex: 2026-04) obrigatória' }, 400);
 
   const assinantesStmt = tipo
@@ -315,7 +340,9 @@ cafe.post('/admin/gerar-mensalidades', authMiddleware, async (c) => {
 cafe.get('/admin/mensalidades', authMiddleware, async (c) => {
   const referencia = c.req.query('referencia');
   const status = c.req.query('status');
-  const tipo = c.req.query('tipo');
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
 
   let sql = `
     SELECT cp.*, cl.nome_guerra, ca.tipo, ca.plano
@@ -340,6 +367,7 @@ cafe.get('/admin/mensalidades', authMiddleware, async (c) => {
 // ADMIN: mark payment as paid
 cafe.put('/admin/mensalidades/:id/pagar', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'pagamento', id))) return c.json({ error: 'Pagamento não encontrado' }, 404);
   const { results } = await c.env.DB.prepare(
     "UPDATE cafe_pagamentos SET status = 'pago', paid_at = datetime('now') WHERE id = ? AND status = 'pendente' RETURNING *"
   ).bind(id).all<{ assinante_id: string; referencia: string; periodo_fim: string | null; valor: number }>();
@@ -351,7 +379,9 @@ cafe.put('/admin/mensalidades/:id/pagar', authMiddleware, async (c) => {
 
 // ADMIN: insumos CRUD
 cafe.get('/admin/insumos', authMiddleware, async (c) => {
-  const tipo = c.req.query('tipo');
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
   let sql = 'SELECT * FROM cafe_insumos';
   const params: unknown[] = [];
   if (tipo) { sql += ' WHERE tipo = ?'; params.push(tipo); }
@@ -363,8 +393,11 @@ cafe.get('/admin/insumos', authMiddleware, async (c) => {
 });
 
 cafe.post('/admin/insumos', authMiddleware, async (c) => {
-  const { nome, unidade, estoque, estoque_min, tipo } = await c.req.json();
+  const { nome, unidade, estoque, estoque_min, tipo: tipoBody } = await c.req.json();
   if (!nome) return c.json({ error: 'Nome obrigatório' }, 400);
+  const sala = garantirSalaPermitida(c, tipoBody);
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
 
   const { results } = await c.env.DB.prepare(
     'INSERT INTO cafe_insumos (nome, unidade, estoque, estoque_min, tipo) VALUES (?, ?, ?, ?, ?) RETURNING *'
@@ -375,7 +408,12 @@ cafe.post('/admin/insumos', authMiddleware, async (c) => {
 
 cafe.put('/admin/insumos/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'insumo', id))) return c.json({ error: 'Insumo não encontrado' }, 404);
   const body = await c.req.json();
+  if ('tipo' in body) {
+    const sala = garantirSalaPermitida(c, body.tipo);
+    if (!sala.ok) return sala.resposta;
+  }
 
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -399,6 +437,7 @@ cafe.put('/admin/insumos/:id', authMiddleware, async (c) => {
 
 cafe.delete('/admin/insumos/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'insumo', id))) return c.json({ error: 'Insumo não encontrado' }, 404);
   const result = await c.env.DB.prepare('DELETE FROM cafe_insumos WHERE id = ?').bind(id).run();
   if (!result.meta.changes) return c.json({ error: 'Insumo não encontrado' }, 404);
   return c.json({ ok: true });
@@ -407,7 +446,9 @@ cafe.delete('/admin/insumos/:id', authMiddleware, async (c) => {
 // ADMIN: indicadores por sala (?tipo=oficial|graduado; sem tipo = as duas)
 // recebido_mes = tudo que foi pago no mês corrente (paid_at em Brasília), mensalidades + anuidades
 cafe.get('/admin/stats', authMiddleware, async (c) => {
-  const tipo = c.req.query('tipo') || '';
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo || '';
   if (tipo && !TIPOS_CAFE.includes(tipo as TipoCafe)) {
     return c.json({ error: 'Tipo inválido' }, 400);
   }
@@ -453,7 +494,9 @@ cafe.get('/admin/stats', authMiddleware, async (c) => {
 
 // GET lista despesas com filtros opcionais (?tipo=oficial|graduado&de=&ate=)
 cafe.get('/admin/despesas', authMiddleware, async (c) => {
-  const tipo = c.req.query('tipo');
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
   const de = c.req.query('de');
   const ate = c.req.query('ate');
 
@@ -471,7 +514,10 @@ cafe.get('/admin/despesas', authMiddleware, async (c) => {
 
 // POST criar despesa (data padrão = hoje em Brasília)
 cafe.post('/admin/despesas', authMiddleware, async (c) => {
-  const { tipo, descricao, categoria, valor, data, nota_fiscal, observacao } = await c.req.json();
+  const { tipo: tipoBody, descricao, categoria, valor, data, nota_fiscal, observacao } = await c.req.json();
+  const sala = garantirSalaPermitida(c, tipoBody);
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
   if (!tipo || !descricao || !valor) return c.json({ error: 'tipo, descricao e valor obrigatorios' }, 400);
   if (!['oficial', 'graduado'].includes(tipo)) return c.json({ error: 'tipo inválido' }, 400);
 
@@ -487,6 +533,7 @@ cafe.post('/admin/despesas', authMiddleware, async (c) => {
 // DELETE remover despesa
 cafe.delete('/admin/despesas/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
+  if (!(await recursoNaSala(c, 'despesa', id))) return c.json({ error: 'Despesa nao encontrada' }, 404);
   const antes = await c.env.DB.prepare('SELECT * FROM cafe_despesas WHERE id = ?').bind(id).first();
   if (!antes) return c.json({ error: 'Despesa nao encontrada' }, 404);
   await c.env.DB.prepare('DELETE FROM cafe_despesas WHERE id = ?').bind(id).run();
@@ -496,7 +543,9 @@ cafe.delete('/admin/despesas/:id', authMiddleware, async (c) => {
 
 // GET saldo consolidado (entrou - saiu = saldo) por tipo
 cafe.get('/admin/saldo', authMiddleware, async (c) => {
-  const tipo = c.req.query('tipo');
+  const sala = garantirSalaPermitida(c, c.req.query('tipo'));
+  if (!sala.ok) return sala.resposta;
+  const tipo = sala.tipo;
 
   const entradaSql = tipo
     ? "SELECT COALESCE(SUM(cp.valor), 0) as v FROM cafe_pagamentos cp JOIN cafe_assinantes ca ON ca.id = cp.assinante_id WHERE cp.status = 'pago' AND ca.tipo = ?"

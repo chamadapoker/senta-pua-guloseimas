@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sidebar, secaoDaRota } from './Sidebar';
+import { Sidebar, secaoDaRota, useNomeSalaGraduados } from './Sidebar';
 import { BottomNav } from './BottomNav';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, useAcessoAdmin, HOME_CAFE_GRADUADO } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { api } from '../services/api';
 import { Icon } from './ui/Icon';
@@ -32,7 +32,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { token: adminToken } = useAuth();
   const { user, token: userToken } = useUserAuth();
   const isAdmin = !!adminToken;
-  const secao = secaoDaRota(pathname, isAdmin);
+  const { acessoRestritoCafe: restritoCafe } = useAcessoAdmin();
+  const nomeSalaGraduados = useNomeSalaGraduados();
+  const secao = secaoDaRota(pathname, isAdmin, { restritoCafe, nomeSalaGraduados });
 
   useEffect(() => {
     if (userToken) {
@@ -96,13 +98,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <div className={`${larguraConteudo} mx-auto px-4 h-14 lg:h-16 flex items-center gap-3`}>
           {/* Mobile: brasão + seção */}
-          <Link to={isAdmin ? '/admin' : '/'} className="lg:hidden shrink-0" aria-label="Início">
+          <Link to={isAdmin ? (restritoCafe ? HOME_CAFE_GRADUADO : '/admin') : '/'} className="lg:hidden shrink-0" aria-label="Início">
             <img src="/brasao-96.png" alt="" className="h-9 w-auto" />
           </Link>
           <div className="min-w-0 flex-1">
             <div className="lg:hidden font-display text-lg leading-none tracking-wider">SENTA PUA</div>
             <div className="text-[12px] lg:text-sm text-noite-fraco lg:text-texto-fraco truncate mt-0.5 lg:mt-0">
-              {secao || (isAdmin ? 'Painel do admin' : 'Cantina, loja e café do esquadrão')}
+              {secao || (isAdmin ? (restritoCafe ? 'Café dos graduados' : 'Painel do admin') : 'Cantina, loja e café do esquadrão')}
             </div>
           </div>
 

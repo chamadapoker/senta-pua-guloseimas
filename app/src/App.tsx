@@ -1,6 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { ToastProvider } from './hooks/useToast';
+import { ToastProvider, useToast } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import { Home } from './pages/Home';
 import { Catalogo } from './pages/Catalogo';
@@ -52,9 +52,9 @@ import { LojaPublica } from './pages/LojaPublica';
 import { LojaMinhas } from './pages/LojaMinhas';
 import { XimbocaPublica } from './pages/XimbocaPublica';
 import { UpdatePrompt } from './components/UpdatePrompt';
-import { useAuth } from './hooks/useAuth';
+import { useAuth, useAcessoAdmin, HOME_CAFE_GRADUADO } from './hooks/useAuth';
 import { useUserAuth } from './hooks/useUserAuth';
-import { api } from './services/api';
+import { api, EVENTO_ESCOPO_NEGADO } from './services/api';
 import { getConfig } from './services/config';
 import { setPixDefaults } from './services/pix';
 
@@ -67,8 +67,16 @@ getConfig().then(c => {
   );
 }).catch(() => {});
 
+// Rotas do admin liberadas para quem só cuida do café dos graduados
+function rotaLiberadaCafeGraduado(pathname: string): boolean {
+  return pathname === '/admin/cafe' || pathname.startsWith('/admin/cafe/')
+    || pathname === '/admin/comprovantes' || pathname === '/admin/config';
+}
+
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { token, checkAuth } = useAuth();
+  const { acessoRestritoCafe } = useAcessoAdmin();
+  const { pathname } = useLocation();
   const [verificando, setVerificando] = useState(true);
   const [autenticado, setAutenticado] = useState(false);
 
@@ -88,7 +96,21 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   // erro de rede retorna true e mantém a sessão.
   if (!autenticado) return <Navigate to="/admin/login" replace />;
 
+  // Admin só do café dos graduados: fora das telas liberadas, volta para o painel do café.
+  if (acessoRestritoCafe && !rotaLiberadaCafeGraduado(pathname)) return <Navigate to={HOME_CAFE_GRADUADO} replace />;
+
   return <>{children}</>;
+}
+
+// Mostra um aviso quando o backend recusa algo por escopo do admin (sem deslogar)
+function AvisoEscopoNegado() {
+  const { showToast } = useToast();
+  useEffect(() => {
+    const ouvir = (e: Event) => showToast(String((e as CustomEvent).detail || 'Acesso não liberado.'), 'warning');
+    window.addEventListener(EVENTO_ESCOPO_NEGADO, ouvir);
+    return () => window.removeEventListener(EVENTO_ESCOPO_NEGADO, ouvir);
+  }, [showToast]);
+  return null;
 }
 
 function UserAuthLoader() {
@@ -122,6 +144,7 @@ export function App() {
       <ConfirmProvider>
       <BrowserRouter>
         <UserAuthLoader />
+        <AvisoEscopoNegado />
         <UpdatePrompt />
         <Suspense fallback={<div className="text-center py-20 text-gray-400">Carregando...</div>}>
         <Routes>

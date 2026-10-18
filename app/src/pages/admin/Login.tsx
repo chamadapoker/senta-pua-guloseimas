@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { inputClass } from '../../components/ui/Field';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, acessoRestritoCafeAgora, HOME_CAFE_GRADUADO } from '../../hooks/useAuth';
 
 // Porta de entrada do admin: tela cheia em azul-noite, sem o layout do app
 export function Login() {
@@ -15,7 +15,11 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setErro('');
-    try { await login(email, senha); navigate('/admin'); }
+    try {
+      await login(email, senha);
+      // Responsável só pelo café dos graduados cai direto no painel do café
+      navigate(acessoRestritoCafeAgora() ? HOME_CAFE_GRADUADO : '/admin');
+    }
     catch (err) { setErro(err instanceof Error ? err.message : 'Erro ao fazer login'); }
   };
 

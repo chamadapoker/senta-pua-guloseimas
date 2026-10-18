@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useMemo } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, useAcessoAdmin } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { useComprovantesPendentes } from '../hooks/useComprovantesPendentes';
 import { Icon } from './ui/Icon';
@@ -13,20 +13,23 @@ export function BottomNav({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const { user, token: userToken } = useUserAuth();
   const isAdmin = !!adminToken;
   const isUser = !!(userToken || user);
+  const { acessoRestritoCafe: restritoCafe, carregando: carregandoAdmin } = useAcessoAdmin();
   const compPendentes = useComprovantesPendentes(isAdmin);
 
   const itens = useMemo(
-    () => itensBottomNav(pathname, { isAdmin, isUser }),
-    [pathname, isAdmin, isUser]
+    () => itensBottomNav(pathname, { isAdmin, isUser, restritoCafe, carregandoAdmin }),
+    [pathname, isAdmin, isUser, restritoCafe, carregandoAdmin]
   );
 
-  // Item ativo = correspondência exata; senão o prefixo mais longo (ex: /admin/clientes/:id)
+  // Item ativo = correspondência exata; senão o prefixo mais longo (ex: /admin/clientes/:id).
+  // Compara só o caminho (alguns itens levam ?sala=graduado).
   const activeTo = useMemo(() => {
-    const exato = itens.find((i) => i.to === pathname);
+    const caminho = (to: string) => to.split('?')[0];
+    const exato = itens.find((i) => caminho(i.to) === pathname);
     if (exato) return exato.to;
     const prefixos = itens
-      .filter((i) => pathname.startsWith(i.to + '/'))
-      .sort((a, b) => b.to.length - a.to.length);
+      .filter((i) => pathname.startsWith(caminho(i.to) + '/'))
+      .sort((a, b) => caminho(b.to).length - caminho(a.to).length);
     return prefixos[0]?.to ?? null;
   }, [itens, pathname]);
 

@@ -7,6 +7,7 @@ import { Icon, type IconName } from '../../components/ui/Icon';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
+import { useAcessoAdmin, HOME_CAFE_GRADUADO } from '../../hooks/useAuth';
 import { useAcao } from '../../hooks/useAcao';
 import { Loading } from '../../components/ui/Loading';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -97,13 +98,15 @@ export function Comprovantes() {
   // Busca aplicada (o input só vale ao clicar "Buscar") + contador para forçar recarga
   const [qAplicada, setQAplicada] = useState('');
   const [recarregar, setRecarregar] = useState(0);
+  // Responsável só pelo café dos graduados: o backend já filtra; aqui só some o filtro de origem
+  const { acessoRestritoCafe } = useAcessoAdmin();
 
   useEffect(() => {
     let ativo = true;
     setLoading(true);
     setErro('');
     const qs = new URLSearchParams({ status: aba, limit: String(PAGE), offset: String(offset) });
-    if (origem) qs.set('origem', origem);
+    if (origem && !acessoRestritoCafe) qs.set('origem', origem);
     if (qAplicada.trim()) qs.set('q', qAplicada.trim());
     api.get<Resp>(`/api/comprovantes?${qs}`)
       .then(r => { if (ativo) setData(r); })
@@ -115,7 +118,7 @@ export function Comprovantes() {
       })
       .finally(() => { if (ativo) setLoading(false); });
     return () => { ativo = false; };
-  }, [aba, offset, origem, qAplicada, recarregar, showToast]);
+  }, [aba, offset, origem, qAplicada, recarregar, showToast, acessoRestritoCafe]);
 
   const carregar = () => setRecarregar(n => n + 1);
 
@@ -155,8 +158,13 @@ export function Comprovantes() {
 
   return (
     <AppLayout>
-      <BackButton to="/admin" className="mb-3" />
-      <PageHeader title="Comprovantes de pagamento" subtitle="Confira os comprovantes enviados pelos militares e aprove para dar baixa." />
+      <BackButton to={acessoRestritoCafe ? HOME_CAFE_GRADUADO : '/admin'} className="mb-3" />
+      <PageHeader
+        title="Comprovantes de pagamento"
+        subtitle={acessoRestritoCafe
+          ? 'Comprovantes do café dos graduados. Confira e aprove para dar baixa.'
+          : 'Confira os comprovantes enviados pelos militares e aprove para dar baixa.'}
+      />
 
       <div role="tablist" aria-label="Situação" className="grid grid-cols-3 gap-1 bg-white rounded-2xl p-1 border border-borda shadow-sm mb-3">
         {ABAS.map(s => (
@@ -174,7 +182,7 @@ export function Comprovantes() {
         ))}
       </div>
 
-      <form onSubmit={buscar} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 mb-4">
+      <form onSubmit={buscar} className={`grid grid-cols-1 gap-2 mb-4 ${acessoRestritoCafe ? 'sm:grid-cols-[1fr_auto]' : 'sm:grid-cols-[1fr_auto_auto]'}`}>
         <label htmlFor="comp-q" className="sr-only">Buscar por trigrama</label>
         <input
           id="comp-q"
@@ -184,6 +192,9 @@ export function Comprovantes() {
           placeholder="Buscar por trigrama"
           className={`${inputClass} min-h-[44px]`}
         />
+        {acessoRestritoCafe ? (
+          <Button type="submit" size="md">Buscar</Button>
+        ) : (
         <div className="grid grid-cols-[1fr_auto] sm:contents gap-2">
           <label htmlFor="comp-origem" className="sr-only">Origem</label>
           <select id="comp-origem" value={origem} onChange={e => { setOrigem(e.target.value); setOffset(0); }} className={`${inputClass} min-h-[44px] sm:w-auto`}>
@@ -196,6 +207,7 @@ export function Comprovantes() {
           </select>
           <Button type="submit" size="md">Buscar</Button>
         </div>
+        )}
       </form>
 
       {data && !erro && (
@@ -219,20 +231,20 @@ export function Comprovantes() {
           <EmptyState
             icon={<Icon name="paper-clip" size={26} />}
             message={aba === 'aguardando' ? 'Nenhum comprovante aguardando' : aba === 'aprovado' ? 'Nenhum comprovante aprovado' : 'Nenhum comprovante rejeitado'}
-            hint={qAplicada || origem ? 'Tente limpar a busca ou trocar a origem.' : aba === 'aguardando' ? 'Quando um militar enviar um comprovante, ele aparece aqui.' : undefined}
+            hint={qAplicada || (origem && !acessoRestritoCafe) ? (acessoRestritoCafe ? 'Tente limpar a busca.' : 'Tente limpar a busca ou trocar a origem.') : aba === 'aguardando' ? 'Quando um militar enviar um comprovante, ele aparece aqui.' : undefined}
           />
         </Card>
       ) : (
         <>
-        {/* Legenda das cores da borda */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3 text-xs text-texto-fraco" aria-label="Cores por origem">
+        {/* Legenda das cores da borda (só faz sentido com várias origens) */}
+        {!acessoRestritoCafe && <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3 text-xs text-texto-fraco" aria-label="Cores por origem">
           {(['cantina', 'loja', 'cafe', 'ximboca'] as const).map(o => (
             <span key={o} className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ORIGEM_ESTILO[o].cor }} aria-hidden="true" />
               {ORIGEM_LABEL[o]}
             </span>
           ))}
-        </div>
+        </div>}
 
         <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {data.items.map(c => {

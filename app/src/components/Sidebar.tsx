@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, useAcessoAdmin, HOME_CAFE_GRADUADO } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { useComprovantesPendentes } from '../hooks/useComprovantesPendentes';
 import { Icon } from './ui/Icon';
+import { nomeSalaCafe, useConfigCafe } from '../pages/admin/cafe/SalaCafe';
 
 interface NavItem {
   to: string;
@@ -84,9 +85,36 @@ const ADMIN_NAV: NavItem[] = [
   ]},
 ];
 
+// Menu do admin que só cuida do café dos graduados (nome da sala vem da config)
+function navCafeGraduado(nomeSala: string): NavItem[] {
+  return [
+    { to: HOME_CAFE_GRADUADO, label: `Café · ${nomeSala}`, icon: <Icon name="coffee" />, children: [
+      { to: HOME_CAFE_GRADUADO, label: 'Painel' },
+      { to: '/admin/cafe/assinantes?sala=graduado', label: 'Assinantes' },
+      { to: '/admin/cafe/mensalidades?sala=graduado', label: 'Mensalidades' },
+      { to: '/admin/cafe/despesas?sala=graduado', label: 'Despesas' },
+      { to: '/admin/cafe/insumos?sala=graduado', label: 'Insumos' },
+    ]},
+    { to: '/admin/comprovantes', label: 'Comprovantes', icon: <Icon name="paper-clip" /> },
+    { to: '/admin/config', label: 'Configurações do café', icon: <Icon name="cog" /> },
+  ];
+}
+
+/** Nome da sala dos graduados para o menu (config `nome_cafe_graduados`). */
+export function useNomeSalaGraduados(): string {
+  const config = useConfigCafe();
+  return nomeSalaCafe(config, 'graduado');
+}
+
 // Rótulo da seção atual (usado no topo da página)
-export function secaoDaRota(pathname: string, isAdmin: boolean): string {
-  const nav = isAdmin ? ADMIN_NAV : USER_NAV;
+export function secaoDaRota(
+  pathname: string,
+  isAdmin: boolean,
+  opts: { restritoCafe?: boolean; nomeSalaGraduados?: string } = {}
+): string {
+  const nav = isAdmin
+    ? (opts.restritoCafe ? navCafeGraduado(opts.nomeSalaGraduados || 'Sala dos graduados') : ADMIN_NAV)
+    : USER_NAV;
   let melhor = '';
   let tam = -1;
   for (const item of nav) {
@@ -124,6 +152,9 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
   const isAdmin = !!adminToken;
   const isUser = !!user;
   const compPendentes = useComprovantesPendentes(isAdmin, location.pathname);
+  const { acessoRestritoCafe: restritoCafe, carregando: carregandoAdmin } = useAcessoAdmin();
+  const nomeSalaGraduados = useNomeSalaGraduados();
+  const homeAdmin = restritoCafe ? HOME_CAFE_GRADUADO : '/admin';
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -150,7 +181,10 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
   // Aberta por hover: flutua por cima do conteúdo (com sombra), sem empurrar a página
   const flutuando = isDesktop && !fixada && hover;
 
-  const nav = isAdmin ? ADMIN_NAV : isUser ? USER_NAV : VISITOR_NAV;
+  // Admin com escopo ainda desconhecido: menu vazio (não mostra o completo por um instante)
+  const nav = isAdmin
+    ? (carregandoAdmin ? [] : restritoCafe ? navCafeGraduado(nomeSalaGraduados) : ADMIN_NAV)
+    : isUser ? USER_NAV : VISITOR_NAV;
 
   useEffect(() => {
     onClose();
@@ -186,7 +220,7 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
   );
 
   const nomeLogado = isAdmin ? (admin?.nome || 'Administrador') : user ? user.trigrama : '';
-  const papelLogado = isAdmin ? 'Administrador' : user ? 'Militar' : '';
+  const papelLogado = isAdmin ? (restritoCafe ? 'Responsável pelo café' : 'Administrador') : user ? 'Militar' : '';
   const iniciais = isAdmin ? (admin?.nome || 'AD').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() : user?.trigrama?.slice(0, 3) ?? '';
 
   const sair_ = () => {
@@ -219,12 +253,12 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
         <div className="h-1 bg-escarlate shrink-0" />
 
         <div className={`flex items-center h-16 shrink-0 ${mini ? 'justify-center px-0' : 'justify-between pl-4 pr-2'}`}>
-          <Link to={isAdmin ? '/admin' : '/'} className="flex items-center gap-3 min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+          <Link to={isAdmin ? homeAdmin : '/'} className="flex items-center gap-3 min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/50">
             <img src="/brasao-96.png" alt="Brasão do 1/10 GpAv" className="h-10 w-auto shrink-0 drop-shadow" />
             {!mini && (
               <span className="min-w-0">
                 <span className="block font-display text-white text-xl leading-none tracking-wider">SENTA PUA</span>
-                <span className="block text-[11px] text-noite-fraco mt-1 truncate">1/10 GpAv · {isAdmin ? 'painel do admin' : 'cantina e loja'}</span>
+                <span className="block text-[11px] text-noite-fraco mt-1 truncate">1/10 GpAv · {isAdmin ? (restritoCafe ? 'café dos graduados' : 'painel do admin') : 'cantina e loja'}</span>
               </span>
             )}
           </Link>
@@ -251,6 +285,11 @@ export function Sidebar({ open, onClose, fixada, onToggleFixada }: SidebarProps)
         </div>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden scroll-noite py-2 px-3 space-y-0.5">
+          {isAdmin && carregandoAdmin && (
+            <p role="status" className={`text-[13px] text-noite-fraco py-3 ${mini ? 'text-center' : 'px-3'}`}>
+              {mini ? '...' : 'Carregando menu...'}
+            </p>
+          )}
           {nav.map((item) => {
             const naSecao = isInSection(item);
             if (!item.children) {

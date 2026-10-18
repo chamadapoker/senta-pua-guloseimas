@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { audit } from '../lib/audit';
+import { CHAVES_CONFIG_ESCOPO, ehEscopoValido, MSG_ESCOPO_NEGADO } from '../lib/escopo';
 import type { AppType } from '../index';
 
 const config = new Hono<AppType>();
@@ -50,6 +51,14 @@ function normalizarValor(valor: unknown): string {
 // Admin: atualizar configuração
 config.put('/', authMiddleware, async (c) => {
   const body = await c.req.json<Record<string, string>>();
+
+  // Escopo: só as chaves do escopo; qualquer outra => 403 sem alterar nada
+  const escopo = c.get('adminEscopo');
+  if (escopo) {
+    const permitidas = ehEscopoValido(escopo) ? CHAVES_CONFIG_ESCOPO[escopo] : [];
+    const negadas = Object.keys(body || {}).filter(k => !permitidas.includes(k));
+    if (negadas.length) return c.json({ error: MSG_ESCOPO_NEGADO, escopo_negado: true, chaves_negadas: negadas }, 403);
+  }
 
   // Valores atuais, para registrar só o que mudou (antes/depois)
   const { results: atuais } = await c.env.DB.prepare(

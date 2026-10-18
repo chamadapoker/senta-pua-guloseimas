@@ -32,7 +32,7 @@ export type Env = {
   AMBIENTE: string;
 };
 
-export type AppType = { Bindings: Env; Variables: { adminEmail: string; adminRole: string; adminId: string; userId: number; userEmail: string; userTrigrama: string } };
+export type AppType = { Bindings: Env; Variables: { adminEmail: string; adminRole: string; adminId: string; adminEscopo: string | null; userId: number; userEmail: string; userTrigrama: string } };
 
 const app = new Hono<AppType>();
 

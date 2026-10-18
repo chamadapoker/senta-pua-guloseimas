@@ -30,8 +30,8 @@ auth.post('/login', async (c) => {
   await ensureSuperAdmin(c.env);
 
   const admin = await c.env.DB.prepare(
-    'SELECT id, email, senha_hash, nome, role, ativo FROM admins WHERE email = ? COLLATE NOCASE'
-  ).bind(email).first<{ id: string; email: string; senha_hash: string; nome: string; role: string; ativo: number }>();
+    'SELECT id, email, senha_hash, nome, role, ativo, escopo FROM admins WHERE email = ? COLLATE NOCASE'
+  ).bind(email).first<{ id: string; email: string; senha_hash: string; nome: string; role: string; ativo: number; escopo: string | null }>();
 
   if (!admin || !admin.ativo) {
     await recordAttempt(c, 'admin_login', key);
@@ -47,15 +47,15 @@ auth.post('/login', async (c) => {
   await c.env.DB.prepare("UPDATE admins SET last_login = datetime('now') WHERE id = ?").bind(admin.id).run();
 
   const token = await sign({ tipo: 'admin', id: admin.id, email: admin.email, role: admin.role }, c.env.JWT_SECRET);
-  return c.json({ token, admin: { id: admin.id, email: admin.email, nome: admin.nome, role: admin.role } });
+  return c.json({ token, admin: { id: admin.id, email: admin.email, nome: admin.nome, role: admin.role, escopo: admin.escopo ?? null } });
 });
 
 auth.get('/me', authMiddleware, async (c) => {
   const email = c.get('adminEmail');
   const admin = await c.env.DB.prepare(
-    'SELECT id, email, nome, role FROM admins WHERE email = ?'
-  ).bind(email).first();
-  return c.json(admin || { email });
+    'SELECT id, email, nome, role, escopo FROM admins WHERE id = ?'
+  ).bind(c.get('adminId')).first();
+  return c.json(admin || { email, escopo: c.get('adminEscopo') });
 });
 
 export default auth;
