@@ -46,7 +46,7 @@ auth.post('/login', async (c) => {
   await clearAttempts(c, 'admin_login', key);
   await c.env.DB.prepare("UPDATE admins SET last_login = datetime('now') WHERE id = ?").bind(admin.id).run();
 
-  const token = await sign({ id: admin.id, email: admin.email, role: admin.role }, c.env.JWT_SECRET);
+  const token = await sign({ tipo: 'admin', id: admin.id, email: admin.email, role: admin.role }, c.env.JWT_SECRET);
   return c.json({ token, admin: { id: admin.id, email: admin.email, nome: admin.nome, role: admin.role } });
 });
 

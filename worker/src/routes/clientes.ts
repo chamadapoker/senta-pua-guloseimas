@@ -17,7 +17,18 @@ clientes.get('/buscar', async (c) => {
 });
 
 // Admin: lista clientes com saldo devedor
+// ?de=YYYY-MM-DD&ate=YYYY-MM-DD limita os pedidos considerados (datas no horário de Brasília)
 clientes.get('/', authMiddleware, async (c) => {
+  const dataValida = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
+  const de = dataValida(c.req.query('de'));
+  const ate = dataValida(c.req.query('ate'));
+  const filtros: string[] = [];
+  const binds: string[] = [];
+  // created_at é UTC; Brasília é UTC-3 sem horário de verão
+  if (de) { filtros.push("date(p.created_at, '-3 hours') >= ?"); binds.push(de); }
+  if (ate) { filtros.push("date(p.created_at, '-3 hours') <= ?"); binds.push(ate); }
+  const filtroPedidos = filtros.map(f => ` AND ${f}`).join('');
+
   const { results } = await c.env.DB.prepare(`
     SELECT
       cl.id, cl.nome_guerra, cl.saram, cl.ativo, cl.visitante, cl.esquadrao_origem, cl.created_at,
@@ -29,11 +40,11 @@ clientes.get('/', authMiddleware, async (c) => {
       u.categoria as usuario_categoria,
       u.ativo as usuario_ativo
     FROM clientes cl
-    LEFT JOIN pedidos p ON p.cliente_id = cl.id
+    LEFT JOIN pedidos p ON p.cliente_id = cl.id${filtroPedidos}
     LEFT JOIN usuarios u ON u.trigrama = cl.nome_guerra COLLATE NOCASE
     GROUP BY cl.id
     ORDER BY cl.nome_guerra ASC
-  `).all();
+  `).bind(...binds).all();
 
   return c.json(results);
 });

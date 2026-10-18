@@ -6,17 +6,24 @@ import { Button } from '../../components/ui/Button';
 import { api } from '../../services/api';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
+import { PeriodoFiltro, usePeriodoUrl } from '../../components/admin/PeriodoFiltro';
+import { descreverPeriodo, periodoAtivo, periodoParaQuery } from '../../services/periodo';
 import type { Cliente } from '../../types';
 
 export function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [filtro, setFiltro] = useState<'todos' | 'divida' | 'dia' | 'bloqueados'>('todos');
+  const [periodo, setPeriodo] = usePeriodoUrl();
   const navigate = useNavigate();
   const confirmar = useConfirm();
   const { showToast } = useToast();
+  const query = periodoParaQuery(periodo);
 
-  const carregar = () => api.get<Cliente[]>('/api/clientes').then(setClientes);
-  useEffect(() => { carregar(); }, []);
+  const carregar = () => api.get<Cliente[]>(`/api/clientes${query}`)
+    .then(setClientes)
+    .catch(() => showToast('Erro ao carregar militares.', 'error'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar(); }, [query]);
 
   const toggleBloqueio = async (e: React.MouseEvent, c: Cliente) => {
     e.stopPropagation();
@@ -78,6 +85,13 @@ export function Clientes() {
         </div>
       </div>
 
+      <PeriodoFiltro periodo={periodo} onChange={setPeriodo} className="mb-2" />
+      <p className="text-xs text-texto-fraco mb-4">
+        {periodoAtivo(periodo)
+          ? <>Comprado, pago e saldo da Cantina de <strong>{descreverPeriodo(periodo)}</strong>.</>
+          : 'Comprado, pago e saldo da Cantina de todo o período.'}
+      </p>
+
       <div className="bg-white rounded-xl overflow-hidden border border-borda shadow-sm">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[500px]">
@@ -95,7 +109,7 @@ export function Clientes() {
             {filtrados.map((c) => (
               <tr
                 key={c.id}
-                onClick={() => navigate(`/admin/clientes/${c.id}`)}
+                onClick={() => navigate(`/admin/clientes/${c.id}${query}`)}
                 className={`border-b border-borda/50 cursor-pointer hover:bg-fundo transition-colors ${!c.ativo ? 'opacity-60' : ''}`}
               >
                 <td className="px-4 py-3 font-medium text-texto">

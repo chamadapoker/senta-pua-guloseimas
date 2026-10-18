@@ -10,6 +10,8 @@ import { Loading } from '../../components/ui/Loading';
 import { montarLinkCobranca } from '../../services/whatsapp';
 import { gerarExtratoUnificadoPDF } from '../../services/pdf';
 import { Link } from 'react-router-dom';
+import { PeriodoFiltro, usePeriodoUrl } from '../../components/admin/PeriodoFiltro';
+import { dataLocalDoBanco, descreverPeriodo, mesNoPeriodo, noPeriodo, periodoAtivo, periodoParaQuery } from '../../services/periodo';
 import type { Cliente, Pedido } from '../../types';
 
 interface CafePagamento { id: string; referencia: string; valor: number; status: string; cafe_tipo: string; cafe_plano: string; }
@@ -28,6 +30,7 @@ export function ClienteExtrato() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<ExtratoCompleto | null>(null);
   const [aba, setAba] = useState<'guloseimas' | 'loja' | 'cafe' | 'ximboca'>('guloseimas');
+  const [periodo, setPeriodo] = usePeriodoUrl();
   const confirmar = useConfirm();
 
   const carregar = async () => {
@@ -55,7 +58,12 @@ export function ClienteExtrato() {
 
   if (!data) return <AppLayout><Loading /></AppLayout>;
 
-  const { cliente, guloseimas, loja, cafe, ximboca } = data;
+  const { cliente } = data;
+  // Lançamentos dentro do período escolhido; totais, abas e PDF usam só estes
+  const guloseimas = data.guloseimas.filter(p => noPeriodo(dataLocalDoBanco(p.created_at), periodo));
+  const loja = data.loja.filter(p => noPeriodo(dataLocalDoBanco(p.created_at), periodo));
+  const cafe = data.cafe.filter(p => mesNoPeriodo(p.referencia, periodo));
+  const ximboca = data.ximboca.filter(p => noPeriodo(p.evento_data.slice(0, 10), periodo));
 
   const devidoGuloseimas = guloseimas.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0);
   const devidoLoja = loja.filter(p => p.status !== 'pago').reduce((s, p) => s + p.total, 0);
@@ -90,7 +98,7 @@ export function ClienteExtrato() {
 
   return (
     <AppLayout>
-      <BackButton to="/admin/clientes" className="mb-3" />
+      <BackButton to={`/admin/clientes${periodoParaQuery(periodo)}`} className="mb-3" />
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <div className="w-14 h-14 rounded-full bg-azul flex items-center justify-center text-white font-display text-xl tracking-wider">
@@ -103,7 +111,9 @@ export function ClienteExtrato() {
             {cliente.visitante ? <span className="ml-2 text-[10px] text-azul bg-azul/10 px-1.5 py-0.5 rounded">VISITANTE{cliente.esquadrao_origem ? ` - ${cliente.esquadrao_origem}` : ''}</span> : null}
           </h1>
           {totalDevido > 0 && (
-            <span className="text-vermelho font-bold font-display tracking-wide">Total pendente: R$ {totalDevido.toFixed(2)}</span>
+            <span className="text-vermelho font-bold font-display tracking-wide">
+              Total pendente{periodoAtivo(periodo) ? ' no período' : ''}: R$ {totalDevido.toFixed(2)}
+            </span>
           )}
         </div>
       </div>
@@ -120,6 +130,13 @@ export function ClienteExtrato() {
           Gerenciar conta de usuário →
         </Link>
       </div>
+
+      <PeriodoFiltro periodo={periodo} onChange={setPeriodo} className="mb-2" />
+      <p className="text-xs text-texto-fraco mb-4">
+        Mostrando lançamentos de <strong>{descreverPeriodo(periodo)}</strong>
+        {periodoAtivo(periodo) && ' — o PDF de cobrança também sai só deste período'}.
+        {' '}Café entra pelo mês de referência; Ximboca pela data do evento.
+      </p>
 
       {/* Summary cards */}
       {totalDevido > 0 && (

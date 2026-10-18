@@ -10,13 +10,22 @@ export async function authMiddleware(c: Context<AppType>, next: Next) {
 
   const token = header.slice(7);
   const payload = await verify(token, c.env.JWT_SECRET);
-  if (!payload) {
+  // Tokens de usuário (tipo 'usuario') usam o mesmo segredo: nunca valem como admin
+  if (!payload || payload.tipo === 'usuario' || !payload.id) {
     return c.json({ error: 'Token inválido ou expirado' }, 401);
   }
 
-  c.set('adminEmail', payload.email as string);
-  if (payload.role) c.set('adminRole', payload.role as string);
-  if (payload.id) c.set('adminId', payload.id as string);
+  // Confere no banco a cada requisição: admin desativado ou rebaixado perde o acesso na hora
+  const admin = await c.env.DB.prepare(
+    'SELECT id, email, role FROM admins WHERE id = ? AND ativo = 1'
+  ).bind(payload.id as string).first<{ id: string; email: string; role: string }>();
+  if (!admin) {
+    return c.json({ error: 'Token inválido ou expirado' }, 401);
+  }
+
+  c.set('adminEmail', admin.email);
+  c.set('adminRole', admin.role);
+  c.set('adminId', admin.id);
   await next();
 }
 
