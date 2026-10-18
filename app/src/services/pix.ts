@@ -23,6 +23,31 @@ function normalizarCampoPix(valor: string, max: number): string {
     .trim();
 }
 
+// A chave vai no QR exatamente como o banco a procura no DICT; qualquer diferença vira
+// "chave não encontrada". Formatos oficiais: telefone +55DDDNUMERO, CPF/CNPJ só dígitos,
+// e-mail e chave aleatória em minúsculas. O admin digita a chave à mão (ex.: "(55) 99999-8888"),
+// então normalizamos aqui, na hora de gerar, e os eventos já cadastrados passam a funcionar.
+export type TipoChavePix = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+
+export function normalizarChavePix(chave: string, tipo?: string | null): string {
+  const limpa = (chave || '').replace(/[\s ​-‍﻿]/g, '');
+  if (!limpa) return '';
+  const digitos = limpa.replace(/\D/g, '');
+  const t = (tipo || '').toLowerCase();
+
+  if (t === 'email' || limpa.includes('@')) return limpa.toLowerCase();
+  if (t === 'aleatoria' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(limpa)) return limpa.toLowerCase();
+  if (t === 'cpf' || t === 'cnpj') return digitos;
+  if (t === 'telefone' || limpa.startsWith('+')) {
+    // Aceita "55 99999-8888", "(55) 99999-8888", "5555999998888" e "+55 55 99999-8888"
+    const semPais = digitos.length >= 12 && digitos.startsWith('55') ? digitos.slice(2) : digitos;
+    return `+55${semPais}`;
+  }
+  // Sem tipo informado: CPF/CNPJ com pontuação viram só dígitos; o resto fica como está
+  if (/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(limpa) || /^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$/.test(limpa)) return digitos;
+  return limpa;
+}
+
 function tlv(id: string, value: string): string {
   const len = value.length.toString().padStart(2, '0');
   return `${id}${len}${value}`;
@@ -44,9 +69,9 @@ function crc16(payload: string): string {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-export function gerarPayloadPix(valor?: number, opcoes?: { chave?: string; nome?: string; cidade?: string }): string {
+export function gerarPayloadPix(valor?: number, opcoes?: { chave?: string; nome?: string; cidade?: string; tipo?: string | null }): string {
   const gui = tlv('00', 'br.gov.bcb.pix');
-  const key = tlv('01', opcoes?.chave || PIX_KEY);
+  const key = tlv('01', normalizarChavePix(opcoes?.chave || PIX_KEY, opcoes?.tipo));
   const merchantAccount = tlv('26', gui + key);
 
   let payload = '';

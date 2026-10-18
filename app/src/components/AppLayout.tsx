@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useUserAuth } from '../hooks/useUserAuth';
 import { api } from '../services/api';
 import { Icon } from './ui/Icon';
+import { AvisoCadastro, pendenciasCadastro } from './AvisoCadastro';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -156,7 +157,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
 
             {user ? (
-              <Link to="/perfil" className="flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-azul" title="Meu perfil">
+              <Link
+                to="/perfil"
+                className="relative flex items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-azul"
+                title={pendenciasCadastro(user).length ? 'Meu perfil: cadastro incompleto' : 'Meu perfil'}
+              >
+                {pendenciasCadastro(user).length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-escarlate ring-2 ring-noite lg:ring-white" aria-hidden="true" />
+                )}
                 {fotoUser ? (
                   <img src={fotoUser} alt={user.trigrama} className="w-9 h-9 rounded-full object-cover ring-2 ring-white/30 lg:ring-borda" />
                 ) : (
@@ -179,6 +187,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main id="conteudo" className={`transition-[padding] duration-300 ${sidebarPl} pb-28 lg:pb-0`}>
         <div className={`${larguraConteudo} mx-auto px-4 sm:px-6 py-5 sm:py-6`}>
+          {!isAdmin && <AvisoCadastro />}
           {children}
         </div>
       </main>

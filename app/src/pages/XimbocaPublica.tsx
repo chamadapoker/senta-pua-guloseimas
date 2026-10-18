@@ -105,7 +105,7 @@ export function XimbocaPublica() {
       return;
     }
     const valor = ev.valor_individual ?? ev.valor_por_pessoa;
-    const payload = gerarPayloadPix(valor, { chave: ev.pix_chave, nome: ev.pix_nome });
+    const payload = gerarPayloadPix(valor, { chave: ev.pix_chave, nome: ev.pix_nome, tipo: ev.pix_tipo });
     if (!(await copiar(payload))) return;
     setCopiadoId(ev.id);
     setTimeout(() => setCopiadoId(null), 3000);

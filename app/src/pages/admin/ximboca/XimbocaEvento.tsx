@@ -19,6 +19,7 @@ import { gerarCobrancaXimbocaPDF } from '../../../services/pdf';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useToast } from '../../../hooks/useToast';
 import { useAcao } from '../../../hooks/useAcao';
+import { normalizarChavePix } from '../../../services/pix';
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
 function resolveImg(url: string | null): string | null {
@@ -297,7 +298,7 @@ export function XimbocaEvento() {
       valor_cerveja: edCerveja ? parseFloat(edCerveja) : null,
       valor_refri: edRefri ? parseFloat(edRefri) : null,
       descricao: edDescricao,
-      pix_chave: edPixChave.trim() || null,
+      pix_chave: normalizarChavePix(edPixChave, edPixTipo) || null,
       pix_tipo: edPixChave.trim() ? edPixTipo : null,
       pix_nome: edPixNome.trim() || null,
       pix_whatsapp: edPixWhatsapp.replace(/\D/g, '') || null,

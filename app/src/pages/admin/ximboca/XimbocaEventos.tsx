@@ -13,6 +13,15 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Icon } from '../../../components/ui/Icon';
 import { api } from '../../../services/api';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { normalizarChavePix } from '../../../services/pix';
+
+// Exemplo do formato certo em cada tipo de chave (o QR exige o formato oficial)
+const PLACEHOLDER_CHAVE: Record<string, string> = {
+  cpf: 'Ex.: 123.456.789-09',
+  email: 'Ex.: nome@gmail.com',
+  telefone: 'Ex.: (55) 99999-8888',
+  aleatoria: 'Cole a chave aleatória do banco',
+};
 
 interface Evento {
   id: string;
@@ -106,7 +115,7 @@ export function XimbocaEventos() {
       valor_cerveja: valorCerveja ? parseFloat(valorCerveja) : null,
       valor_refri: valorRefri ? parseFloat(valorRefri) : null,
       descricao,
-      pix_chave: pixChave.trim() || null,
+      pix_chave: normalizarChavePix(pixChave, pixTipo) || null,
       pix_tipo: pixChave.trim() ? pixTipo : null,
       pix_nome: pixNome.trim() || null,
       pix_whatsapp: pixWhatsapp.replace(/\D/g, '') || null,
@@ -260,7 +269,18 @@ export function XimbocaEventos() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Chave PIX</label>
-                <input value={pixChave} onChange={e => setPixChave(e.target.value)} className={inputClass} placeholder="Digite a chave" />
+                <input
+                  value={pixChave}
+                  onChange={e => setPixChave(e.target.value)}
+                  className={inputClass}
+                  inputMode={pixTipo === 'cpf' || pixTipo === 'telefone' ? 'tel' : pixTipo === 'email' ? 'email' : 'text'}
+                  placeholder={PLACEHOLDER_CHAVE[pixTipo] ?? 'Digite a chave'}
+                />
+                {pixChave.trim() && (
+                  <p className="text-xs text-texto-fraco mt-1">
+                    Vai no QR como <span className="font-mono text-texto">{normalizarChavePix(pixChave, pixTipo)}</span>
+                  </p>
+                )}
               </div>
             </div>
             <div>
