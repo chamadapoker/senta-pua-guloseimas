@@ -2,12 +2,27 @@ name: Deploy Worker
 on:
   push:
     branches: [main]
-    paths: 
+    paths:
       - 'worker/**'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-worker.yml'
+  pull_request:
+    paths:
+      - 'worker/**'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
+
+# Um deploy do worker por vez (evita dois pushes seguidos publicando fora de ordem)
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  verificar:
+    name: Tipos, testes e dependências
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +33,29 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
+      - name: Checagem de tipos
+        run: pnpm --filter senta-pua-worker run typecheck
+      - name: Testes de segurança e regras de negócio
+        run: pnpm --filter senta-pua-worker test
+      - name: Vulnerabilidades nas dependências de produção (bloqueia alta ou crítica)
+        run: pnpm audit --prod --audit-level high
+
+  deploy:
+    name: Publicar
+    needs: verificar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter senta-pua-worker run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
